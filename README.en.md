@@ -9,6 +9,8 @@
 
 A watchlist ticker strip pinned under the composer in DeepSeek Harness: A-share, Hong Kong and US symbols in one row, with name, code, price, change percent, limit-up/limit-down marker and a mini daily K-line. Clicking a card opens a detail panel with intraday, 5-minute, daily, weekly and monthly charts, the five-level order book and A-share price/volume metrics.
 
+**Keywords**: DeepSeek Harness plugin · DSH plugin · dsh-plugin · stock quotes · watchlist · ticker strip · candlestick · K-line · intraday · order book · A-share · Hong Kong stocks · US stocks · market data
+
 > Quotes come from public snapshot endpoints. Display only, **not investment advice**, not for trading decisions.
 
 ## Features
@@ -102,6 +104,24 @@ node scripts/verify.mjs --offline  # skip every check that needs the network
 ```
 
 Host changes need a plugin restart (saving the config in the strip triggers one); Client changes need a page reload. There are no runtime dependencies: the Host imports nothing outside its own file and the browser half only requires `react`.
+
+## FAQ
+
+**How do I read a quote quickly inside DSH?** The strip sits under the composer; click a card for the detail panel. To change the list, use the sliders button in the header, one symbol per line, and save.
+
+**Which markets are supported?** A-shares (stocks, indices, ETFs, Beijing exchange), Hong Kong and US symbols. Quotes come from Tencent's public endpoints, with Sina as a fallback.
+
+**Is the data delayed?** These are public snapshot endpoints without an SLA. While a market is open the strip refreshes every `refreshSeconds` (15 by default); it slows down during a break and after the close, and backs off when requests fail.
+
+**Can it trade, or read my holdings?** No. It only displays quotes and stores your symbol list; it talks to no broker and reads no session or agent data.
+
+**Why does a card have no order book?** Indices have none, and Tencent returns zeroes for Hong Kong depth; only A-share stocks carry a full five-level book.
+
+**How do I write a symbol?** `600519`, `00700`, `AAPL`, or `sh600519`, `600519.SH`, `00700.HK`, `usAAPL`.
+
+## Listing
+
+The repository follows the [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) requirements: `dsh.bundle` in the root `package.json`, a root `cordis.patch.yml`, and the `dsh-plugin` topic. The prepared entry is in [`contrib/awesome-dsh-plugin.yml`](contrib/awesome-dsh-plugin.yml).
 
 ## License
 

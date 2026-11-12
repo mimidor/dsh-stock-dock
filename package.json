@@ -3,7 +3,7 @@
   "version": "1.1.1",
   "private": true,
   "type": "module",
-  "description": "Shows configurable A-share, Hong Kong and US quotes with a mini K-line strip under the composer.",
+  "description": "DeepSeek Harness (DSH) plugin: a configurable A-share / Hong Kong / US quote strip under the composer, with mini K-line, intraday, daily/weekly/monthly charts and five-level order book. 股票行情、自选股、盯盘、K线插件。",
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
@@ -44,12 +44,19 @@
     "url": "git+https://github.com/mimidor/dsh-stock-ticker.git"
   },
   "keywords": [
+    "dsh",
     "dsh-plugin",
     "deepseek-harness",
     "stock",
-    "quotes",
+    "stock-quotes",
+    "ticker",
+    "watchlist",
     "kline",
-    "a-share"
+    "candlestick",
+    "a-share",
+    "hk-stocks",
+    "us-stocks",
+    "market-data"
   ],
   "license": "MIT"
 }

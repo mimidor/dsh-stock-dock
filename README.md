@@ -9,6 +9,8 @@
 
 钉在 DeepSeek Harness 输入框下方的自选股行情条：A 股 / 港股 / 美股一张横条，名称、代码、价格、涨跌幅、涨跌停标记和迷你 K 线；点开卡片是详情面板，分时、5 分钟、日/周/月 K 线、五档盘口和 A 股的量价指标。
 
+**关键词**：DeepSeek Harness 插件 · DSH 插件 · 股票行情 · 自选股 · 盯盘 · 行情条 · K线 · 分时 · 五档盘口 · A股 · 港股 · 美股 · 腾讯行情 · dsh-plugin · stock quotes · watchlist · candlestick · intraday · order book
+
 > 行情来自公开接口的快照数据，仅供查看，**不构成任何投资建议**，不用于交易决策。
 
 ## 功能
@@ -102,6 +104,24 @@ node scripts/verify.mjs --offline  # 跳过所有联网检查
 ```
 
 Host 半区改完需要重启插件（改配置保存一次即可触发热重启），Client 半区改完刷新页面。不带任何运行时依赖，Host 不 import 包外模块，浏览器端只用 `react`。
+
+## 常见问题
+
+**怎么在 DSH 里快速看一只股票？** 输入框下方就是行情条，点卡片展开详情；要换标的，点头部滑杆按钮，一行写一个代码，保存即可。
+
+**支持哪些市场？** A 股（个股、指数、ETF、北交所）、港股、美股。行情来自腾讯公开接口，腾讯取不到时自动切新浪。
+
+**数据有延迟吗？** 是公开接口的快照数据，没有 SLA；盘中按 `refreshSeconds`（默认 15 秒）刷新，休市和收盘后自动降频，失败会退避。
+
+**能交易吗？能读我的持仓吗？** 都不能。它只展示行情、保存你的标的名列表，不接券商，不读会话或 agent 数据。
+
+**为什么有的卡片没有五档盘口？** 指数没有盘口；港股五档腾讯返回 0；完整五档只有 A 股个股有。
+
+**8 位代码 / 美股代码怎么填？** 直接写 `600519`、`00700`、`AAPL` 就行，也接受 `sh600519`、`600519.SH`、`00700.HK`、`usAAPL`。
+
+## 收录
+
+仓库按 [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) 的收录要求组织：根目录 `package.json` 声明 `dsh.bundle`，根目录有 `cordis.patch.yml`，带 `dsh-plugin` 话题。待提交的条目见 [`contrib/awesome-dsh-plugin.yml`](contrib/awesome-dsh-plugin.yml)。
 
 ## 许可
 
