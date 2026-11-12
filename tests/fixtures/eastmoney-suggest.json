@@ -1,0 +1,27 @@
+{
+  "QuotationCodeTable": {
+    "Data": [
+      {
+        "Code": "600519", "Name": "贵州茅台", "PinYin": "GZMT", "ID": "6005191",
+        "JYS": "2", "Classify": "AStock", "MarketType": "1", "SecurityTypeName": "沪A",
+        "SecurityType": "1", "MktNum": "1", "TypeUS": "2", "QuoteID": "1.600519",
+        "UnifiedCode": "600519", "InnerCode": "46077278941243"
+      },
+      {
+        "Code": "00700", "Name": "腾讯控股", "PinYin": "TXKG", "ID": "007001",
+        "JYS": "67", "Classify": "HKStock", "MarketType": "3", "SecurityTypeName": "港股",
+        "SecurityType": "3", "MktNum": "116", "TypeUS": "2", "QuoteID": "116.00700",
+        "UnifiedCode": "00700", "InnerCode": "477111639"
+      },
+      {
+        "Code": "BK1036", "Name": "半导体", "PinYin": "BDT", "ID": "BK10361",
+        "JYS": "2", "Classify": "BK", "MarketType": "1", "SecurityTypeName": "板块",
+        "SecurityType": "9", "MktNum": "90", "TypeUS": "2", "QuoteID": "90.BK1036",
+        "UnifiedCode": "BK1036", "InnerCode": "49827596171360"
+      }
+    ],
+    "Status": 0,
+    "Message": "成功",
+    "TotalCount": 3
+  }
+}
