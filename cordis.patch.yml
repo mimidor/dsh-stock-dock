@@ -1,0 +1,14 @@
+- insert:
+    - id: stock-ticker
+      name: '@local/dsh-stock-ticker'
+      config:
+        symbols:
+          - sh000001
+          - sz399001
+          - sh600519
+          - sh510300
+          - hk00700
+          - usAAPL
+        refreshSeconds: 15
+        klineDays: 40
+        colorMode: cn
