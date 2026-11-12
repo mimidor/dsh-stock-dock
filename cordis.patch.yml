@@ -1,3 +1,17 @@
+# dsh-stock-dock (bundle id: @local/dsh-stock-ticker)
+#
+# Registers the Host half; the browser half and the settings card are discovered
+# through `dsh.client` in package.json by dsh-client-modules.
+#
+# Config keys:
+#   symbols        seed watchlist (the runtime list lives in the store after the
+#                  first save, so editing this does not clobber a saved list)
+#   refreshSeconds poll cadence while a market is trading (5-300, default 15);
+#                  widened automatically outside sessions
+#   klineDays      bars fetched for the mini chart (10-120, default 40)
+#   colorMode      cn = red up / green down, intl = the opposite
+#   tool           register the stock_quote and stock_events agent tools (default true)
+#   toolSymbols    watchlist the tool falls back to; defaults to `symbols`
 - insert:
     - id: stock-ticker
       name: '@local/dsh-stock-ticker'
@@ -12,3 +26,4 @@
         refreshSeconds: 15
         klineDays: 40
         colorMode: cn
+        tool: true
