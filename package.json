@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-stock-ticker",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "type": "module",
   "description": "Shows configurable A-share, Hong Kong and US quotes with a mini K-line strip under the composer.",
@@ -16,7 +16,10 @@
     "cordis.patch.yml",
     "locale/*.json",
     "icon.svg",
-    "README.md"
+    "README.md",
+    "README.en.md",
+    "LICENSE",
+    "scripts"
   ],
   "dsh": {
     "bundle": {
@@ -29,5 +32,24 @@
         "@deepseek-ai/dsh-client-ui-conversation"
       ]
     }
-  }
+  },
+  "scripts": {
+    "verify": "node scripts/verify.mjs",
+    "verify:offline": "node scripts/verify.mjs --offline",
+    "check": "node --check index.js && node --check client.js"
+  },
+  "homepage": "https://github.com/mimidor/dsh-stock-ticker#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mimidor/dsh-stock-ticker.git"
+  },
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "stock",
+    "quotes",
+    "kline",
+    "a-share"
+  ],
+  "license": "MIT"
 }

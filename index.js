@@ -459,7 +459,9 @@ async function fetchTencentQuotes(symbols) {
     if (!fields || fields.length < 35 || !fields[1]) return { symbol, error: 'no-data' }
     return parseTencentQuote(symbol, fields)
   })
-  if (quotes.every((quote) => quote.error)) throw new Error('tencent returned no usable rows')
+  if (quotes.every((quote) => quote.error) && !/v_[a-z0-9._-]+="/i.test(text)) {
+    throw new Error('tencent answered without any quote row')
+  }
   return quotes
 }
 
@@ -607,7 +609,9 @@ async function fetchSinaQuotes(symbols) {
       time: fields[3],
     }
   })
-  if (quotes.every((quote) => quote.error)) throw new Error('sina returned no usable rows')
+  if (quotes.every((quote) => quote.error) && !/hq_str_[a-z0-9_]+="/i.test(text)) {
+    throw new Error('sina answered without any quote row')
+  }
   return quotes
 }
 
