@@ -38,10 +38,10 @@
     "verify:offline": "node scripts/verify.mjs --offline",
     "check": "node --check index.js && node --check client.js"
   },
-  "homepage": "https://github.com/mimidor/dsh-stock-ticker#readme",
+  "homepage": "https://github.com/mimidor/dsh-stock-dock#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mimidor/dsh-stock-ticker.git"
+    "url": "git+https://github.com/mimidor/dsh-stock-dock.git"
   },
   "keywords": [
     "dsh",

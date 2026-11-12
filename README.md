@@ -1,4 +1,4 @@
-# dsh-stock-ticker
+# dsh-stock-dock
 
 **中文** · [English](README.en.md)
 
@@ -29,7 +29,7 @@
 本仓库本身就是可安装的 bundle（`package.json` 与 `cordis.patch.yml` 在根目录）。
 
 ```text
-plugin_manager  action: install_bundle  target: github:mimidor/dsh-stock-ticker
+plugin_manager  action: install_bundle  target: github:mimidor/dsh-stock-dock
 ```
 
 或者克隆后指向目录：

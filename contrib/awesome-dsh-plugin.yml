@@ -1,11 +1,11 @@
 # 提交给 https://github.com/awesome-dsh-plugin/awesome-dsh-plugin 的条目
 #
-# 用法：把本文件内容存为对方仓库的 data/plugins/mimidor__dsh-stock-ticker.yml，
+# 用法：把本文件内容存为对方仓库的 data/plugins/mimidor__dsh-stock-dock.yml，
 # 然后提一个 PR。README 由对方脚本生成，不要手工改 README。
 # 规则：仓库创建满 1 天；url 必须与仓库地址完全一致；description.en 必填。
 
-url: https://github.com/mimidor/dsh-stock-ticker
-name: mimidor/dsh-stock-ticker
+url: https://github.com/mimidor/dsh-stock-dock
+name: mimidor/dsh-stock-dock
 category: ui
 description:
   en: 'Configurable A-share, Hong Kong and US quote strip under the DSH composer: mini K-line per card, intraday, 5-minute, daily, weekly and monthly charts, five-level order book, A-share turnover and limit prices, session-aware polling and a Sina fallback source.'

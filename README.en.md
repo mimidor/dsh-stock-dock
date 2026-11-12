@@ -1,4 +1,4 @@
-# dsh-stock-ticker
+# dsh-stock-dock
 
 [中文](README.md) · **English**
 
@@ -29,7 +29,7 @@ A watchlist ticker strip pinned under the composer in DeepSeek Harness: A-share,
 This repository is itself an installable bundle (`package.json` and `cordis.patch.yml` sit at the root).
 
 ```text
-plugin_manager  action: install_bundle  target: github:mimidor/dsh-stock-ticker
+plugin_manager  action: install_bundle  target: github:mimidor/dsh-stock-dock
 ```
 
 Or clone it and point at the directory:
