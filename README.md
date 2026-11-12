@@ -35,7 +35,7 @@ plugin_manager  action: install_bundle  target: github:mimidor/dsh-stock-dock
 或者克隆后指向目录：
 
 ```text
-plugin_manager  action: install_bundle  target: /path/to/dsh-stock-ticker
+plugin_manager  action: install_bundle  target: /path/to/dsh-stock-dock
 ```
 
 要求 DSH 0.2.x，且开启了 Web GUI（插件用 `ctx.webServer` 注册同源路由）。安装后**刷新页面**：打包版桌面应用没有 ⌘R 快捷键，请退出重开，或在「Developer tools」里刷新。

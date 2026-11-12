@@ -35,7 +35,7 @@ plugin_manager  action: install_bundle  target: github:mimidor/dsh-stock-dock
 Or clone it and point at the directory:
 
 ```text
-plugin_manager  action: install_bundle  target: /path/to/dsh-stock-ticker
+plugin_manager  action: install_bundle  target: /path/to/dsh-stock-dock
 ```
 
 Requires DSH 0.2.x with the Web GUI (the plugin registers same-origin routes through `ctx.webServer`). After installing, **reload the page**: the packaged desktop app has no ⌘R shortcut — quit and reopen it, or reload from "Developer tools".
