@@ -2,126 +2,180 @@
 
 [中文](README.md) · **English**
 
-![version](https://img.shields.io/badge/version-1.1.1-blue)
+![version](https://img.shields.io/badge/version-1.5.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![dsh](https://img.shields.io/badge/DSH-0.2.x-6f5bd6)
-![data](https://img.shields.io/badge/data-Tencent%20%7C%20Sina-orange)
+![data](https://img.shields.io/badge/data-Tencent%20%7C%20Sina%20%7C%20Eastmoney-orange)
 
-A watchlist ticker strip pinned under the composer in DeepSeek Harness: A-share, Hong Kong and US symbols in one row, with name, code, price, change percent, limit-up/limit-down marker and a mini daily K-line. Clicking a card opens a detail panel with intraday, 5-minute, daily, weekly and monthly charts, the five-level order book and A-share price/volume metrics.
+A quote strip pinned under the DeepSeek Harness composer for A-shares, Hong Kong and US securities. Add symbols by code, name or pinyin, keep several watchlist groups, and see name, code, price, change, limit marks, a per-card source dot and a mini daily K-line. The detail panel adds intraday (1/3/5 days with volume and a percentage axis), 5/15/30/60-minute, daily/weekly/monthly charts (three adjust modes), MA5/10/20/60, a five-level order book, A-share valuation fields, a position cost line, a trade ledger with realised P/L and price alerts. Two tools, `stock_quote` and `stock_events`, let the model read quotes, announcements and the daily billboard.
 
-**Keywords**: DeepSeek Harness plugin · DSH plugin · dsh-plugin · stock quotes · watchlist · ticker strip · candlestick · K-line · intraday · order book · A-share · Hong Kong stocks · US stocks · market data
+![Quote strip](docs/screenshots/dock.png)
 
-> Quotes come from public snapshot endpoints. Display only, **not investment advice**, not for trading decisions.
+![Detail panel](docs/screenshots/detail.png)
+
+> Quotes come from public endpoints as snapshots. Display only — **not investment advice**, not for trading decisions.
+
+> **Package id**: the repo and the marketplace entry are called `dsh-stock-dock`; the npm id is still `@local/dsh-stock-ticker` so existing `link:` installs keep working. Both `/dsh-stock-ticker` and `/dsh-stock-dock` route prefixes are served.
 
 ## Features
 
-- **Ticker strip** — always under the composer, horizontally scrollable; red up / green down (switchable to the international palette); `limit up` / `limit down` badges on A-shares
-- **Detail panel** — five tabs: `intraday / 5m / daily / weekly / monthly`; daily, weekly and monthly bars support forward-adjusted, backward-adjusted and raw prices
-- **Intraday line** — price line, running average and a dashed previous close, coloured by the day's direction
-- **Order book** — five bid and five ask levels (price + size) plus the bid/ask ratio
-- **A-share metrics** — turnover value, turnover rate, volume ratio, amplitude, P/E, P/B, float and total market cap
-- **Configurable symbols** — edit them in the strip's own form (saved to the profile config) or directly in `cordis.patch.yml`
-- **Thrifty polling** — the cadence follows the trading session (normal while open, ≥30 s during a break, ≥60 s after the close), pauses while the tab is hidden or the form is open, and backs off up to two minutes while requests keep failing
-- **Fallback source** — switches to Sina automatically when Tencent answers nothing; the header shows which source answered
+- **Strip**: always under the composer; wheel-to-horizontal, drag to scroll, hover progress bar; red-up/green-down (switchable), A-share limit marks, a source dot per card
+- **Settings panel**: a gear in the header opens it right inside the strip (no dependence on the DSH settings page); switch the data source (auto/Tencent/Sina/Eastmoney), default chart, adjust mode and cadence, and toggle each display element (mini K-line, MAs, volume, order book, metrics row, source dot, alert toast, US pre/post market)
+- **Card management**: a hover `×` removes one symbol, cards can be dragged into a new order, the trailing `＋` opens search
+- **Search**: code, Chinese name or pinyin, merged from Eastmoney suggest and Tencent smartbox
+- **Watchlist groups**: several lists switched by the header pills; a "market" group is seeded on first install (SSE, SZSE, ChiNext, STAR 50, Hang Seng, Nasdaq)
+- **Charts**: `intraday / 5m / 15m / 30m / 60m / daily / weekly / monthly`; intraday overlays 1/3/5 days with day separators, volume and a percentage axis; K-lines switch forward/backward/raw adjust, MA and volume toggles, hover crosshair with a readout
+- **Order book**: five bids and asks plus the bid/ask ratio
+- **A-share fields**: turnover, turnover rate, volume ratio, amplitude, P/E, P/B, float and total market cap
+- **US pre/post market**: opt-in; cards and the detail header show the extended-hours price, percent and timestamp (from Sina's `gb_` rows)
+- **Positions and trades**: shares/cost draw the cost line; recording buys and sells yields weighted-average cost and realised P/L, and one click rebuilds the position from the ledger
+- **Price alerts**: above/below targets surfaced as a toast; acknowledging re-arms but waits for the price to leave the line
+- **Agent tools**: `stock_quote` (batch quotes) and `stock_events` (announcements / daily billboard)
+- **Settings page**: refresh interval, mini-chart bars, colours, default period, default intraday days, adjust mode, MA/volume/toast switches, group management
+- **Optional sidebar page**: with [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) the same panel opens as a tab, and polling pauses while the tab is hidden
+- **Frugal polling**: cadence follows each venue's session, drops on weekends and holidays, pauses when the page is hidden, and backs off after failures
+- **Small poll payload**: mini charts are no longer part of the quote poll; `/sparklines` serves them once with an ETag, taking thirty symbols from ~129 KB to ~22 KB per poll
+
+![Plugin settings](docs/screenshots/settings.png)
 
 ## Install
 
-This repository is itself an installable bundle (`package.json` and `cordis.patch.yml` sit at the root).
+The repository root is the installable bundle (`package.json` plus `cordis.patch.yml`).
 
 ```text
 plugin_manager  action: install_bundle  target: github:mimidor/dsh-stock-dock
 ```
 
-Or clone it and point at the directory:
+Or point at a checkout:
 
 ```text
 plugin_manager  action: install_bundle  target: /path/to/dsh-stock-dock
 ```
 
-Requires DSH 0.2.x with the Web GUI (the plugin registers same-origin routes through `ctx.webServer`). After installing, **reload the page**: the packaged desktop app has no ⌘R shortcut — quit and reopen it, or reload from "Developer tools".
+Requires DSH 0.2.x with the Web GUI. Reload the page afterwards; the Host half additionally needs a plugin restart (saving the config once triggers one).
 
 ## Usage
 
 | Action | How |
 | --- | --- |
-| Read quotes | The strip appears under the composer: name / code / price / change / mini daily K-line per card |
-| Open details | Click a card; click again or press "Close" to collapse |
-| Switch chart | `intraday / 5m / daily / weekly / monthly` in the detail panel |
-| Edit symbols | Sliders button in the header → one per line → save (writes the profile config and restarts the plugin) |
-| Refresh now | ↻ in the header |
-| Collapse | ⌃ in the header (state kept in localStorage) |
+| See quotes | The strip appears under the composer |
+| Open a chart | Click a card; click again or press close |
+| Switch period | `intraday / 5m / 15m / 30m / 60m / daily / weekly / monthly` |
+| Switch adjust | The select next to the K-line tabs |
+| Add/remove/reorder | Search in the form; hover `×` to remove; drag cards; the trailing `＋` opens search |
+| Switch group | The pills in the header (shown when more than one group exists) |
+| Positions/trades | Detail footer: shares/cost, and the trade ledger with "rebuild position" |
+| Set an alert | Detail → alerts → above/below plus a price |
+| Plugin settings | The gear in the strip header; also DSH settings → 行情条 (a first-class nav section next to General/Models) |
 
-Symbol spellings are forgiving: `600519`, `sh600519`, `600519.SH`, `00700`, `hk00700`, `00700.HK`, `AAPL`, `usAAPL`, up to 30 symbols. A bare six-digit code is read by its first digit; a bare 1–5 digit number is read as Hong Kong.
+Symbols accept `600519`, `sh600519`, `600519.SH`, `00700`, `hk00700`, `00700.HK`, `AAPL`, `usAAPL`, `hkHSI`, `usIXIC`; at most 30 per group.
 
 ## Configuration
-
-`cordis.patch.yml` (the strip's form writes the same config):
 
 ```yaml
 - id: stock-ticker
   name: "@local/dsh-stock-ticker"
   config:
     symbols: [sh000001, sz399001, sh600519, sh510300, hk00700, usAAPL]
-    refreshSeconds: 15   # 5-300, used directly while a market is open
-    klineDays: 40        # 10-120, bars behind the strip's mini chart
-    colorMode: cn        # cn = red up / green down, intl = green up / red down
+    refreshSeconds: 15   # 5-300, used as-is while a market is trading
+    klineDays: 40        # 10-120 daily bars (the mini chart shows at most 20)
+    colorMode: cn        # cn = red up, intl = green up
+    tool: true           # register stock_quote and stock_events
+    toolSymbols: []      # watchlist the tools fall back to; empty = symbols
 ```
 
-## Data and refresh
+Runtime preferences written by the settings page live in the plugin's data file and override `refreshSeconds`, `klineDays` and `colorMode`; the profile config is the seed and the fallback.
+
+## Data sources
 
 | Purpose | Endpoint | Cache |
 | --- | --- | --- |
-| Quotes, depth, metrics | `qt.gtimg.cn/q=...` (GBK) | 3 s |
-| Quote fallback | `hq.sinajs.cn/list=...` (GBK, needs Referer) | 3 s |
-| Daily / weekly / monthly bars, three adjustments | `proxy.finance.qq.com/.../newfqkline/get` | 5 min (retried after 60 s) |
-| 5-minute bars | `proxy.finance.qq.com/.../kline/mkline` | 60 s |
-| Intraday line | `proxy.finance.qq.com/.../minute/query` | 20 s (5 min after the close) |
+| Quotes, order book, A-share fields (primary) | Tencent `qt.gtimg.cn/q=...` (GBK) | 3s |
+| Quote fallback 1 | Sina `hq.sinajs.cn/list=...` (GBK, needs Referer) | 3s |
+| Quote fallback 2 | Eastmoney `push2.eastmoney.com/api/qt/ulist.np/get` | 3s |
+| Daily/weekly/monthly K, three adjust modes | Tencent `proxy.finance.qq.com/.../newfqkline/get` | 5 min |
+| 5/15/30/60-minute K | Tencent `.../kline/mkline` | 60s |
+| Intraday, 1 day | Tencent `.../minute/query` | 20s |
+| Intraday, 3/5 days (A-share, Hong Kong) | Tencent `web.ifzq.gtimg.cn/appstock/app/day/query` | 20s |
+| Search | Eastmoney suggest + Tencent smartbox | not cached |
+| Announcements | Eastmoney `np-anotice-pc.eastmoney.com/api/security/ann` | on call |
+| Daily billboard | Eastmoney `datacenter-web.eastmoney.com` (`RPT_DAILYBILLBOARD_DETAILSNEW`) | on call |
+| US pre/post market | Sina `hq.sinajs.cn/list=gb_...` (columns 21–24: price, percent, time) | 60s, only while the preference is on |
+| History fallback | Eastmoney `push2his`; frequently refused by the server on some networks, then cooled down for 5 minutes | — |
 
-Host routes (same origin, fetched by the Client half):
+Host routes (same origin; `/dsh-stock-dock` is an alias):
 
 ```text
-GET  /dsh-stock-ticker/quotes?symbols=...&source=tencent|sina
+GET  /dsh-stock-ticker/quotes?symbols=...&source=tencent|sina|eastmoney&group=<id>
+GET  /dsh-stock-ticker/sparklines?symbols=...&days=40
 GET  /dsh-stock-ticker/kline?symbol=...&period=day|week|month|m1|m5|m15|m30|m60&adjust=qfq|hfq|none&limit=40&refresh=1
-GET  /dsh-stock-ticker/trend?symbol=...&refresh=1
+GET  /dsh-stock-ticker/trend?symbol=...&days=1|3|5&refresh=1
+GET  /dsh-stock-ticker/search?q=<term>&limit=8
+GET  /dsh-stock-ticker/trades?symbol=...
 GET  /dsh-stock-ticker/settings
-POST /dsh-stock-ticker/config           # writable from the local page only (Origin / Host checked)
+GET  /dsh-stock-ticker/health
+POST /dsh-stock-ticker/config
+POST /dsh-stock-ticker/prefs
+POST /dsh-stock-ticker/alerts
+POST /dsh-stock-ticker/holdings
+POST /dsh-stock-ticker/trades
+POST /dsh-stock-ticker/groups
 ```
 
-The Host derives the cadence from the Shanghai clock and the three venues: `refreshSeconds` while a market is open, at least 30 s during a break, at least 60 s after the close and at weekends. The Client backs off 2ⁿ up to 120 s while requests keep failing.
+Upstream failures always answer **HTTP 200 with `{ ok:false, error }`**; only a malformed request uses 400/403/404. `/sparklines` honours `If-None-Match` and answers 304 while the data is unchanged.
+
+## Local data
+
+Groups, positions, trades, alerts and preferences live in a host-side JSON file:
+
+```text
+<$DSH_HOME|~/.dsh>/dsh-stock-dock/store.json      # override with DSH_STOCK_DOCK_STORE
+```
+
+Writes go through a temp file and a rename; an unreadable file is renamed to `store.json.broken-<timestamp>` and kept. Missing fields are filled with defaults on load.
+
+## Tests
+
+```bash
+npm run check          # syntax
+npm run lint           # oxlint
+npm test               # 58 tests: parser fixtures, pre-market parsing, ledger arithmetic, alerts, sessions, store, tools, render
+npm run test:coverage  # Node's built-in coverage (~79% lines)
+npm run verify         # 177 checks, live endpoints
+npm run verify:offline # no network
+npm run pack:check     # published file list
+npm run check:readme   # zh/en README outline and routes in sync
+npm run preview        # render docs/preview/*.html and the screenshots from the real components
+```
+
+`tests/fixtures/` holds payload snapshots captured from the real endpoints. `tests/render.test.mjs` renders the real client components with a miniature React and fake DOM — the failure it exists for is a render-time throw, which makes the host drop the entire slot.
 
 ## Known limitations
 
-- The data comes from **unofficial public Tencent / Sina endpoints**: they can rate-limit, change fields or disappear, carry no SLA, and are never fresher than their own snapshots.
-- Turnover rate, volume ratio, amplitude and limit prices mean different things outside A-shares, so they are shown for A-shares only. Indices have no order book, and Tencent returns zeroes for Hong Kong depth, so those cards omit it.
-- Intraday is unavailable for US symbols (the endpoint answers with a single point) and 5-minute bars exist for A-shares only.
-- Display and configuration only: no orders, and no session or agent data is read.
+- Public, unofficial endpoints: they can rate-limit, change fields or disappear. No SLA.
+- **US intraday is unavailable** (Tencent returns a single point and Eastmoney's `trends2` is refused on some networks); Hong Kong 3/5-day intraday works. Pre/post market exposes a price snapshot only, no intraday line.
+- Indices have no order book, Hong Kong depth comes back as zeroes, and minute K-lines exist for A-shares only.
+- Eastmoney's history host is a fallback only; a refused host cools down for five minutes.
+- Holidays are inferred from quote timestamps; a half-day session or a delayed quote can take a poll or two to notice.
+- Display and bookkeeping only: no orders, no session or agent data.
 
-## Development
+## Troubleshooting
 
-```bash
-node scripts/verify.mjs            # 42 checks: routes, fields, periods/adjustments, intraday, fallback, write guard, client load and registration
-node scripts/verify.mjs --offline  # skip every check that needs the network
-```
+**Quickest way to look at a stock?** The strip is under the composer; click a card. The trailing `＋` or the header slider button opens search.
 
-Host changes need a plugin restart (saving the config in the strip triggers one); Client changes need a page reload. There are no runtime dependencies: the Host imports nothing outside its own file and the browser half only requires `react`.
+**Which markets?** A-shares (stocks, indices, ETFs, Beijing), Hong Kong (including HSI) and the US (including Nasdaq/Dow/S&P). Tencent first, then Sina, then Eastmoney.
 
-## FAQ
+**Is the data delayed?** It is a snapshot of public endpoints; while a market trades it polls every `refreshSeconds` (default 15 s), slows down outside sessions and backs off after failures.
 
-**How do I read a quote quickly inside DSH?** The strip sits under the composer; click a card for the detail panel. To change the list, use the sliders button in the header, one symbol per line, and save.
+**Can it trade or read my positions?** No trading. Positions and trades are what you recorded in the plugin, stored in a local JSON file.
 
-**Which markets are supported?** A-shares (stocks, indices, ETFs, Beijing exchange), Hong Kong and US symbols. Quotes come from Tencent's public endpoints, with Sina as a fallback.
+**Why does a card have no order book?** Indices have none, and Tencent returns zeroes for Hong Kong depth.
 
-**Is the data delayed?** These are public snapshot endpoints without an SLA. While a market is open the strip refreshes every `refreshSeconds` (15 by default); it slows down during a break and after the close, and backs off when requests fail.
+**When does an acknowledged alert fire again?** It re-arms immediately, but only fires after the price leaves the target once.
 
-**Can it trade, or read my holdings?** No. It only displays quotes and stores your symbol list; it talks to no broker and reads no session or agent data.
+## Collection
 
-**Why does a card have no order book?** Indices have none, and Tencent returns zeroes for Hong Kong depth; only A-share stocks carry a full five-level book.
-
-**How do I write a symbol?** `600519`, `00700`, `AAPL`, or `sh600519`, `600519.SH`, `00700.HK`, `usAAPL`.
-
-## Listing
-
-The repository follows the [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) requirements: `dsh.bundle` in the root `package.json`, a root `cordis.patch.yml`, and the `dsh-plugin` topic. The prepared entry is in [`contrib/awesome-dsh-plugin.yml`](contrib/awesome-dsh-plugin.yml).
+The repository follows the [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) layout: `dsh.bundle` in `package.json`, a root `cordis.patch.yml`, and the `dsh-plugin` topic. The pending entry is in [`contrib/awesome-dsh-plugin.yml`](contrib/awesome-dsh-plugin.yml).
 
 ## License
 
