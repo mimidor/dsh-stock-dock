@@ -1,8 +1,11 @@
 /**
  * Client half of the stock ticker bundle: a compact quote strip under the
- * composer. It reads its data from the package's Host half over the same-origin
- * route `/dsh-stock-ticker/quotes` and saves a new symbol list to the Host,
- * which persists it through the profile's config editor.
+ * composer, plus the optional sidebar page and the plugin settings card.
+ *
+ * All data comes from the package's Host half over same-origin routes under
+ * `/dsh-stock-ticker`; the only module this file requires is `react`, because
+ * the browser module table exposes nothing else and reaching into DSH internals
+ * is forbidden for workspace bundles.
  */
 
 window.__ModuleLoader__.load({
@@ -13,9 +16,12 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.1'
+    const BUILD = 'v1.5.0'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
+    const STYLE_ID = 'stock-ticker'
+    /** Mini charts change once a day; five minutes is already generous. */
+    const SPARK_TTL_MS = 5 * 60 * 1000
 
     const DICT_ZH = {
       title: '行情',
@@ -31,8 +37,15 @@ window.__ModuleLoader__.load({
       save: '保存',
       saving: '保存中…',
       cancel: '取消',
-      configNotWritable: '当前 profile 不允许保存该配置，请改为编辑 cordis.patch.yml。',
+      configNotWritable: '当前 profile 不允许保存该配置，已改存到插件数据文件。',
       saved: '已保存，正在更新…',
+      savedCount: '已保存 {n} 个标的',
+      savedDropped: '（忽略 {n} 个）',
+      unitWan: '万',
+      unitYi: '亿',
+      unitWanYi: '万亿',
+      bookBuy: '买',
+      bookSell: '卖',
       timeout: '请求超时，请检查网络后重试',
       network: '连不上本机行情服务，请刷新页面重试',
       unrecognized: '无法识别：',
@@ -47,6 +60,9 @@ window.__ModuleLoader__.load({
       noKline: '暂无K线',
       tabTrend: '分时',
       tabMinute: '5分',
+      tabM15: '15分',
+      tabM30: '30分',
+      tabM60: '60分',
       tabDay: '日K',
       tabWeek: '周K',
       tabMonth: '月K',
@@ -61,11 +77,99 @@ window.__ModuleLoader__.load({
       limitDown: '跌停',
       sourceTencent: '腾讯',
       sourceSina: '新浪',
+      sourceEastmoney: '东财',
+      sourceCache: '缓存',
       sessionTrading: '盘中',
       sessionBreak: '休市',
       sessionClosed: '收盘',
       sessionWeekend: '周末',
+      sessionHoliday: '节假日',
       staleData: '数据可能不是最新',
+      search: '搜索',
+      searchPlaceholder: '代码 / 名称 / 拼音，如 600519、茅台、gzmt',
+      searching: '搜索中…',
+      searchEmpty: '没有匹配的标的',
+      addSymbol: '添加',
+      alerts: '预警',
+      alertAdd: '添加预警',
+      alertAbove: '上破',
+      alertBelow: '下破',
+      alertPrice: '价格',
+      alertArmed: '待触发',
+      alertFired: '已触发',
+      alertAck: '知道了',
+      alertEmpty: '还没有设置预警',
+      alertRemove: '删除',
+      alertHit: '{name} 触发预警：{op} {price}',
+      alertNeedPrice: '请填写有效的预警价',
+      holding: '持仓',
+      shares: '股数',
+      cost: '成本',
+      marketValue: '市值',
+      pnl: '浮动盈亏',
+      saveHolding: '保存持仓',
+      removeHolding: '清除持仓',
+      holdingHint: '填股数与成本价，图上会画出成本线',
+      holdingBad: '股数和成本都要大于 0',
+      groups: '分组',
+      newGroup: '新建分组',
+      groupName: '分组名',
+      deleteGroup: '删除分组',
+      settingsTitle: '行情条',
+      refreshSeconds: '刷新间隔（秒）',
+      klineDays: '迷你K线根数',
+      colorMode: '配色',
+      colorCn: '红涨绿跌',
+      colorIntl: '绿涨红跌',
+      defaultPeriod: '默认周期',
+      defaultTrendDays: '默认分时天数',
+      showMA: '显示均线',
+      showVolume: '显示成交量',
+      alertToast: '预警弹提示',
+      sourceDot: '标记每张卡的数据源',
+      savePrefs: '保存设置',
+      prefsSaved: '已保存',
+      periodTrend: '分时',
+      adjust: '复权',
+      adjustQfq: '前复权',
+      adjustHfq: '后复权',
+      adjustNone: '不复权',
+      days: '日',
+      ma: '均线',
+      volume: '量',
+      holidayNote: '非交易日',
+      sidebarTitle: '行情',
+      groupDefault: '自选',
+      confirm: '确认',
+      dismiss: '忽略',
+      openSettings: '打开设置',
+      hostMissing: '行情服务未加载，刷新页面或重启 DSH 后再试',
+      remove: '移除',
+      quickAdd: '添加标的',
+      trades: '流水',
+      buy: '买入',
+      sell: '卖出',
+      tradePrice: '价格',
+      tradeFee: '手续费',
+      tradeDate: '日期',
+      saveTrade: '记一笔',
+      syncFromTrades: '按流水同步持仓',
+      tradesEmpty: '还没有流水',
+      realized: '已实现',
+      fees: '手续费合计',
+      tradeHint: '记买卖流水后，可按加权平均成本反推持仓',
+      addMarketGroup: '添加大盘分组',
+      preset: '预置',
+      deleteTrade: '删除',
+      dataSource: '数据源',
+      sourceAuto: '自动（腾讯 → 新浪 → 东财）',
+      showMiniChart: '显示迷你 K 线',
+      showOrderBook: '显示五档盘口',
+      showStats: '显示指标行',
+      showExtended: '显示美股盘前 / 盘后',
+      premarket: '盘前',
+      afterHours: '盘后',
+      settingsHint: '改动立即生效，保存在插件数据文件',
     }
 
     const DICT_EN = {
@@ -82,8 +186,15 @@ window.__ModuleLoader__.load({
       save: 'Save',
       saving: 'Saving…',
       cancel: 'Cancel',
-      configNotWritable: 'This profile cannot save the configuration; edit cordis.patch.yml instead.',
+      configNotWritable: 'This profile cannot save the profile config; the list was stored in the plugin data file instead.',
       saved: 'Saved, updating…',
+      savedCount: 'Saved {n} symbols',
+      savedDropped: ' ({n} skipped)',
+      unitWan: '10K',
+      unitYi: '100M',
+      unitWanYi: 'T',
+      bookBuy: 'Bid',
+      bookSell: 'Ask',
       timeout: 'The request timed out; check the network and retry',
       network: 'The local quote service is unreachable; reload the page',
       unrecognized: 'Unrecognized: ',
@@ -98,6 +209,9 @@ window.__ModuleLoader__.load({
       noKline: 'No K-line data',
       tabTrend: 'Intraday',
       tabMinute: '5m',
+      tabM15: '15m',
+      tabM30: '30m',
+      tabM60: '60m',
       tabDay: 'Daily',
       tabWeek: 'Weekly',
       tabMonth: 'Monthly',
@@ -112,11 +226,99 @@ window.__ModuleLoader__.load({
       limitDown: 'Limit down',
       sourceTencent: 'Tencent',
       sourceSina: 'Sina',
+      sourceEastmoney: 'Eastmoney',
+      sourceCache: 'cache',
       sessionTrading: 'Live',
       sessionBreak: 'Break',
       sessionClosed: 'Closed',
       sessionWeekend: 'Weekend',
+      sessionHoliday: 'Holiday',
       staleData: 'Data may be stale',
+      search: 'Search',
+      searchPlaceholder: 'Code, name or pinyin, e.g. 600519, maotai, gzmt',
+      searching: 'Searching…',
+      searchEmpty: 'No matching security',
+      addSymbol: 'Add',
+      alerts: 'Alerts',
+      alertAdd: 'Add alert',
+      alertAbove: 'Above',
+      alertBelow: 'Below',
+      alertPrice: 'Price',
+      alertArmed: 'Armed',
+      alertFired: 'Triggered',
+      alertAck: 'Got it',
+      alertEmpty: 'No alerts yet',
+      alertRemove: 'Delete',
+      alertHit: '{name} alert: {op} {price}',
+      alertNeedPrice: 'Enter a valid alert price',
+      holding: 'Position',
+      shares: 'Shares',
+      cost: 'Cost',
+      marketValue: 'Value',
+      pnl: 'P/L',
+      saveHolding: 'Save position',
+      removeHolding: 'Clear position',
+      holdingHint: 'Shares and cost draw the cost line on the chart',
+      holdingBad: 'Shares and cost must be greater than 0',
+      groups: 'Groups',
+      newGroup: 'New group',
+      groupName: 'Group name',
+      deleteGroup: 'Delete group',
+      settingsTitle: 'Quote strip',
+      refreshSeconds: 'Refresh seconds',
+      klineDays: 'Mini chart bars',
+      colorMode: 'Colours',
+      colorCn: 'Red up / green down',
+      colorIntl: 'Green up / red down',
+      defaultPeriod: 'Default period',
+      defaultTrendDays: 'Default intraday days',
+      showMA: 'Show moving averages',
+      showVolume: 'Show volume',
+      alertToast: 'Toast on alert',
+      sourceDot: 'Mark each card’s source',
+      savePrefs: 'Save settings',
+      prefsSaved: 'Saved',
+      periodTrend: 'Intraday',
+      adjust: 'Adjust',
+      adjustQfq: 'Forward',
+      adjustHfq: 'Backward',
+      adjustNone: 'Raw',
+      days: 'd',
+      ma: 'MA',
+      volume: 'Vol',
+      holidayNote: 'Market holiday',
+      sidebarTitle: 'Quotes',
+      groupDefault: 'Watchlist',
+      confirm: 'Confirm',
+      dismiss: 'Dismiss',
+      openSettings: 'Open settings',
+      hostMissing: 'The quote service is not loaded; reload the page or restart DSH',
+      remove: 'Remove',
+      quickAdd: 'Add symbol',
+      trades: 'Trades',
+      buy: 'Buy',
+      sell: 'Sell',
+      tradePrice: 'Price',
+      tradeFee: 'Fee',
+      tradeDate: 'Date',
+      saveTrade: 'Record',
+      syncFromTrades: 'Rebuild position from trades',
+      tradesEmpty: 'No trades yet',
+      realized: 'Realised',
+      fees: 'Fees',
+      tradeHint: 'Record buys and sells, then rebuild the position from the weighted-average cost',
+      addMarketGroup: 'Add market group',
+      preset: 'Preset',
+      deleteTrade: 'Delete',
+      dataSource: 'Data source',
+      sourceAuto: 'Auto (Tencent → Sina → Eastmoney)',
+      showMiniChart: 'Show mini K-line',
+      showOrderBook: 'Show order book',
+      showStats: 'Show metrics row',
+      showExtended: 'Show US pre/post market',
+      premarket: 'Pre',
+      afterHours: 'After',
+      settingsHint: 'Changes apply immediately and are stored in the plugin data file',
     }
 
     const CSS = `
@@ -138,12 +340,19 @@ window.__ModuleLoader__.load({
   --dshst-up: color-mix(in srgb, var(--dsw-alias-state-success-primary) 68%, var(--dsw-alias-label-primary));
   --dshst-down: var(--dsw-alias-state-error-primary);
 }
+.dshst[data-variant="sidebar"] {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 10px 12px;
+}
 .dshst-head {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 20px;
+  min-height: 20px;
   color: var(--dsw-alias-label-secondary);
+  flex-wrap: wrap;
 }
 .dshst-title {
   font-size: 11px;
@@ -161,13 +370,16 @@ window.__ModuleLoader__.load({
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
+  gap: 2px;
+  min-width: 20px;
   height: 20px;
-  padding: 0;
+  padding: 0 3px;
   border: 1px solid transparent;
   border-radius: 6px;
   background: transparent;
   color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 11px;
   cursor: pointer;
 }
 .dshst-icon:hover {
@@ -224,10 +436,23 @@ window.__ModuleLoader__.load({
   font-weight: 600;
 }
 .dshst-code {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   font-size: 10px;
   font-variant-numeric: tabular-nums;
   color: var(--dsw-alias-label-secondary);
 }
+.dshst-src {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--dsw-alias-label-secondary);
+  flex: 0 0 auto;
+}
+.dshst-src[data-source="sina"] { background: var(--dsw-alias-state-warn-primary); }
+.dshst-src[data-source="eastmoney"] { background: var(--dsw-alias-brand-primary); }
+.dshst-src[data-source="cache"] { background: var(--dsw-alias-border-l2); }
 .dshst-quote {
   display: flex;
   flex-direction: column;
@@ -242,6 +467,20 @@ window.__ModuleLoader__.load({
 .dshst-down { color: var(--dshst-down); }
 .dshst-flat { color: var(--dsw-alias-label-secondary); }
 .dshst-chart { display: block; flex: 0 0 auto; }
+.dshst-chartWrap { position: relative; width: 100%; }
+.dshst-readout {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 80%, transparent);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--dsw-alias-label-secondary);
+  pointer-events: none;
+  white-space: nowrap;
+}
 .dshst-chartEmpty {
   display: block;
   flex: 0 0 auto;
@@ -251,8 +490,8 @@ window.__ModuleLoader__.load({
 .dshst-detail {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  max-height: min(46vh, 360px);
+  gap: 5px;
+  max-height: min(52vh, 420px);
   overflow-y: auto;
   padding: 7px 10px 8px;
   border: 1px solid var(--dsw-alias-border-l1);
@@ -277,6 +516,7 @@ window.__ModuleLoader__.load({
   font-variant-numeric: tabular-nums;
 }
 .dshst-stats b { font-weight: 600; color: var(--dsw-alias-label-primary); }
+.dshst-toolbar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .dshst-tabs { display: flex; gap: 2px; flex-wrap: wrap; }
 .dshst-tab {
   padding: 1px 8px;
@@ -297,6 +537,31 @@ window.__ModuleLoader__.load({
   border-color: var(--dsw-alias-border-l2);
   background: var(--dsw-alias-bg-layer-2);
 }
+.dshst-select {
+  height: 19px;
+  padding: 0 2px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 5px;
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 11px;
+}
+.dshst-toggle {
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.dshst-toggle[data-active="true"] {
+  border-color: var(--dsw-alias-border-l2);
+  color: var(--dsw-alias-label-primary);
+}
+.dshst-seg { display: inline-flex; gap: 1px; }
 .dshst-limitMark {
   margin-left: 4px;
   padding: 0 3px;
@@ -339,6 +604,7 @@ window.__ModuleLoader__.load({
   color: var(--dsw-alias-label-secondary);
 }
 .dshst-chip[data-tone="warn"] { color: var(--dsw-alias-state-warn-primary); border-color: currentColor; }
+.dshst-chip[data-tone="alert"] { color: var(--dsw-alias-state-error-primary); border-color: currentColor; }
 .dshst-detailClose {
   margin-left: auto;
   padding: 1px 6px;
@@ -407,7 +673,11 @@ window.__ModuleLoader__.load({
 .dshst-button:focus-visible,
 .dshst-detailClose:focus-visible,
 .dshst-link:focus-visible,
-.dshst-textarea:focus-visible {
+.dshst-textarea:focus-visible,
+.dshst-input:focus-visible,
+.dshst-select:focus-visible,
+.dshst-tab:focus-visible,
+.dshst-toggle:focus-visible {
   outline: 2px solid var(--dsw-alias-brand-primary);
   outline-offset: 1px;
 }
@@ -439,13 +709,283 @@ window.__ModuleLoader__.load({
   color: var(--dsw-alias-bg-base);
 }
 .dshst-button:disabled { opacity: 0.55; cursor: default; }
+.dshst-input {
+  height: 24px;
+  padding: 0 7px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 7px;
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 12px;
+  min-width: 0;
+}
+.dshst-search { display: flex; gap: 6px; align-items: center; }
+.dshst-searchField { flex: 1 1 220px; }
+.dshst-results {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-height: 170px;
+  overflow-y: auto;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 8px;
+  padding: 2px;
+}
+.dshst-result {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.dshst-result:hover { background: var(--dsw-alias-interactive-bg-hover); }
+.dshst-resultCode { font-size: 10px; color: var(--dsw-alias-label-secondary); font-variant-numeric: tabular-nums; }
+.dshst-resultType { margin-left: auto; font-size: 10px; color: var(--dsw-alias-label-secondary); }
+.dshst-groups { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+.dshst-pill {
+  padding: 0 7px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 11px;
+  line-height: 17px;
+  cursor: pointer;
+}
+.dshst-pill[data-active="true"] {
+  border-color: var(--dsw-alias-brand-primary);
+  color: var(--dsw-alias-label-primary);
+}
+.dshst-alerts { display: flex; flex-direction: column; gap: 4px; }
+.dshst-alertRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.dshst-alertRow b { font-weight: 600; }
+.dshst-toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 3px 8px;
+  border: 1px solid var(--dsw-alias-state-error-primary);
+  border-radius: 8px;
+  color: var(--dsw-alias-state-error-primary);
+  font-size: 11px;
+}
+.dshst-holding {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--dsw-alias-label-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.dshst-holding b { color: var(--dsw-alias-label-primary); font-weight: 600; }
+.dshst-field { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--dsw-alias-label-secondary); }
+.dshst-inputSmall { width: 74px; height: 20px; }
+.dshst-settings { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
+.dshst-settingsRow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dshst-settingsRow > label { min-width: 132px; color: var(--dsw-alias-label-secondary); }
+.dshst-settingsGroup { display: flex; flex-direction: column; gap: 4px; }
+.dshst-sidebarWrap { height: 100%; }
+/* The composer dock is a flex row shared with DSH's own stats pills and the
+   context meter. Claim a full-width line of our own below them: the parent is
+   matched structurally (its hashed class always ends in _dock) and told to wrap,
+   and the order property pushes the strip after the meter so the first line
+   keeps the native widgets untouched. If a future DSH renames the container the
+   rule simply stops applying and the strip falls back to the inline row. */
+[class*="_dock"]:has(> [data-plugin="stock-ticker"][data-variant="dock"]) {
+  flex-wrap: wrap;
+}
+[class*="_dock"]:has(> [data-plugin="stock-ticker"][data-variant="dock"])
+  > [data-plugin="stock-ticker"][data-variant="dock"] {
+  order: 99;
+  flex: 0 0 100%;
+}
+/* Fallback for a host that wraps slot entries in its own element: the strip is
+   then a grandchild, so the flex item is the wrapper; the rules are inert there
+   and the layout degrades to the inline row instead of breaking. */
+[class*="_dock"]:has([data-plugin="stock-ticker"][data-variant="dock"]) {
+  flex-wrap: wrap;
+}
+.dshst-scrollWrap { position: relative; }
+.dshst-scrollTrack {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  border-radius: 2px;
+  background: transparent;
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+}
+.dshst-scrollWrap:hover .dshst-scrollTrack {
+  opacity: 1;
+  background: var(--dsw-alias-border-l1);
+}
+.dshst-scrollThumb {
+  position: absolute;
+  top: 0;
+  width: 16%;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--dsw-alias-label-secondary);
+}
+.dshst-addCard {
+  flex: 0 0 auto;
+  align-self: stretch;
+  min-width: 30px;
+  border: 1px dashed var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 16px;
+  cursor: pointer;
+}
+.dshst-addCard:hover {
+  color: var(--dsw-alias-label-primary);
+  border-color: var(--dsw-alias-brand-primary);
+}
+.dshst-card { position: relative; }
+.dshst-cardRemove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 50%;
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 11px;
+  line-height: 14px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.dshst-card:hover .dshst-cardRemove,
+.dshst-card:focus-within .dshst-cardRemove { opacity: 1; }
+.dshst-cardRemove:hover { color: var(--dsw-alias-state-error-primary); border-color: currentColor; }
+.dshst-card[draggable="true"] { cursor: grab; }
+.dshst-axisY {
+  position: absolute;
+  top: 0;
+  right: 2px;
+  width: 48px;
+  height: 100%;
+  pointer-events: none;
+}
+.dshst-axisY span {
+  position: absolute;
+  right: 0;
+  padding: 1px 2px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 72%, transparent);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 9px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.dshst-axisX {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 2px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+.dshst-trades { display: flex; flex-direction: column; gap: 4px; }
+.dshst-tradeRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.dshst-ext {
+  padding: 0 3px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 3px;
+  font-size: 9px;
+  line-height: 12px;
+  color: var(--dsw-alias-label-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.dshst-settingsPage {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 760px;
+}
+.dshst-settingsHeading {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 26px;
+}
+.dshst-settingsIntro {
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+}
+.dshst-preset {
+  padding: 0 3px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 3px;
+  font-size: 9px;
+  color: var(--dsw-alias-label-secondary);
+}
 `
+
+    /**
+     * The stylesheet is injected once per page, not once per mounted component:
+     * the strip and the optional sidebar tab are two instances of the same panel,
+     * and rendering a `<style>` inside each would ship the 14 KB twice (and once
+     * more on every HMR reload).
+     */
+    let styleInjected = false
+    function ensureStyles() {
+      if (styleInjected) return
+      if (typeof document === 'undefined' || typeof document.createElement !== 'function') return
+      const existing =
+        typeof document.querySelector === 'function'
+          ? document.querySelector(`style[data-plugin-css="${STYLE_ID}"]`)
+          : null
+      if (existing) {
+        styleInjected = true
+        return
+      }
+      const tag = document.createElement('style')
+      tag.setAttribute('data-plugin-css', STYLE_ID)
+      tag.textContent = CSS
+      const host = document.head ?? document.body
+      if (host && typeof host.appendChild === 'function') host.appendChild(tag)
+      styleInjected = true
+    }
 
     /* ------------------------------------------------------------- helpers */
 
     function priceDigits(value) {
       const abs = Math.abs(value)
-      if (abs >= 100) return 2
       if (abs >= 1) return 2
       return 3
     }
@@ -478,26 +1018,8 @@ window.__ModuleLoader__.load({
       return code.split('.')[0]
     }
 
-    /** Mirrors the Host normalizer so the form can name the input it rejects. */
-    function normalizeSymbolText(raw) {
-      if (typeof raw !== 'string') return undefined
-      const text = raw.trim().replace(/[%^$\s]/g, '')
-      if (text === '') return undefined
-      if (/^(sh|sz|hk|us)[a-z0-9._-]{1,16}$/i.test(text)) {
-        const prefix = text.slice(0, 2).toLowerCase()
-        const body = text.slice(2)
-        return `${prefix}${prefix === 'us' ? body.toUpperCase() : body.toLowerCase()}`
-      }
-      if (/^\d{6}$/.test(text)) {
-        const head = text[0]
-        return `${head === '6' || head === '5' || head === '9' ? 'sh' : 'sz'}${text}`
-      }
-      if (/^\d{5}$/.test(text)) return `hk${text}`
-      if (/^[A-Z][A-Z.]{0,9}$/i.test(text)) return `us${text.toUpperCase()}`
-      return undefined
-    }
-
     function describeLoadError(failure, t) {
+      if (failure?.code === 'host-missing') return t('hostMissing')
       const name = failure?.name
       if (name === 'TimeoutError' || name === 'AbortError') return t('timeout')
       if (typeof TypeError !== 'undefined' && failure instanceof TypeError) return t('network')
@@ -506,8 +1028,9 @@ window.__ModuleLoader__.load({
 
     function sessionLabel(t, session) {
       if (!session) return ''
-      if (session.weekend) return t('sessionWeekend')
       if (session.mode === 'trading') return t('sessionTrading')
+      if (session.holiday) return t('sessionHoliday')
+      if (session.weekend) return t('sessionWeekend')
       if (session.mode === 'break') return t('sessionBreak')
       return t('sessionClosed')
     }
@@ -535,23 +1058,78 @@ window.__ModuleLoader__.load({
       }
     }
 
+    /**
+     * One request helper for every route. HTTP 200 still carries `ok:false` for
+     * upstream failures, so the body is the thing to look at.
+     */
+    async function api(path, options = {}) {
+      const method = options.method ?? 'GET'
+      const timeout = options.timeout ?? 12000
+      const response = await fetch(`${ENDPOINT}${path}`, {
+        method,
+        headers: {
+          ...(options.body === undefined
+            ? { Accept: 'application/json' }
+            : { 'Content-Type': 'application/json', Accept: 'application/json' }),
+          ...options.headers,
+        },
+        body: options.body === undefined ? undefined : JSON.stringify(options.body),
+        cache: options.cache ?? 'no-store',
+        signal: AbortSignal.timeout(timeout),
+      })
+      // DSH answers 401 for a route whose plugin is not loaded; that is a
+      // "host restarted, reload the page" situation, not a broken request.
+      if (response.status === 401 || response.status === 403) {
+        const error = new Error('host-missing')
+        error.code = 'host-missing'
+        throw error
+      }
+      if (response.status === 304) return { ok: true, notModified: true }
+      const payload = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(payload?.error || `HTTP ${response.status}`)
+      return payload ?? { ok: false, error: `HTTP ${response.status}` }
+    }
+
     /* -------------------------------------------------------------- pieces */
 
+    function movingAverage(rows, window) {
+      const out = []
+      let sum = 0
+      for (let index = 0; index < rows.length; index += 1) {
+        const close = rows[index].close
+        sum += typeof close === 'number' ? close : 0
+        if (index >= window) sum -= typeof rows[index - window].close === 'number' ? rows[index - window].close : 0
+        out.push(index >= window - 1 ? sum / window : null)
+      }
+      return out
+    }
+
+    const MA_WINDOWS = [5, 10, 20, 60]
+    const MA_COLORS = [
+      'var(--dsw-alias-state-warn-primary)',
+      'var(--dsw-alias-brand-primary)',
+      'color-mix(in srgb, var(--dsw-alias-brand-primary) 55%, var(--dsw-alias-label-secondary))',
+      'var(--dsw-alias-label-secondary)',
+    ]
+
+    /**
+     * Candles with optional moving averages, an optional volume band and a hover
+     * readout. The mini version on the strip draws bodies only.
+     */
     function Candles(props) {
       const rows = Array.isArray(props.rows) ? props.rows : []
       const width = props.width
       const height = props.height
-      const chartStyle = props.block
-        ? { width: '100%', height: `${height}px` }
-        : { width: `${width}px`, height: `${height}px` }
+      const block = Boolean(props.block)
+      const showMA = block && props.showMA !== false
+      const showVolume = block && props.showVolume !== false
+      const t = props.t ?? ((key) => key)
+      const [hover, setHover] = useState(null)
+      const chartStyle = block ? { width: '100%', height: `${height}px` } : { width: `${width}px`, height: `${height}px` }
+      const empty = (extra) =>
+        h('div', { className: 'dshst-chartEmpty', style: chartStyle, title: props.emptyLabel ?? '' }, extra)
 
-      if (rows.length < 2) {
-        return h('div', {
-          className: 'dshst-chartEmpty',
-          style: chartStyle,
-          title: props.emptyLabel ?? '',
-        })
-      }
+      if (rows.length < 2) return empty()
 
       let min = Number.POSITIVE_INFINITY
       let max = Number.NEGATIVE_INFINITY
@@ -559,16 +1137,28 @@ window.__ModuleLoader__.load({
         if (typeof row.high === 'number' && row.high > max) max = row.high
         if (typeof row.low === 'number' && row.low < min) min = row.low
       }
-      if (!Number.isFinite(min) || !Number.isFinite(max) || max <= min) {
-        return h('div', { className: 'dshst-chartEmpty', style: chartStyle })
+      if (!Number.isFinite(min) || !Number.isFinite(max)) return empty()
+      // A halted or limit-locked day has every bar at the same price; the range
+      // must be widened rather than reported as "no data".
+      if (max <= min) {
+        const pad = Math.abs(max) * 0.005 || 0.01
+        min -= pad
+        max += pad
       }
 
+      const volumeBand = showVolume ? Math.round(height * 0.22) : 0
+      const priceHeight = height - volumeBand
       const inset = 2
-      const bottom = height - inset
+      const bottom = priceHeight - inset
       const span = max - min
       const scaleY = (value) => bottom - ((value - min) / span) * (bottom - inset)
       const step = width / rows.length
       const bodyWidth = Math.max(1, Math.min(step * 0.62, 6))
+
+      let maxVolume = 0
+      for (const row of rows) {
+        if (typeof row.volume === 'number' && row.volume > maxVolume) maxVolume = row.volume
+      }
 
       const children = []
       if (props.grid) {
@@ -619,24 +1209,166 @@ window.__ModuleLoader__.load({
             style: { fill: color },
           }),
         )
+        if (maxVolume > 0 && typeof row.volume === 'number') {
+          const barHeight = Math.max(0.6, (row.volume / maxVolume) * (volumeBand - 3))
+          children.push(
+            h('rect', {
+              key: `v${index}`,
+              x: center - bodyWidth / 2,
+              y: height - barHeight,
+              width: bodyWidth,
+              height: barHeight,
+              style: { fill: color, fillOpacity: 0.55 },
+            }),
+          )
+        }
       })
 
-      return h(
+      if (showMA) {
+        MA_WINDOWS.forEach((window, order) => {
+          if (rows.length < window) return
+          const values = movingAverage(rows, window)
+          const points = values
+            .map((value, index) =>
+              typeof value === 'number' ? `${(step * (index + 0.5)).toFixed(1)},${scaleY(value).toFixed(1)}` : null,
+            )
+            .filter(Boolean)
+            .join(' ')
+          if (points === '') return
+          children.push(
+            h('polyline', {
+              key: `ma${window}`,
+              points,
+              fill: 'none',
+              style: { stroke: MA_COLORS[order] },
+              strokeWidth: 1,
+              vectorEffect: 'non-scaling-stroke',
+              opacity: 0.9,
+            }),
+          )
+        })
+      }
+
+      if (typeof props.holdingCost === 'number' && props.holdingCost > 0) {
+        const costY = scaleY(props.holdingCost)
+        if (costY >= inset && costY <= bottom) {
+          children.push(
+            h('line', {
+              key: 'cost',
+              x1: 0,
+              x2: width,
+              y1: costY,
+              y2: costY,
+              style: { stroke: 'var(--dsw-alias-state-warn-primary)', strokeDasharray: '3 3' },
+              strokeWidth: 1,
+              vectorEffect: 'non-scaling-stroke',
+            }),
+          )
+        }
+      }
+
+      if (hover !== null && rows[hover]) {
+        const center = step * (hover + 0.5)
+        children.push(
+          h('line', {
+            key: 'cross',
+            x1: center,
+            x2: center,
+            y1: inset,
+            y2: height,
+            style: { stroke: 'var(--dsw-alias-label-secondary)', strokeDasharray: '2 3' },
+            strokeWidth: 1,
+            vectorEffect: 'non-scaling-stroke',
+          }),
+        )
+      }
+
+      const svg = h(
         'svg',
         {
-          className: props.block ? 'dshst-chart' : 'dshst-chart',
+          className: 'dshst-chart',
           viewBox: `0 0 ${width} ${height}`,
           preserveAspectRatio: 'none',
           style: chartStyle,
           role: 'img',
           'aria-label': props.label ?? '',
+          onMouseMove: block
+            ? (event) => {
+                const rect = event.currentTarget.getBoundingClientRect()
+                if (!rect || rect.width <= 0) return
+                const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width))
+                setHover(Math.min(rows.length - 1, Math.floor(ratio * rows.length)))
+              }
+            : undefined,
+          onMouseLeave: block ? () => setHover(null) : undefined,
         },
         children,
       )
+
+      if (!block) return svg
+      const active = hover !== null ? rows[hover] : null
+      const yLabels = [max, (max + min) / 2, min].map((value) => ({
+        text: formatPrice(value),
+        top: (scaleY(value) / height) * 100,
+      }))
+      const readout = active
+        ? `${active.date} ${t('open')} ${formatPrice(active.open)} ${t('high')} ${formatPrice(active.high)} ${t('low')} ${formatPrice(
+            active.low,
+          )} ${t('close')} ${formatPrice(active.close)}${typeof active.volume === 'number' ? ` ${t('volume')} ${shortNumber(active.volume)}` : ''}`
+        : ''
+      return h(
+        'div',
+        { className: 'dshst-chartWrap' },
+        svg,
+        readout ? h('span', { className: 'dshst-readout' }, readout) : null,
+        h(
+          'div',
+          { className: 'dshst-axisY' },
+          ...yLabels.map((label, index) =>
+            h('span', { key: `y${index}`, style: { top: `${label.top}%`, transform: 'translateY(-50%)' } }, label.text),
+          ),
+        ),
+        h(
+          'div',
+          { className: 'dshst-axisX' },
+          h('span', null, rows[0]?.date ?? ''),
+          h('span', null, rows[rows.length - 1]?.date ?? ''),
+        ),
+      )
+    }
+
+    function shortNumber(value) {
+      if (typeof value !== 'number' || !Number.isFinite(value)) return '--'
+      if (Math.abs(value) >= 1e8) return `${(value / 1e8).toFixed(2)}亿`
+      if (Math.abs(value) >= 1e4) return `${(value / 1e4).toFixed(2)}万`
+      return value.toFixed(0)
     }
 
     function QuoteCard(props) {
-      const { quote, t } = props
+      const { quote, t, index } = props
+      const dragProps = {
+        draggable: true,
+        onDragStart: (event) => {
+          try {
+            event.dataTransfer?.setData('text/plain', String(index))
+            if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move'
+          } catch {
+            /* some browsers refuse custom drag data; the drop handler falls back */
+          }
+        },
+        onDragOver: (event) => {
+          event.preventDefault?.()
+          if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
+        },
+        onDrop: (event) => {
+          event.preventDefault?.()
+          event.stopPropagation?.()
+          const raw = event.dataTransfer?.getData('text/plain') ?? ''
+          const from = Number.parseInt(raw, 10)
+          if (Number.isInteger(from)) props.onMove?.(from, index)
+        },
+      }
+
       if (quote.error) {
         return h(
           'div',
@@ -646,23 +1378,43 @@ window.__ModuleLoader__.load({
             'aria-label': `${quote.symbol}: ${t('noData')}`,
           },
           h('span', { className: 'dshst-cardMain' }, h('span', { className: 'dshst-name' }, quote.symbol)),
+          h('span', { className: 'dshst-quote' }, h('span', { className: 'dshst-chg dshst-flat' }, t('noData'))),
           h(
-            'span',
-            { className: 'dshst-quote' },
-            h('span', { className: 'dshst-chg dshst-flat' }, t('noData')),
+            'button',
+            {
+              type: 'button',
+              className: 'dshst-cardRemove',
+              title: t('remove'),
+              'aria-label': t('remove'),
+              onClick: (event) => {
+                event.stopPropagation?.()
+                props.onRemove?.()
+              },
+            },
+            '×',
           ),
         )
       }
       const trend = trendClass(quote.changePct)
+      const armed = Array.isArray(quote.alerts) ? quote.alerts.filter((alert) => !alert.firedAt).length : 0
+      const rows = Array.isArray(props.sparkline) ? props.sparkline : Array.isArray(quote.kline) ? quote.kline : []
       return h(
-        'button',
+        'div',
         {
-          type: 'button',
+          role: 'button',
+          tabIndex: 0,
           className: 'dshst-card',
           'data-selected': props.selected ? 'true' : 'false',
           onClick: props.onSelect,
+          onKeyDown: (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault?.()
+              props.onSelect?.()
+            }
+          },
           title: `${quote.name ?? quote.symbol} ${quote.code ?? ''}`.trim(),
           'aria-pressed': props.selected ? 'true' : 'false',
+          ...dragProps,
         },
         h(
           'span',
@@ -671,7 +1423,22 @@ window.__ModuleLoader__.load({
           h(
             'span',
             { className: 'dshst-code' },
+            props.sourceDot
+              ? h('span', {
+                  className: 'dshst-src',
+                  'data-source': quote.source ?? 'tencent',
+                  title: quote.source === 'sina' ? t('sourceSina') : quote.source === 'eastmoney' ? t('sourceEastmoney') : t('sourceTencent'),
+                })
+              : null,
             displayCode(quote),
+            armed > 0 ? h('span', { className: 'dshst-limitMark dshst-flat', title: t('alerts') }, String(armed)) : null,
+            props.showExtended && quote.extended
+              ? h(
+                  'span',
+                  { className: 'dshst-ext', title: quote.extended.time ?? '' },
+                  `${quote.extended.session === 'post' ? t('afterHours') : t('premarket')} ${formatPct(quote.extended.changePct)}`,
+                )
+              : null,
             limitState(quote) === 'up' ? h('span', { className: 'dshst-limitMark dshst-up' }, t('limitUp')) : null,
             limitState(quote) === 'down' ? h('span', { className: 'dshst-limitMark dshst-down' }, t('limitDown')) : null,
           ),
@@ -682,49 +1449,72 @@ window.__ModuleLoader__.load({
           h('span', { className: `dshst-price ${trend}` }, formatPrice(quote.price)),
           h('span', { className: `dshst-chg ${trend}` }, formatPct(quote.changePct)),
         ),
-        h(Candles, {
-          rows: Array.isArray(quote.kline) ? quote.kline.slice(-20) : quote.kline,
-          width: 54,
-          height: 24,
-          label: `${quote.name ?? quote.symbol} ${t('title')}`,
-          emptyLabel: t('noKline'),
-        }),
+        props.showMiniChart === false
+          ? null
+          : h(Candles, {
+              rows: rows.slice(-Math.min(props.previewDays ?? 20, 20)),
+              width: 54,
+              height: 24,
+              label: `${quote.name ?? quote.symbol} ${t('title')}`,
+              emptyLabel: t('noKline'),
+            }),
+        h(
+          'button',
+          {
+            type: 'button',
+            className: 'dshst-cardRemove',
+            title: t('remove'),
+            'aria-label': t('remove'),
+            onClick: (event) => {
+              event.stopPropagation?.()
+              props.onRemove?.()
+            },
+          },
+          '×',
+        ),
       )
     }
 
-    function formatAmount(value) {
+    const COMPACT_NUMBER = (() => {
+      try {
+        return new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 2 })
+      } catch {
+        return null
+      }
+    })()
+
+    const usesChineseUnits = (t) => t('unitYi') === '亿'
+
+    function formatAmount(value, t) {
       if (typeof value !== 'number' || !Number.isFinite(value)) return '--'
-      if (Math.abs(value) >= 1e8) return `${(value / 1e8).toFixed(2)}亿`
-      if (Math.abs(value) >= 1e4) return `${(value / 1e4).toFixed(2)}万`
+      if (!usesChineseUnits(t)) return COMPACT_NUMBER ? COMPACT_NUMBER.format(value) : value.toFixed(0)
+      if (Math.abs(value) >= 1e8) return `${(value / 1e8).toFixed(2)}${t('unitYi')}`
+      if (Math.abs(value) >= 1e4) return `${(value / 1e4).toFixed(2)}${t('unitWan')}`
       return value.toFixed(0)
     }
 
-    function formatCap(value) {
+    function formatCap(value, t) {
       if (typeof value !== 'number' || !Number.isFinite(value)) return '--'
-      if (value >= 10000) return `${(value / 10000).toFixed(2)}万亿`
-      return `${value.toFixed(2)}亿`
+      if (!usesChineseUnits(t)) return COMPACT_NUMBER ? COMPACT_NUMBER.format(value * 1e8) : value.toFixed(2)
+      if (value >= 10000) return `${(value / 10000).toFixed(2)}${t('unitWanYi')}`
+      return `${value.toFixed(2)}${t('unitYi')}`
     }
 
-    async function fetchJson(path) {
-      const response = await fetch(`${ENDPOINT}${path}`, {
-        headers: { Accept: 'application/json' },
-        cache: 'no-store',
-        signal: AbortSignal.timeout(12000),
-      })
-      const payload = await response.json().catch(() => null)
-      if (!response.ok || payload?.ok !== true) {
-        throw new Error(payload?.error || `HTTP ${response.status}`)
-      }
-      return payload
-    }
-
+    /**
+     * Intraday line: price, running average, previous close, cost line and one
+     * separator per trading day when several days are overlaid.
+     */
     function TrendChart(props) {
       const points = Array.isArray(props.points) ? props.points : []
       const prevClose = typeof props.prevClose === 'number' ? props.prevClose : null
       const width = 640
       const height = 132
+      const t = props.t ?? ((key) => key)
+      const showVolume = props.showVolume !== false
+      const [hover, setHover] = useState(null)
+
       if (points.length < 2) {
-        return h('div', { className: 'dshst-chartEmpty', style: { width: '100%', height: `${height}px` } })
+        return h('div', { className: 'dshst-chartEmpty', style: { width: '100%', height: `${height}px` }, title: props.emptyLabel ?? '' })
       }
       let min = Number.POSITIVE_INFINITY
       let max = Number.NEGATIVE_INFINITY
@@ -740,32 +1530,55 @@ window.__ModuleLoader__.load({
         min = Math.min(min, prevClose)
         max = Math.max(max, prevClose)
       }
-      if (!Number.isFinite(min) || !Number.isFinite(max) || max <= min) {
-        return h('div', { className: 'dshst-chartEmpty', style: { width: '100%', height: `${height}px` } })
+      if (typeof props.holdingCost === 'number' && props.holdingCost > 0) {
+        min = Math.min(min, props.holdingCost)
+        max = Math.max(max, props.holdingCost)
       }
+      if (!Number.isFinite(min) || !Number.isFinite(max)) {
+        return h('div', { className: 'dshst-chartEmpty', style: { width: '100%', height: `${height}px` }, title: props.emptyLabel ?? '' })
+      }
+      if (max <= min) {
+        const pad = Math.abs(max) * 0.005 || 0.01
+        min -= pad
+        max += pad
+      }
+      const volumeBand = showVolume ? 26 : 0
+      const priceHeight = height - volumeBand
       const inset = 6
-      const scaleY = (value) => height - inset - ((value - min) / (max - min)) * (height - inset * 2)
+      const scaleY = (value) => priceHeight - inset - ((value - min) / (max - min)) * (priceHeight - inset * 2)
       const scaleX = (index) => (index / (points.length - 1)) * width
       const priceLine = points.map((point, index) => `${scaleX(index).toFixed(1)},${scaleY(point.price).toFixed(1)}`).join(' ')
       const avgLine = points
         .map((point, index) => (typeof point.avg === 'number' ? `${scaleX(index).toFixed(1)},${scaleY(point.avg).toFixed(1)}` : null))
         .filter(Boolean)
         .join(' ')
-      const area = `M0,${height} L${priceLine.split(' ').join(' L')} L${width},${height} Z`
+      const area = `M0,${priceHeight} L${priceLine.split(' ').join(' L')} L${width},${priceHeight} Z`
       const up = props.up
-      return h(
-        'svg',
-        {
-          className: 'dshst-chart',
-          viewBox: `0 0 ${width} ${height}`,
-          preserveAspectRatio: 'none',
-          style: { width: '100%', height: `${height}px` },
-          role: 'img',
-          'aria-label': props.label ?? '',
-        },
-        h('path', { d: area, style: { fill: up, fillOpacity: 0.1 } }),
+
+      const separators = []
+      for (let index = 1; index < points.length; index += 1) {
+        if (points[index].day && points[index].day !== points[index - 1].day) {
+          const x = scaleX(index)
+          separators.push(
+            h('line', {
+              key: `sep${index}`,
+              x1: x,
+              x2: x,
+              y1: 0,
+              y2: height,
+              style: { stroke: 'var(--dsw-alias-border-l1)' },
+              strokeWidth: 1,
+              vectorEffect: 'non-scaling-stroke',
+            }),
+          )
+        }
+      }
+
+      const children = [
+        h('path', { key: 'area', d: area, style: { fill: up, fillOpacity: 0.1 } }),
         prevClose !== null
           ? h('line', {
+              key: 'prev',
               x1: 0,
               x2: width,
               y1: scaleY(prevClose),
@@ -775,15 +1588,128 @@ window.__ModuleLoader__.load({
               vectorEffect: 'non-scaling-stroke',
             })
           : null,
-        h('polyline', { points: priceLine, fill: 'none', style: { stroke: up }, strokeWidth: 1.4, vectorEffect: 'non-scaling-stroke' }),
+        ...separators,
+        h('polyline', { key: 'price', points: priceLine, fill: 'none', style: { stroke: up }, strokeWidth: 1.4, vectorEffect: 'non-scaling-stroke' }),
         avgLine
           ? h('polyline', {
+              key: 'avg',
               points: avgLine,
               fill: 'none',
               style: { stroke: 'var(--dsw-alias-label-secondary)', strokeDasharray: '3 3' },
               strokeWidth: 1,
               vectorEffect: 'non-scaling-stroke',
             })
+          : null,
+      ]
+
+      if (typeof props.holdingCost === 'number' && props.holdingCost > 0) {
+        children.push(
+          h('line', {
+            key: 'cost',
+            x1: 0,
+            x2: width,
+            y1: scaleY(props.holdingCost),
+            y2: scaleY(props.holdingCost),
+            style: { stroke: 'var(--dsw-alias-state-warn-primary)', strokeDasharray: '3 3' },
+            strokeWidth: 1,
+            vectorEffect: 'non-scaling-stroke',
+          }),
+        )
+      }
+
+      if (hover !== null && points[hover]) {
+        const x = scaleX(hover)
+        children.push(
+          h('line', {
+            key: 'cross',
+            x1: x,
+            x2: x,
+            y1: 0,
+            y2: height,
+            style: { stroke: 'var(--dsw-alias-label-secondary)', strokeDasharray: '2 3' },
+            strokeWidth: 1,
+            vectorEffect: 'non-scaling-stroke',
+          }),
+        )
+      }
+
+      if (showVolume) {
+        let maxVolume = 0
+        for (const point of points) {
+          if (typeof point.volume === 'number' && point.volume > maxVolume) maxVolume = point.volume
+        }
+        if (maxVolume > 0) {
+          const barWidth = Math.max(1, width / points.length - 0.4)
+          points.forEach((point, index) => {
+            if (typeof point.volume !== 'number') return
+            const barHeight = Math.max(0.5, (point.volume / maxVolume) * (volumeBand - 4))
+            const rising = index === 0 ? true : point.price >= points[index - 1].price
+            children.push(
+              h('rect', {
+                key: `v${index}`,
+                x: (index / (points.length - 1)) * width,
+                y: height - barHeight,
+                width: barWidth,
+                height: barHeight,
+                style: { fill: rising ? up : 'var(--dshst-down)', fillOpacity: 0.5 },
+              }),
+            )
+          })
+        }
+      }
+
+      const yLabels = [max, (max + min) / 2, min].map((level) => ({
+        text:
+          prevClose !== null && prevClose > 0
+            ? `${((level - prevClose) / prevClose) * 100 > 0 ? '+' : ''}${(((level - prevClose) / prevClose) * 100).toFixed(2)}%`
+            : formatPrice(level),
+        top: (scaleY(level) / height) * 100,
+      }))
+      const xLabels = [points[0]?.time, points[Math.floor(points.length / 2)]?.time, points[points.length - 1]?.time]
+
+      const active = hover !== null ? points[hover] : null
+      return h(
+        'div',
+        { className: 'dshst-chartWrap' },
+        h(
+          'svg',
+          {
+            className: 'dshst-chart',
+            viewBox: `0 0 ${width} ${height}`,
+            preserveAspectRatio: 'none',
+            style: { width: '100%', height: `${height}px` },
+            role: 'img',
+            'aria-label': props.label ?? '',
+            onMouseMove: (event) => {
+              const rect = event.currentTarget.getBoundingClientRect()
+              if (!rect || rect.width <= 0) return
+              const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width))
+              setHover(Math.min(points.length - 1, Math.round(ratio * (points.length - 1))))
+            },
+            onMouseLeave: () => setHover(null),
+          },
+          children,
+        ),
+        h(
+          'div',
+          { className: 'dshst-axisY' },
+          ...yLabels.map((label, index) =>
+            h('span', { key: `y${index}`, style: { top: `${label.top}%`, transform: 'translateY(-50%)' } }, label.text),
+          ),
+        ),
+        h(
+          'div',
+          { className: 'dshst-axisX' },
+          ...xLabels.map((label, index) => h('span', { key: `x${index}` }, label ?? '')),
+        ),
+        active
+          ? h(
+              'span',
+              { className: 'dshst-readout' },
+              `${active.day ? `${active.day} ` : ''}${active.time} ${formatPrice(active.price)}${
+                typeof active.avg === 'number' ? ` ${t('ma')} ${formatPrice(active.avg)}` : ''
+              }${typeof active.volume === 'number' ? ` ${t('volume')} ${shortNumber(active.volume)}` : ''}`,
+            )
           : null,
       )
     }
@@ -811,9 +1737,9 @@ window.__ModuleLoader__.load({
           return h(
             'div',
             { className: 'dshst-bookRow', key: `${kind}${index}` },
-            h('span', { className: 'dshst-bookLabel' }, `${kind}${5 - index}`),
+            h('span', { className: 'dshst-bookLabel' }, `${kind}${levels.length - index}`),
             h('span', { className: `dshst-bookPrice ${tone}` }, formatPrice(price)),
-            h('span', { className: 'dshst-bookVolume' }, typeof level.volume === 'number' ? level.volume : '--'),
+            h('span', { className: 'dshst-bookVolume' }, typeof level.volume === 'number' ? formatAmount(level.volume, t) : '--'),
           )
         })
       const ratio = typeof depth.ratio === 'number' ? depth.ratio : null
@@ -824,11 +1750,9 @@ window.__ModuleLoader__.load({
           'div',
           { className: 'dshst-bookHead' },
           h('span', null, t('orderBook')),
-          ratio === null
-            ? null
-            : h('span', { className: ratio >= 0 ? 'dshst-up' : 'dshst-down' }, `${t('orderRatio')} ${ratio.toFixed(1)}%`),
+          ratio === null ? null : h('span', { className: ratio >= 0 ? 'dshst-up' : 'dshst-down' }, `${t('orderRatio')} ${ratio.toFixed(1)}%`),
         ),
-        h('div', { className: 'dshst-bookGrid' }, side([...asks].reverse(), '卖'), side(bids, '买')),
+        h('div', { className: 'dshst-bookGrid' }, side([...asks].reverse(), t('bookSell')), side(bids, t('bookBuy'))),
       )
     }
 
@@ -841,13 +1765,13 @@ window.__ModuleLoader__.load({
         [t('low'), formatPrice(quote.low)],
         [t('prevClose'), formatPrice(quote.prevClose)],
       ]
-      if (quote.amount !== null && quote.amount !== undefined) chips.push([t('amount'), formatAmount(quote.amount)])
+      if (quote.amount !== null && quote.amount !== undefined) chips.push([t('amount'), formatAmount(quote.amount, t)])
       if (typeof extras.turnover === 'number') chips.push([t('turnover'), `${extras.turnover.toFixed(2)}%`])
       if (typeof extras.volumeRatio === 'number') chips.push([t('volumeRatio'), extras.volumeRatio.toFixed(2)])
       if (typeof extras.amplitude === 'number') chips.push([t('amplitude'), `${extras.amplitude.toFixed(2)}%`])
       if (typeof extras.pe === 'number') chips.push(['PE', extras.pe.toFixed(2)])
       if (typeof extras.pb === 'number') chips.push(['PB', extras.pb.toFixed(2)])
-      if (typeof extras.totalCap === 'number') chips.push([t('marketCap'), formatCap(extras.totalCap)])
+      if (typeof extras.totalCap === 'number') chips.push([t('marketCap'), formatCap(extras.totalCap, t)])
       return h(
         'div',
         { className: 'dshst-stats' },
@@ -872,32 +1796,61 @@ window.__ModuleLoader__.load({
 
     const DETAIL_TABS = [
       { id: 'trend', labelKey: 'tabTrend' },
-      { id: 'm5', labelKey: 'tabMinute', minute: true },
-      { id: 'day', labelKey: 'tabDay' },
-      { id: 'week', labelKey: 'tabWeek' },
-      { id: 'month', labelKey: 'tabMonth' },
+      { id: 'm5', labelKey: 'tabMinute', kline: true },
+      { id: 'm15', labelKey: 'tabM15', kline: true },
+      { id: 'm30', labelKey: 'tabM30', kline: true },
+      { id: 'm60', labelKey: 'tabM60', kline: true },
+      { id: 'day', labelKey: 'tabDay', kline: true },
+      { id: 'week', labelKey: 'tabWeek', kline: true },
+      { id: 'month', labelKey: 'tabMonth', kline: true },
     ]
 
+    const ADJUST_TABS = new Set(['day', 'week', 'month'])
+
+    /**
+     * Detail panel: chart tabs, adjust/MA/volume controls, intraday day count,
+     * position editor and alerts for this symbol.
+     */
     function Detail(props) {
-      const { quote, t, onClose, cycle } = props
+      const { quote, t, onClose, cycle, klineDays, prefs, onPrefs, onReload } = props
       const trend = trendClass(quote.changePct)
       const tabs = DETAIL_TABS.filter((tab) => {
         if (tab.id === 'trend') return quote.market !== 'us'
-        if (tab.minute) return quote.market === 'cn'
+        if (tab.kline && tab.id !== 'day' && tab.id !== 'week' && tab.id !== 'month') return quote.market === 'cn'
         return true
       })
-      const [tab, setTab] = useState(tabs[0]?.id ?? 'day')
+      const initialTab = tabs.some((tab) => tab.id === prefs.defaultPeriod) ? prefs.defaultPeriod : tabs[0]?.id ?? 'day'
+      const [tab, setTab] = useState(initialTab)
+      const [adjust, setAdjust] = useState(prefs.adjust)
+      const [trendDays, setTrendDays] = useState(prefs.defaultTrendDays)
+      const [showMA, setShowMA] = useState(prefs.showMA)
+      const [showVolume, setShowVolume] = useState(prefs.showVolume)
       const [series, setSeries] = useState({})
       const [retryToken, setRetryToken] = useState(0)
+      const [holding, setHolding] = useState(quote.holding ?? null)
+      const [editHolding, setEditHolding] = useState(false)
+      const [sharesText, setSharesText] = useState(quote.holding ? String(quote.holding.shares) : '')
+      const [costText, setCostText] = useState(quote.holding ? String(quote.holding.cost) : '')
+      const [holdingError, setHoldingError] = useState('')
+      const [alertOpen, setAlertOpen] = useState(false)
+      const [alertOp, setAlertOp] = useState('above')
+      const [alertPrice, setAlertPrice] = useState('')
+      const [alertError, setAlertError] = useState('')
+      const [tradesOpen, setTradesOpen] = useState(false)
+      const [tradeList, setTradeList] = useState(null)
+      const [tradeError, setTradeError] = useState('')
+      const [tradeForm, setTradeForm] = useState({ side: 'buy', price: '', shares: '', fee: '', date: '' })
+      const forceNext = useRef(false)
       const seriesRef = useRef(series)
       seriesRef.current = series
-      const current = series[tab]
+      const isTrend = tab === 'trend'
       const retry = () => {
         setSeries((currentSeries) => {
           const next = { ...currentSeries }
           delete next[tab]
           return next
         })
+        forceNext.current = true
         setRetryToken((token) => token + 1)
       }
 
@@ -906,47 +1859,154 @@ window.__ModuleLoader__.load({
       // failed one (retried on demand) or an intraday line older than 30 s, since
       // a frozen 分时 line beside a live price is worse than a reload.
       useEffect(() => {
-        const entry = seriesRef.current[tab]
-        const force = retryToken > 0
+        const key = `${tab}:${adjust}:${isTrend ? trendDays : ''}`
+        const entry = seriesRef.current[key]
+        // Consumed once: a retry must refresh one fetch, not turn every later
+        // poll into a cache-bypassing request.
+        const force = forceNext.current
+        forceNext.current = false
         if (entry && !force) {
           if (!entry.ok) return undefined
-          if (!(tab === 'trend' && Date.now() - entry.at > 30_000)) return undefined
+          if (!(isTrend && Date.now() - entry.at > 30_000)) return undefined
         }
         let cancelled = false
         ;(async () => {
           try {
-            const payload =
-              tab === 'trend'
-                ? await fetchJson(`/trend?symbol=${encodeURIComponent(quote.symbol)}${force || entry ? '&refresh=1' : ''}`)
-                : await fetchJson(
-                    `/kline?symbol=${encodeURIComponent(quote.symbol)}&period=${tab}&adjust=qfq&limit=${tab === 'm5' ? 96 : 60}${force || entry ? '&refresh=1' : ''}`,
-                  )
+            const payload = isTrend
+              ? await api(`/trend?symbol=${encodeURIComponent(quote.symbol)}&days=${trendDays}${force || entry ? '&refresh=1' : ''}`)
+              : await api(
+                  `/kline?symbol=${encodeURIComponent(quote.symbol)}&period=${tab}&adjust=${adjust}&limit=${
+                    tab === 'm5' || tab === 'm15' || tab === 'm30' || tab === 'm60'
+                      ? 96
+                      : tab === 'day'
+                        ? Math.max(10, Math.min(klineDays ?? 60, 120))
+                        : 60
+                  }${force || entry ? '&refresh=1' : ''}`,
+                )
+            // HTTP 200 still carries `ok:false` for an upstream failure; treat it
+            // as an error so the panel offers a retry instead of an empty chart.
+            if (payload.ok !== true) throw new Error(payload.error || 'chart-failed')
             if (cancelled) return
-            setSeries((currentSeries) => ({ ...currentSeries, [tab]: { ok: true, at: Date.now(), payload } }))
+            setSeries((currentSeries) => ({ ...currentSeries, [key]: { ok: true, at: Date.now(), payload } }))
           } catch (failure) {
             if (cancelled) return
             setSeries((currentSeries) => ({
               ...currentSeries,
-              [tab]: { ok: false, at: Date.now(), error: String(failure?.message ?? failure) },
+              [key]: { ok: false, at: Date.now(), error: String(failure?.message ?? failure) },
             }))
           }
         })()
         return () => {
           cancelled = true
         }
-      }, [quote.symbol, tab, cycle, retryToken])
+      }, [quote.symbol, tab, adjust, trendDays, cycle, retryToken, klineDays, isTrend])
+
+      useEffect(() => {
+        if (!tradesOpen) return undefined
+        let cancelled = false
+        ;(async () => {
+          try {
+            const payload = await api(`/trades?symbol=${encodeURIComponent(quote.symbol)}`)
+            if (!cancelled) {
+              setTradeList(payload)
+              setTradeError('')
+            }
+          } catch (failure) {
+            if (!cancelled) setTradeError(String(failure?.message ?? failure))
+          }
+        })()
+        return () => {
+          cancelled = true
+        }
+      }, [tradesOpen, quote.symbol])
+
+      const refreshTrades = async () => {
+        try {
+          const payload = await api(`/trades?symbol=${encodeURIComponent(quote.symbol)}`)
+          setTradeList(payload)
+          setTradeError('')
+          onReload?.()
+        } catch (failure) {
+          setTradeError(String(failure?.message ?? failure))
+        }
+      }
+
+      const saveTrade = async () => {
+        const price = Number.parseFloat(tradeForm.price)
+        const shares = Number.parseFloat(tradeForm.shares)
+        if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(shares) || shares <= 0) {
+          setTradeError(t('holdingBad'))
+          return
+        }
+        try {
+          const payload = await api('/trades', {
+            method: 'POST',
+            body: {
+              action: 'save',
+              symbol: quote.symbol,
+              side: tradeForm.side,
+              price,
+              shares,
+              fee: Number.parseFloat(tradeForm.fee) || 0,
+              ...(tradeForm.date ? { date: tradeForm.date } : {}),
+            },
+          })
+          if (payload.ok !== true) throw new Error(payload.error || 'save-failed')
+          setTradeForm((current) => ({ ...current, price: '', shares: '', fee: '' }))
+          await refreshTrades()
+        } catch (failure) {
+          setTradeError(String(failure?.message ?? failure))
+        }
+      }
+
+      const removeTrade = async (id) => {
+        await api('/trades', { method: 'POST', body: { action: 'remove', id } }).catch(() => undefined)
+        await refreshTrades()
+      }
+
+      const applyTrades = async () => {
+        try {
+          const payload = await api('/trades', { method: 'POST', body: { action: 'apply', symbol: quote.symbol } })
+          if (payload.ok !== true) throw new Error(payload.error || 'apply-failed')
+          const position = payload.holdings?.[quote.symbol]
+          if (position) {
+            setHolding(position)
+            setSharesText(String(position.shares))
+            setCostText(String(position.cost))
+          } else {
+            setHolding(null)
+          }
+          await refreshTrades()
+        } catch (failure) {
+          setTradeError(String(failure?.message ?? failure))
+        }
+      }
+
+      const seriesKey = `${tab}:${adjust}:${isTrend ? trendDays : ''}`
+      const entry = series[seriesKey]
 
       const chart = (() => {
-        if (!current) return h('div', { className: 'dshst-note' }, t('loading'))
-        if (!current.ok) {
+        if (!entry) return h('div', { className: 'dshst-note' }, t('loading'))
+        if (!entry.ok) {
           return h(
             'div',
             { className: 'dshst-note dshst-error' },
-            `${current.error} `,
+            `${entry.payload?.error ?? entry.error} `,
             h('button', { type: 'button', className: 'dshst-link', onClick: retry }, t('retry')),
           )
         }
-        if (tab !== 'trend' && (!Array.isArray(current.payload.rows) || current.payload.rows.length === 0)) {
+        if (isTrend) {
+          return h(TrendChart, {
+            points: entry.payload.points,
+            prevClose: entry.payload.prevClose,
+            up: quote.changePct >= 0 ? 'var(--dshst-up)' : 'var(--dshst-down)',
+            holdingCost: holding?.cost,
+            showVolume,
+            label: `${quote.name ?? quote.symbol} ${t('tabTrend')}`,
+            t,
+          })
+        }
+        if (!Array.isArray(entry.payload.rows) || entry.payload.rows.length === 0) {
           return h(
             'div',
             { className: 'dshst-note' },
@@ -954,24 +2014,103 @@ window.__ModuleLoader__.load({
             h('button', { type: 'button', className: 'dshst-link', onClick: retry }, t('retry')),
           )
         }
-        if (tab === 'trend') {
-          return h(TrendChart, {
-            points: current.payload.points,
-            prevClose: current.payload.prevClose,
-            up: quote.changePct >= 0 ? 'var(--dshst-up)' : 'var(--dshst-down)',
-            label: `${quote.name ?? quote.symbol} ${t('tabTrend')}`,
-          })
-        }
         return h(Candles, {
-          rows: current.payload.rows,
+          rows: entry.payload.rows,
           width: 640,
-          height: 118,
+          height: 128,
           block: true,
           grid: true,
-          label: `${quote.name ?? quote.symbol} ${t(tab === 'm5' ? 'tabMinute' : tab === 'day' ? 'tabDay' : tab === 'week' ? 'tabWeek' : 'tabMonth')}`,
+          showMA,
+          showVolume,
+          holdingCost: holding?.cost,
+          label: `${quote.name ?? quote.symbol} ${t(tab === 'trend' ? 'tabTrend' : `tab${tab.charAt(0).toUpperCase()}${tab.slice(1)}`)}`,
           emptyLabel: t('noKline'),
+          t,
         })
       })()
+
+      const saveHolding = async () => {
+        const shares = Number.parseFloat(sharesText)
+        const cost = Number.parseFloat(costText)
+        if (!Number.isFinite(shares) || shares <= 0 || !Number.isFinite(cost) || cost <= 0) {
+          setHoldingError(t('holdingBad'))
+          return
+        }
+        try {
+          const payload = await api('/holdings', { method: 'POST', body: { symbol: quote.symbol, shares, cost } })
+          if (payload.ok !== true) throw new Error(payload.error)
+          setHolding(payload.holdings?.[quote.symbol] ?? { shares, cost })
+          setHoldingError('')
+          setEditHolding(false)
+          onReload?.()
+        } catch (failure) {
+          setHoldingError(String(failure?.message ?? failure))
+        }
+      }
+
+      const clearHolding = async () => {
+        try {
+          await api('/holdings', { method: 'POST', body: { action: 'remove', symbol: quote.symbol } })
+          setHolding(null)
+          setEditHolding(false)
+          onReload?.()
+        } catch (failure) {
+          setHoldingError(String(failure?.message ?? failure))
+        }
+      }
+
+      const addAlert = async () => {
+        const price = Number.parseFloat(alertPrice)
+        if (!Number.isFinite(price) || price <= 0) {
+          setAlertError(t('alertNeedPrice'))
+          return
+        }
+        try {
+          const payload = await api('/alerts', {
+            method: 'POST',
+            body: { action: 'save', symbol: quote.symbol, op: alertOp, price },
+          })
+          if (payload.ok !== true) throw new Error(payload.error)
+          setAlertPrice('')
+          setAlertError('')
+          setAlertOpen(false)
+          onReload?.()
+        } catch (failure) {
+          setAlertError(String(failure?.message ?? failure))
+        }
+      }
+
+      const removeAlert = async (id) => {
+        await api('/alerts', { method: 'POST', body: { action: 'remove', id } }).catch(() => undefined)
+        onReload?.()
+      }
+
+      const holdingLine = holding
+        ? h(
+            'span',
+            { className: 'dshst-holding' },
+            `${t('holding')} `,
+            h('b', null, `${holding.shares}`),
+            ` ${t('cost')} `,
+            h('b', null, formatPrice(holding.cost)),
+            typeof quote.price === 'number'
+              ? h(
+                  'span',
+                  { className: trendClass(quote.price - holding.cost) },
+                  ` ${t('pnl')} ${formatPct(((quote.price - holding.cost) / holding.cost) * 100)}`,
+                )
+              : null,
+            typeof quote.trade?.realized === 'number' && quote.trade.realized !== 0
+              ? h(
+                  'span',
+                  { className: trendClass(quote.trade.realized) },
+                  ` ${t('realized')} ${formatPrice(quote.trade.realized)}`,
+                )
+              : null,
+          )
+        : null
+
+      const alerts = Array.isArray(quote.alerts) ? quote.alerts : []
 
       return h(
         'div',
@@ -988,33 +2127,290 @@ window.__ModuleLoader__.load({
             `${quote.change === null ? '--' : `${quote.change > 0 ? '+' : ''}${formatPrice(quote.change)}`}  ${formatPct(quote.changePct)}`,
           ),
           limitLabel(quote, t),
+          quote.extended
+            ? h(
+                'span',
+                { className: 'dshst-chip', title: quote.extended.time ?? '' },
+                `${quote.extended.session === 'post' ? t('afterHours') : t('premarket')} ${formatPrice(quote.extended.price)} ${formatPct(quote.extended.changePct)}`,
+              )
+            : null,
+          holdingLine,
           h('button', { type: 'button', className: 'dshst-detailClose', onClick: onClose }, t('close')),
         ),
         h(
           'div',
-          { className: 'dshst-tabs', role: 'tablist' },
-          ...tabs.map((item) =>
-            h(
-              'button',
-              {
-                key: item.id,
-                type: 'button',
-                role: 'tab',
-                className: 'dshst-tab',
-                'data-active': tab === item.id ? 'true' : 'false',
-                'aria-selected': tab === item.id ? 'true' : 'false',
-                onClick: () => {
-                  setTab(item.id)
-                  setRetryToken(0)
+          { className: 'dshst-toolbar' },
+          h(
+            'div',
+            { className: 'dshst-tabs', role: 'tablist' },
+            ...tabs.map((item) =>
+              h(
+                'button',
+                {
+                  key: item.id,
+                  type: 'button',
+                  role: 'tab',
+                  className: 'dshst-tab',
+                  'data-active': tab === item.id ? 'true' : 'false',
+                  'aria-selected': tab === item.id ? 'true' : 'false',
+                  onClick: () => {
+                    setTab(item.id)
+                    setRetryToken(0)
+                  },
                 },
-              },
-              t(item.labelKey),
+                t(item.labelKey),
+              ),
             ),
           ),
+          isTrend
+            ? h(
+                'span',
+                { className: 'dshst-seg' },
+                ...[1, 3, 5].map((days) =>
+                  h(
+                    'button',
+                    {
+                      key: days,
+                      type: 'button',
+                      className: 'dshst-toggle',
+                      'data-active': trendDays === days ? 'true' : 'false',
+                      onClick: () => {
+                        setTrendDays(days)
+                        onPrefs?.({ defaultTrendDays: days })
+                      },
+                    },
+                    `${days}${t('days')}`,
+                  ),
+                ),
+              )
+            : null,
+          ADJUST_TABS.has(tab)
+            ? h(
+                'select',
+                {
+                  className: 'dshst-select',
+                  value: adjust,
+                  'aria-label': t('adjust'),
+                  onChange: (event) => {
+                    setAdjust(event.target.value)
+                    onPrefs?.({ adjust: event.target.value })
+                  },
+                },
+                h('option', { value: 'qfq' }, t('adjustQfq')),
+                h('option', { value: 'hfq' }, t('adjustHfq')),
+                h('option', { value: 'none' }, t('adjustNone')),
+              )
+            : null,
+          !isTrend
+            ? h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'dshst-toggle',
+                  'data-active': showMA ? 'true' : 'false',
+                  onClick: () => {
+                    setShowMA(!showMA)
+                    onPrefs?.({ showMA: !showMA })
+                  },
+                },
+                t('ma'),
+              )
+            : null,
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'dshst-toggle',
+              'data-active': showVolume ? 'true' : 'false',
+              onClick: () => {
+                setShowVolume(!showVolume)
+                onPrefs?.({ showVolume: !showVolume })
+              },
+            },
+            t('volume'),
+          ),
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'dshst-toggle',
+              'data-active': alertOpen || alerts.length > 0 ? 'true' : 'false',
+              onClick: () => setAlertOpen(!alertOpen),
+              title: t('alerts'),
+            },
+            `${t('alerts')}${alerts.length > 0 ? ` ${alerts.length}` : ''}`,
+          ),
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'dshst-toggle',
+              'data-active': tradesOpen ? 'true' : 'false',
+              onClick: () => setTradesOpen(!tradesOpen),
+              title: t('trades'),
+            },
+            `${t('trades')}${tradeList?.count ? ` ${tradeList.count}` : ''}`,
+          ),
         ),
+        alertOpen
+          ? h(
+              'div',
+              { className: 'dshst-alerts' },
+              alerts.length === 0
+                ? h('span', { className: 'dshst-hint' }, t('alertEmpty'))
+                : alerts.map((alert) =>
+                    h(
+                      'span',
+                      { className: 'dshst-alertRow', key: alert.id },
+                      h('b', { className: alert.firedAt ? 'dshst-up' : '' }, `${alert.op === 'above' ? t('alertAbove') : t('alertBelow')} ${formatPrice(alert.price)}`),
+                      h('span', { className: alert.firedAt ? 'dshst-error' : 'dshst-flat' }, alert.firedAt ? t('alertFired') : t('alertArmed')),
+                      h(
+                        'button',
+                        { type: 'button', className: 'dshst-link', onClick: () => removeAlert(alert.id) },
+                        t('alertRemove'),
+                      ),
+                    ),
+                  ),
+              h(
+                'div',
+                { className: 'dshst-formRow' },
+                h(
+                  'select',
+                  { className: 'dshst-select', value: alertOp, onChange: (event) => setAlertOp(event.target.value) },
+                  h('option', { value: 'above' }, t('alertAbove')),
+                  h('option', { value: 'below' }, t('alertBelow')),
+                ),
+                h('input', {
+                  className: 'dshst-input dshst-inputSmall',
+                  value: alertPrice,
+                  placeholder: formatPrice(quote.price),
+                  inputMode: 'decimal',
+                  onChange: (event) => setAlertPrice(event.target.value),
+                  'aria-label': t('alertPrice'),
+                }),
+                h('button', { type: 'button', className: 'dshst-button', onClick: addAlert }, t('alertAdd')),
+                alertError ? h('span', { className: 'dshst-error' }, alertError) : null,
+              ),
+            )
+          : null,
+        tradesOpen
+          ? h(
+              'div',
+              { className: 'dshst-trades' },
+              tradeError ? h('span', { className: 'dshst-error' }, tradeError) : null,
+              tradeList === null
+                ? h('span', { className: 'dshst-hint' }, t('loading'))
+                : tradeList.trades?.length === 0
+                  ? h('span', { className: 'dshst-hint' }, t('tradeHint'))
+                  : h(
+                      React.Fragment,
+                      null,
+                      ...(tradeList.trades ?? []).map((trade) =>
+                        h(
+                          'div',
+                          { className: 'dshst-tradeRow', key: trade.id },
+                          h('span', { className: trade.side === 'buy' ? 'dshst-up' : 'dshst-down' }, trade.side === 'buy' ? t('buy') : t('sell')),
+                          h('span', null, `${trade.shares} @ ${formatPrice(trade.price)}`),
+                          h('span', { className: 'dshst-hint' }, trade.date),
+                          trade.fee > 0 ? h('span', { className: 'dshst-hint' }, `${t('tradeFee')} ${trade.fee}`) : null,
+                          h('button', { type: 'button', className: 'dshst-link', onClick: () => removeTrade(trade.id) }, t('deleteTrade')),
+                        ),
+                      ),
+                      tradeList.position
+                        ? h(
+                            'span',
+                            { className: 'dshst-hint' },
+                            `${t('holding')} ${tradeList.position.shares} · ${t('cost')} ${formatPrice(tradeList.position.cost)} · ${t('realized')} ${tradeList.position.realized}`,
+                          )
+                        : null,
+                    ),
+              h(
+                'div',
+                { className: 'dshst-formRow' },
+                h(
+                  'select',
+                  {
+                    className: 'dshst-select',
+                    value: tradeForm.side,
+                    onChange: (event) => setTradeForm((current) => ({ ...current, side: event.target.value })),
+                  },
+                  h('option', { value: 'buy' }, t('buy')),
+                  h('option', { value: 'sell' }, t('sell')),
+                ),
+                h('input', {
+                  className: 'dshst-input dshst-inputSmall',
+                  value: tradeForm.price,
+                  placeholder: t('tradePrice'),
+                  inputMode: 'decimal',
+                  onChange: (event) => setTradeForm((current) => ({ ...current, price: event.target.value })),
+                  'aria-label': t('tradePrice'),
+                }),
+                h('input', {
+                  className: 'dshst-input dshst-inputSmall',
+                  value: tradeForm.shares,
+                  placeholder: t('shares'),
+                  inputMode: 'decimal',
+                  onChange: (event) => setTradeForm((current) => ({ ...current, shares: event.target.value })),
+                  'aria-label': t('shares'),
+                }),
+                h('input', {
+                  className: 'dshst-input dshst-inputSmall',
+                  value: tradeForm.fee,
+                  placeholder: t('tradeFee'),
+                  inputMode: 'decimal',
+                  onChange: (event) => setTradeForm((current) => ({ ...current, fee: event.target.value })),
+                  'aria-label': t('tradeFee'),
+                }),
+                h('input', {
+                  className: 'dshst-input dshst-inputSmall',
+                  type: 'date',
+                  value: tradeForm.date,
+                  onChange: (event) => setTradeForm((current) => ({ ...current, date: event.target.value })),
+                  'aria-label': t('tradeDate'),
+                }),
+                h('button', { type: 'button', className: 'dshst-button', onClick: saveTrade }, t('saveTrade')),
+                h('button', { type: 'button', className: 'dshst-link', onClick: applyTrades }, t('syncFromTrades')),
+              ),
+            )
+          : null,
         chart,
-        h(StatChips, { quote, t }),
-        h(OrderBook, { depth: quote.depth, prevClose: quote.prevClose, t }),
+        prefs.showStats === false ? null : h(StatChips, { quote, t }),
+        prefs.showOrderBook === false ? null : h(OrderBook, { depth: quote.depth, prevClose: quote.prevClose, t }),
+        h(
+          'div',
+          { className: 'dshst-holding' },
+          editHolding
+            ? h(
+                React.Fragment,
+                null,
+                h('span', { className: 'dshst-field' }, `${t('shares')}`, h('input', {
+                  className: 'dshst-input dshst-inputSmall',
+                  value: sharesText,
+                  inputMode: 'decimal',
+                  onChange: (event) => setSharesText(event.target.value),
+                })),
+                h('span', { className: 'dshst-field' }, `${t('cost')}`, h('input', {
+                  className: 'dshst-input dshst-inputSmall',
+                  value: costText,
+                  inputMode: 'decimal',
+                  onChange: (event) => setCostText(event.target.value),
+                })),
+                h('button', { type: 'button', className: 'dshst-button', onClick: saveHolding }, t('saveHolding')),
+                holding ? h('button', { type: 'button', className: 'dshst-link', onClick: clearHolding }, t('removeHolding')) : null,
+                h('button', { type: 'button', className: 'dshst-link', onClick: () => setEditHolding(false) }, t('cancel')),
+                holdingError ? h('span', { className: 'dshst-error' }, holdingError) : null,
+              )
+            : h(
+                React.Fragment,
+                null,
+                holdingLine ?? h('span', { className: 'dshst-hint' }, t('holdingHint')),
+                h(
+                  'button',
+                  { type: 'button', className: 'dshst-link', onClick: () => setEditHolding(true) },
+                  holding ? t('saveHolding') : t('holding'),
+                ),
+              ),
+        ),
       )
     }
 
@@ -1024,6 +2420,9 @@ window.__ModuleLoader__.load({
       const [ready, setReady] = useState(symbols.length > 0)
       const [saving, setSaving] = useState(false)
       const [error, setError] = useState('')
+      const [query, setQuery] = useState('')
+      const [results, setResults] = useState([])
+      const [searching, setSearching] = useState(false)
 
       // The strip can open this form before its first quote answer arrived, so an
       // empty textarea must never be able to overwrite the saved list: ask the
@@ -1033,12 +2432,11 @@ window.__ModuleLoader__.load({
         let cancelled = false
         ;(async () => {
           try {
-            const response = await fetch(`${ENDPOINT}/settings`, {
+            const payload = await fetch(`${ENDPOINT}/settings`, {
               headers: { Accept: 'application/json' },
               cache: 'no-store',
               signal: AbortSignal.timeout(9000),
-            })
-            const payload = await response.json().catch(() => null)
+            }).then((response) => response.json())
             const list = payload?.settings?.symbols
             if (!cancelled && Array.isArray(list) && list.length > 0) setText(list.join('\n'))
           } catch {
@@ -1051,6 +2449,43 @@ window.__ModuleLoader__.load({
         }
       }, [ready])
 
+      // Debounced search so typing a name does not fire a request per keystroke.
+      useEffect(() => {
+        const term = query.trim()
+        if (term === '') {
+          setResults([])
+          setSearching(false)
+          return undefined
+        }
+        let cancelled = false
+        setSearching(true)
+        const timer = window.setTimeout(async () => {
+          try {
+            const payload = await api(`/search?q=${encodeURIComponent(term)}&limit=8`)
+            if (!cancelled) setResults(Array.isArray(payload.items) ? payload.items : [])
+          } catch {
+            if (!cancelled) setResults([])
+          } finally {
+            if (!cancelled) setSearching(false)
+          }
+        }, 260)
+        return () => {
+          cancelled = true
+          window.clearTimeout(timer)
+        }
+      }, [query])
+
+      const appendSymbol = (symbol) => {
+        const current = text
+          .split(/[\s,，;；、]+/)
+          .map((item) => item.trim())
+          .filter(Boolean)
+        if (!current.includes(symbol)) current.push(symbol)
+        setText(current.join('\n'))
+        setQuery('')
+        setResults([])
+      }
+
       const submit = useCallback(async () => {
         const items = text
           .split(/[\s,，;；、]+/)
@@ -1060,36 +2495,33 @@ window.__ModuleLoader__.load({
           setError(t('emptySymbols'))
           return
         }
-        const normalized = []
-        const unknown = []
-        for (const item of items) {
-          const symbol = normalizeSymbolText(item)
-          if (!symbol) unknown.push(item)
-          else if (!normalized.includes(symbol)) normalized.push(symbol)
-        }
-        if (unknown.length > 0) {
-          setError(`${t('unrecognized')}${unknown.slice(0, 4).join('、')}`)
-          return
-        }
         setSaving(true)
         setError('')
         try {
           const response = await fetch(`${ENDPOINT}/config`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify({ symbols: normalized }),
+            body: JSON.stringify({ symbols: items }),
+            // A stalled write must not leave the button on "saving" forever.
+            signal: AbortSignal.timeout(15000),
           })
           const payload = await response.json().catch(() => ({}))
           if (!response.ok || payload.ok !== true) {
+            const rejected = Array.isArray(payload.rejected) ? payload.rejected : []
+            if (payload.error === 'symbols-empty' && rejected.length > 0) {
+              throw new Error(`${t('unrecognized')}${rejected.slice(0, 4).join('、')}`)
+            }
             throw new Error(describeSaveError(payload.error, response.status, t))
           }
           onDone({
             saved: true,
-            symbols: Array.isArray(payload.symbols) ? payload.symbols : normalized,
-            dropped: normalized.length < items.length,
+            symbols: Array.isArray(payload.symbols) ? payload.symbols : items,
+            dropped: typeof payload.dropped === 'number' ? payload.dropped : 0,
+            persisted: payload.persisted,
           })
         } catch (failure) {
-          setError(String(failure?.message ?? failure))
+          const timeout = failure?.name === 'TimeoutError' || failure?.name === 'AbortError'
+          setError(timeout ? t('timeout') : String(failure?.message ?? failure))
         } finally {
           setSaving(false)
         }
@@ -1098,6 +2530,42 @@ window.__ModuleLoader__.load({
       return h(
         'div',
         { className: 'dshst-form' },
+        h(
+          'div',
+          { className: 'dshst-search' },
+          h('input', {
+            className: 'dshst-input dshst-searchField',
+            value: query,
+            placeholder: t('searchPlaceholder'),
+            spellCheck: false,
+            onChange: (event) => setQuery(event.target.value),
+            'aria-label': t('search'),
+          }),
+          searching ? h('span', { className: 'dshst-hint' }, t('searching')) : null,
+        ),
+        results.length > 0
+          ? h(
+              'div',
+              { className: 'dshst-results' },
+              ...results.map((item) =>
+                h(
+                  'button',
+                  {
+                    key: item.symbol,
+                    type: 'button',
+                    className: 'dshst-result',
+                    onClick: () => appendSymbol(item.symbol),
+                    title: `${t('addSymbol')} ${item.symbol}`,
+                  },
+                  h('span', null, item.name),
+                  h('span', { className: 'dshst-resultCode' }, item.symbol),
+                  h('span', { className: 'dshst-resultType' }, item.type ?? ''),
+                ),
+              ),
+            )
+          : query.trim() !== '' && !searching
+            ? h('span', { className: 'dshst-hint' }, t('searchEmpty'))
+            : null,
         h('textarea', {
           className: 'dshst-textarea',
           value: text,
@@ -1113,18 +2581,12 @@ window.__ModuleLoader__.load({
           error ? h('span', { className: 'dshst-error' }, error) : null,
           h(
             'button',
-            { type: 'button', className: 'dshst-button', onClick: () => onDone({ saved: false }) },
+            { type: 'button', className: 'dshst-button', disabled: saving, onClick: () => onDone({ saved: false }) },
             t('cancel'),
           ),
           h(
             'button',
-            {
-              type: 'button',
-              className: 'dshst-button',
-              'data-primary': 'true',
-              disabled: saving || !ready,
-              onClick: submit,
-            },
+            { type: 'button', className: 'dshst-button', 'data-primary': 'true', disabled: saving || !ready, onClick: submit },
             saving ? t('saving') : t('save'),
           ),
         ),
@@ -1133,8 +2595,32 @@ window.__ModuleLoader__.load({
 
     /* --------------------------------------------------------------- strip */
 
+    /**
+     * Turn a vertical wheel gesture into a horizontal scroll on the strip.
+     *
+     * Returns true when the gesture was consumed. Trackpad horizontal swipes
+     * (`|deltaX| > |deltaY|`) are left to the browser, and a strip that already
+     * fits must not swallow the page scroll. `deltaMode` is honoured because
+     * Firefox reports wheel lines instead of pixels.
+     */
+    function scrollStripByWheel(element, event) {
+      if (!element) return false
+      const max = element.scrollWidth - element.clientWidth
+      if (max <= 2) return false
+      const deltaX = event.deltaX ?? 0
+      const deltaY = event.deltaY ?? 0
+      if (Math.abs(deltaX) > Math.abs(deltaY)) return false
+      if (deltaY === 0) return false
+      const scale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? element.clientWidth : 1
+      event.preventDefault?.()
+      const next = element.scrollLeft + deltaY * scale
+      element.scrollLeft = Math.max(0, Math.min(max, next))
+      return true
+    }
+
     function Ticker(props) {
       const t = props.t
+      const variant = props.variant ?? 'dock'
       const [data, setData] = useState(null)
       const [error, setError] = useState('')
       const [loading, setLoading] = useState(true)
@@ -1143,8 +2629,17 @@ window.__ModuleLoader__.load({
       const [selected, setSelected] = useState(null)
       const [notice, setNotice] = useState('')
       const [failures, setFailures] = useState(0)
+      const [toast, setToast] = useState([])
+      const [settingsOpen, setSettingsOpen] = useState(false)
+      const prefsRef = useRef({})
+      const active = props.active !== false
+      const [sparks, setSparks] = useState({})
+      const sparkMeta = useRef({ key: '', at: 0, etag: '' })
+      const stripRef = useRef(null)
+      const [scrollRatio, setScrollRatio] = useState(0)
+      const dragState = useRef({ active: false, startX: 0, startLeft: 0, moved: false })
       const alive = useRef(true)
-      const refreshing = useRef({ current: false, startedAt: 0 })
+      const refreshing = useRef({ busy: false, startedAt: 0 })
       const noticeTimer = useRef(0)
 
       // React replays effects in development, so the flag must be raised on every
@@ -1164,38 +2659,68 @@ window.__ModuleLoader__.load({
       }, [])
 
       const load = useCallback(async () => {
+        if (!active) return
         if (typeof document !== 'undefined' && document.hidden) return
         // A request that never settles must not freeze every later tick.
-        if (refreshing.current && Date.now() - refreshing.startedAt < 20_000) return
-        refreshing.current = true
-        refreshing.startedAt = Date.now()
+        if (refreshing.current.busy && Date.now() - refreshing.current.startedAt < 20_000) return
+        refreshing.current.busy = true
+        refreshing.current.startedAt = Date.now()
         try {
-          const response = await fetch(`${ENDPOINT}/quotes`, {
-            headers: { Accept: 'application/json' },
-            cache: 'no-store',
-            signal: AbortSignal.timeout(9000),
-          })
-          const payload = await response.json().catch(() => null)
-          if (!response.ok || payload?.ok !== true) {
-            throw new Error(payload?.error || `HTTP ${response.status}`)
-          }
+          const forced = prefsRef.current.source && prefsRef.current.source !== 'auto' ? `&source=${prefsRef.current.source}` : ''
+          const payload = await api(`/quotes?sparklines=0${forced}`, { timeout: 9000 })
           if (!alive.current) return
+          if (payload.ok !== true) throw new Error(payload.error || 'quotes-failed')
           setData(payload)
           setError('')
           setFailures(0)
+          if (Array.isArray(payload.fired) && payload.fired.length > 0 && payload.settings?.alertToast !== false) {
+            setToast(payload.fired)
+          }
         } catch (failure) {
           if (!alive.current) return
           setError(describeLoadError(failure, t))
           setFailures((count) => count + 1)
         } finally {
-          refreshing.current = false
+          refreshing.current.busy = false
           if (alive.current) setLoading(false)
         }
-      }, [t])
+      }, [t, active])
 
       useEffect(() => {
         load()
       }, [load])
+
+      // Mini charts are fetched once per symbol set, revalidated with an ETag and
+      // refreshed every five minutes; the quote poll no longer carries them.
+      const symbolKey = Array.isArray(data?.symbols) ? data.symbols.join(',') : ''
+      const sparkDays = data?.settings?.klineDays ?? 40
+      useEffect(() => {
+        if (!active || symbolKey === '') return undefined
+        const cached = sparkMeta.current
+        if (cached.key === symbolKey && Date.now() - cached.at < SPARK_TTL_MS) return undefined
+        let cancelled = false
+        ;(async () => {
+          try {
+            const payload = await api(`/sparklines?days=${sparkDays}&symbols=${encodeURIComponent(symbolKey)}`, {
+              headers: cached.etag ? { 'If-None-Match': cached.etag } : {},
+              cache: 'default',
+            })
+            if (cancelled || !alive.current) return
+            if (payload.notModified) {
+              sparkMeta.current = { ...cached, key: symbolKey, at: Date.now() }
+              return
+            }
+            if (payload.ok !== true) throw new Error(payload.error || 'sparklines-failed')
+            setSparks(payload.rows ?? {})
+            sparkMeta.current = { key: symbolKey, at: Date.now(), etag: payload.etag ?? '' }
+          } catch (failure) {
+            if (!cancelled && failure?.code !== 'host-missing') console.error('[stock-ticker] sparklines failed', failure)
+          }
+        })()
+        return () => {
+          cancelled = true
+        }
+      }, [active, symbolKey, sparkDays])
 
       const refreshSeconds = data?.settings?.refreshSeconds
       const serverInterval = data?.session?.intervalMs
@@ -1207,7 +2732,7 @@ window.__ModuleLoader__.load({
           : Math.max(5, typeof refreshSeconds === 'number' ? refreshSeconds : 15) * 1000
       const delay = Math.min(120_000, Math.max(5_000, baseInterval * (failures === 0 ? 1 : Math.min(2 ** failures, 8))))
       useEffect(() => {
-        if (formOpen) return undefined
+        if (formOpen || !active) return undefined
         const timer = window.setInterval(load, delay)
         const onVisible = () => {
           if (!document.hidden) load()
@@ -1217,18 +2742,45 @@ window.__ModuleLoader__.load({
           window.clearInterval(timer)
           document.removeEventListener('visibilitychange', onVisible)
         }
-      }, [load, delay, formOpen])
+      }, [load, delay, formOpen, active])
 
       const quotes = Array.isArray(data?.quotes) ? data.quotes : []
-      const symbols = useMemo(
-        () => (Array.isArray(data?.symbols) ? data.symbols : []),
-        [data?.symbols],
-      )
+      const symbols = useMemo(() => (Array.isArray(data?.symbols) ? data.symbols : []), [data?.symbols])
       const activeQuote = useMemo(
         () => quotes.find((quote) => quote.symbol === selected && !quote.error) ?? null,
         [quotes, selected],
       )
       const colorMode = data?.settings?.colorMode === 'intl' ? 'intl' : 'cn'
+      const prefs = data?.settings ?? {}
+      prefsRef.current = prefs
+
+      // Wheel-to-horizontal: a strip of thirty cards is much wider than the
+      // composer and the 6 px scrollbar is a poor target. The listener lives on
+      // the window in the capture phase, because the strip element is replaced
+      // whenever the settings/form panel opens or closes (an element-bound
+      // listener would be lost on that remount) and because the composer may
+      // stop wheel propagation before it reaches the strip.
+      useEffect(() => {
+        const onWheel = (event) => {
+          const element = stripRef.current
+          if (!element || typeof element.contains !== 'function') return
+          const target = event.target
+          if (target && !(target === element || element.contains(target))) return
+          scrollStripByWheel(element, event)
+        }
+        const onScroll = (event) => {
+          const element = stripRef.current
+          if (!element || event.target !== element) return
+          const max = Math.max(1, element.scrollWidth - element.clientWidth)
+          setScrollRatio(Math.min(1, Math.max(0, element.scrollLeft / max)))
+        }
+        window.addEventListener('wheel', onWheel, { passive: false, capture: true })
+        window.addEventListener('scroll', onScroll, true)
+        return () => {
+          window.removeEventListener('wheel', onWheel, { capture: true })
+          window.removeEventListener('scroll', onScroll, true)
+        }
+      }, [])
 
       const toggleCollapsed = () => {
         const next = !collapsed
@@ -1236,7 +2788,86 @@ window.__ModuleLoader__.load({
         setCollapsed(next)
       }
 
+      const savePrefs = async (patch) => {
+        try {
+          const payload = await api('/prefs', { method: 'POST', body: { patch } })
+          if (payload.ok === true) setData((current) => (current ? { ...current, settings: { ...current.settings, ...patch } } : current))
+        } catch (failure) {
+          flashNotice(String(failure?.message ?? failure))
+        }
+      }
+
+      const switchGroup = async (id) => {
+        try {
+          await api('/groups', { method: 'POST', body: { action: 'activate', id } })
+          setSelected(null)
+          load()
+        } catch (failure) {
+          flashNotice(String(failure?.message ?? failure))
+        }
+      }
+
+      const acknowledge = async (entries) => {
+        setToast([])
+        for (const entry of entries) {
+          await api('/alerts', { method: 'POST', body: { action: 'ack', id: entry.id } }).catch(() => undefined)
+        }
+        load()
+      }
+
+      const saveSymbols = async (list) => {
+        try {
+          const payload = await api('/config', { method: 'POST', body: { symbols: list, group: data?.activeGroup } })
+          if (payload.ok !== true) throw new Error(payload.error || 'save-failed')
+          // A new list may add symbols the strip has no bars for yet.
+          sparkMeta.current = { key: '', at: 0, etag: '' }
+          setSparks({})
+          await load()
+          flashNotice(t('savedCount').replace('{n}', String(list.length)))
+        } catch (failure) {
+          flashNotice(String(failure?.message ?? failure))
+        }
+      }
+
+      const removeSymbol = (symbol) => {
+        const next = symbols.filter((item) => item !== symbol)
+        if (next.length === 0) {
+          setFormOpen(true)
+          return
+        }
+        if (selected === symbol) setSelected(null)
+        saveSymbols(next)
+      }
+
+      const moveSymbol = (from, to) => {
+        if (from === to || from < 0 || to < 0 || from >= symbols.length || to >= symbols.length) return
+        const next = symbols.slice()
+        const [item] = next.splice(from, 1)
+        if (!item) return
+        next.splice(to, 0, item)
+        saveSymbols(next)
+      }
+
+      const onCardSelect = (symbol) => {
+        // A drag that scrolled the strip must not also open a card.
+        if (dragState.current.moved) {
+          dragState.current.moved = false
+          return
+        }
+        setSelected((current) => (current === symbol ? null : symbol))
+      }
+
       const body = (() => {
+        if (settingsOpen) {
+          return h(SettingsCard, {
+            t,
+            onSaved: (patch) => {
+              setData((current) => (current ? { ...current, settings: { ...current.settings, ...patch } } : current))
+              prefsRef.current = { ...prefsRef.current, ...patch }
+              load()
+            },
+          })
+        }
         if (formOpen) {
           return h(SymbolForm, {
             t,
@@ -1244,7 +2875,9 @@ window.__ModuleLoader__.load({
             onDone: (result) => {
               setFormOpen(false)
               if (!result?.saved) return
-              flashNotice(`${t('saved')} ${result.symbols.join(' ')}`)
+              const count = result.symbols?.length ?? 0
+              const skipped = result.dropped > 0 ? t('savedDropped').replace('{n}', String(result.dropped)) : ''
+              flashNotice(`${t('savedCount').replace('{n}', String(count))}${skipped}`)
               setSelected(null)
               load()
               window.setTimeout(load, 1500)
@@ -1265,11 +2898,7 @@ window.__ModuleLoader__.load({
             'div',
             { className: 'dshst-note' },
             `${t('noSymbols')} `,
-            h(
-              'button',
-              { type: 'button', className: 'dshst-link', onClick: () => setFormOpen(true) },
-              t('settings'),
-            ),
+            h('button', { type: 'button', className: 'dshst-link', onClick: () => setFormOpen(true) }, t('settings')),
           )
         }
         return h(
@@ -1277,15 +2906,69 @@ window.__ModuleLoader__.load({
           null,
           h(
             'div',
-            { className: 'dshst-strip' },
-            ...quotes.map((quote) =>
-              h(QuoteCard, {
-                key: quote.symbol,
-                quote,
-                t,
-                selected: selected === quote.symbol,
-                onSelect: () => setSelected((current) => (current === quote.symbol ? null : quote.symbol)),
-              }),
+            { className: 'dshst-scrollWrap' },
+            h(
+              'div',
+              {
+                className: 'dshst-strip',
+                ref: stripRef,
+                onPointerDown: (event) => {
+                  const element = stripRef.current
+                  dragState.current = {
+                    active: true,
+                    startX: event.clientX,
+                    startLeft: element ? element.scrollLeft : 0,
+                    moved: false,
+                  }
+                },
+                onPointerMove: (event) => {
+                  const state = dragState.current
+                  if (!state.active) return
+                  const delta = event.clientX - state.startX
+                  if (Math.abs(delta) > 4) state.moved = true
+                  const element = stripRef.current
+                  if (element && state.moved) element.scrollLeft = state.startLeft - delta
+                },
+                onPointerUp: () => {
+                  dragState.current.active = false
+                },
+                onPointerLeave: () => {
+                  dragState.current.active = false
+                },
+              },
+              ...quotes.map((quote, index) =>
+                h(QuoteCard, {
+                  key: quote.symbol,
+                  quote,
+                  index,
+                  t,
+                  previewDays: prefs.klineDays,
+                  sourceDot: prefs.sourceDot !== false,
+                  selected: selected === quote.symbol,
+                  sparkline: prefs.showMiniChart === false ? null : sparks[quote.symbol],
+                  showMiniChart: prefs.showMiniChart !== false,
+                  showExtended: prefs.showExtended === true,
+                  onSelect: () => onCardSelect(quote.symbol),
+                  onRemove: () => removeSymbol(quote.symbol),
+                  onMove: moveSymbol,
+                }),
+              ),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'dshst-addCard',
+                  title: t('quickAdd'),
+                  'aria-label': t('quickAdd'),
+                  onClick: () => setFormOpen(true),
+                },
+                '+',
+              ),
+            ),
+            h(
+              'div',
+              { className: 'dshst-scrollTrack', 'aria-hidden': true },
+              h('div', { className: 'dshst-scrollThumb', style: { left: `${scrollRatio * 84}%` } }),
             ),
           ),
           activeQuote
@@ -1296,26 +2979,33 @@ window.__ModuleLoader__.load({
                 quote: activeQuote,
                 t,
                 cycle: data?.updatedAt,
+                klineDays: prefs.klineDays,
+                prefs,
+                onPrefs: savePrefs,
+                onReload: load,
                 onClose: () => setSelected(null),
               })
             : null,
         )
       })()
 
+      const groups = Array.isArray(data?.groups) ? data.groups : []
+
       return h(
         'div',
-        { className: 'dshst', 'data-scheme': colorMode, 'data-plugin': 'stock-ticker' },
-        h('style', null, CSS),
-        h(
-          'div',
-          { className: 'dshst-live', 'aria-live': 'polite', role: 'status' },
-          notice || (error && !data ? error : ''),
-        ),
+        { className: 'dshst', 'data-scheme': colorMode, 'data-plugin': 'stock-ticker', 'data-variant': variant },
+        h('div', { className: 'dshst-live', 'aria-live': 'polite', role: 'status' }, notice || (error && !data ? error : '')),
         h(
           'div',
           { className: 'dshst-head' },
           h('span', { className: 'dshst-title' }, t('title')),
-          data?.source ? h('span', { className: 'dshst-chip' }, data.source === 'sina' ? t('sourceSina') : t('sourceTencent')) : null,
+          data?.source
+            ? h(
+                'span',
+                { className: 'dshst-chip' },
+                data.source === 'sina' ? t('sourceSina') : data.source === 'eastmoney' ? t('sourceEastmoney') : t('sourceTencent'),
+              )
+            : null,
           data?.session ? h('span', { className: 'dshst-chip' }, sessionLabel(t, data.session)) : null,
           h('span', { className: 'dshst-chip', title: 'stock-ticker build' }, BUILD),
           data?.updatedAt ? h('span', { className: 'dshst-meta' }, formatClock(data.updatedAt)) : null,
@@ -1329,6 +3019,62 @@ window.__ModuleLoader__.load({
             : null,
           notice ? h('span', { className: 'dshst-meta dshst-notice' }, notice) : null,
           h('span', { className: 'dshst-spacer' }),
+          groups.length > 1
+            ? h(
+                'span',
+                { className: 'dshst-groups' },
+                ...groups.map((group) =>
+                  h(
+                    'button',
+                    {
+                      key: group.id,
+                      type: 'button',
+                      className: 'dshst-pill',
+                      'data-active': data?.activeGroup === group.id ? 'true' : 'false',
+                      title: `${group.name} (${group.count})`,
+                      onClick: () => switchGroup(group.id),
+                    },
+                    `${group.name} ${group.count}`,
+                  ),
+                ),
+              )
+            : null,
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'dshst-icon',
+              title: t('settingsTitle'),
+              'aria-label': t('settingsTitle'),
+              'aria-expanded': settingsOpen ? 'true' : 'false',
+              onClick: () => {
+                if (collapsed) {
+                  writeCollapsed(false)
+                  setCollapsed(false)
+                }
+                setSettingsOpen((current) => !current)
+              },
+            },
+            h(
+              'svg',
+              { width: 14, height: 14, viewBox: '0 0 16 16', 'aria-hidden': true },
+              h('circle', {
+                cx: 8,
+                cy: 8,
+                r: 2.4,
+                fill: 'none',
+                stroke: 'currentColor',
+                strokeWidth: 1.4,
+              }),
+              h('path', {
+                d: 'M8 1.6v2.1M8 12.3v2.1M1.6 8h2.1M12.3 8h2.1M3.5 3.5l1.5 1.5M11 11l1.5 1.5M12.5 3.5L11 5M5 11l-1.5 1.5',
+                fill: 'none',
+                stroke: 'currentColor',
+                strokeWidth: 1.3,
+                strokeLinecap: 'round',
+              }),
+            ),
+          ),
           h(
             'button',
             {
@@ -1387,43 +3133,310 @@ window.__ModuleLoader__.load({
               h('circle', { cx: 11.5, cy: 11.5, r: 1.9, fill: 'currentColor' }),
             ),
           ),
-          h(
-            'button',
-            {
-              type: 'button',
-              className: 'dshst-icon',
-              title: collapsed ? t('expand') : t('collapse'),
-              'aria-label': collapsed ? t('expand') : t('collapse'),
-              'aria-expanded': collapsed ? 'false' : 'true',
-              onClick: toggleCollapsed,
-            },
-            h(
-              'svg',
-              {
-                width: 14,
-                height: 14,
-                viewBox: '0 0 16 16',
-                'aria-hidden': true,
-                style: { transform: collapsed ? 'rotate(180deg)' : 'none' },
-              },
-              h('path', {
-                d: 'M4 6.5 8 10.5l4-4',
-                fill: 'none',
-                stroke: 'currentColor',
-                strokeWidth: 1.6,
-                strokeLinecap: 'round',
-                strokeLinejoin: 'round',
-              }),
-            ),
-          ),
+          variant === 'dock'
+            ? h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'dshst-icon',
+                  title: collapsed ? t('expand') : t('collapse'),
+                  'aria-label': collapsed ? t('expand') : t('collapse'),
+                  'aria-expanded': collapsed ? 'false' : 'true',
+                  onClick: toggleCollapsed,
+                },
+                h(
+                  'svg',
+                  {
+                    width: 14,
+                    height: 14,
+                    viewBox: '0 0 16 16',
+                    'aria-hidden': true,
+                    style: { transform: collapsed ? 'rotate(180deg)' : 'none' },
+                  },
+                  h('path', {
+                    d: 'M4 6.5 8 10.5l4-4',
+                    fill: 'none',
+                    stroke: 'currentColor',
+                    strokeWidth: 1.6,
+                    strokeLinecap: 'round',
+                    strokeLinejoin: 'round',
+                  }),
+                ),
+              )
+            : null,
         ),
-        collapsed ? null : body,
+        toast.length > 0
+          ? h(
+              'div',
+              { className: 'dshst-toast', role: 'alert' },
+              ...toast.map((entry) =>
+                h(
+                  'span',
+                  { key: entry.id },
+                  t('alertHit')
+                    .replace('{name}', entry.name ?? entry.symbol)
+                    .replace('{op}', entry.op === 'above' ? t('alertAbove') : t('alertBelow'))
+                    .replace('{price}', formatPrice(entry.price)),
+                ),
+              ),
+              h('button', { type: 'button', className: 'dshst-link', onClick: () => acknowledge(toast) }, t('alertAck')),
+              h('button', { type: 'button', className: 'dshst-link', onClick: () => setToast([]) }, t('dismiss')),
+            )
+          : null,
+        variant === 'dock' && collapsed ? null : body,
       )
     }
+
+    /** The same panel, sized for a sidebar tab instead of the composer dock. */
+    function SidebarPage(props) {
+      // dsh-better-sidebar hands `visible: false` to a hidden tab; polling must
+      // stop there or a background tab keeps the free endpoints busy.
+      return h(Ticker, { ...props, variant: 'sidebar', active: props.visible !== false })
+    }
+
+    /* ------------------------------------------------------------ settings */
+
+    function SettingsCard(props) {
+      const t = props.t
+      const onSaved = props.onSaved
+      const [prefs, setPrefs] = useState(null)
+      const [groups, setGroups] = useState([])
+      const [error, setError] = useState('')
+      const [saved, setSaved] = useState(false)
+      const [draft, setDraft] = useState({ refreshSeconds: 15, klineDays: 40, colorMode: 'cn' })
+
+      useEffect(() => {
+        let cancelled = false
+        ;(async () => {
+          try {
+            const payload = await api('/settings')
+            if (cancelled) return
+            if (payload.ok !== true) throw new Error(payload.error || 'settings-failed')
+            setPrefs(payload.settings)
+            setGroups(Array.isArray(payload.groups) ? payload.groups : [])
+            setDraft({
+              refreshSeconds: payload.settings?.refreshSeconds ?? 15,
+              klineDays: payload.settings?.klineDays ?? 40,
+              colorMode: payload.settings?.colorMode ?? 'cn',
+            })
+          } catch (failure) {
+            if (!cancelled) setError(String(failure?.message ?? failure))
+          }
+        })()
+        return () => {
+          cancelled = true
+        }
+      }, [])
+
+      const save = async (patch) => {
+        try {
+          const payload = await api('/prefs', { method: 'POST', body: { patch } })
+          if (payload.ok !== true) throw new Error(payload.error || 'save-failed')
+          setPrefs((current) => ({ ...current, ...patch }))
+          onSaved?.(patch)
+          setSaved(true)
+          window.setTimeout(() => setSaved(false), 2000)
+        } catch (failure) {
+          setError(String(failure?.message ?? failure))
+        }
+      }
+
+      const renameGroup = async (id, name) => {
+        try {
+          const payload = await api('/groups', { method: 'POST', body: { action: 'rename', id, name } })
+          if (payload.ok === true) setGroups(payload.groups)
+        } catch (failure) {
+          setError(String(failure?.message ?? failure))
+        }
+      }
+
+      const removeGroup = async (id) => {
+        try {
+          const payload = await api('/groups', { method: 'POST', body: { action: 'remove', id } })
+          if (payload.ok === true) setGroups(payload.groups)
+        } catch (failure) {
+          setError(String(failure?.message ?? failure))
+        }
+      }
+
+      const addGroup = async () => {
+        try {
+          const payload = await api('/groups', { method: 'POST', body: { action: 'save', name: t('newGroup'), symbols: [] } })
+          if (payload.ok === true) setGroups(payload.groups)
+        } catch (failure) {
+          setError(String(failure?.message ?? failure))
+        }
+      }
+
+      const addMarketGroup = async () => {
+        try {
+          const payload = await api('/groups', { method: 'POST', body: { action: 'addMarket' } })
+          if (payload.ok === true) setGroups(payload.groups)
+        } catch (failure) {
+          setError(String(failure?.message ?? failure))
+        }
+      }
+
+      if (prefs === null) return h('div', { className: 'dshst-settings' }, h('span', { className: 'dshst-hint' }, error || t('loading')))
+
+      const toggle = (key, label) =>
+        h('input', {
+          type: 'checkbox',
+          checked: prefs[key] !== false,
+          'aria-label': label,
+          onChange: (event) => save({ [key]: event.target.checked }),
+        })
+      const select = (key, options, label) =>
+        h(
+          'select',
+          {
+            className: 'dshst-select',
+            value: prefs[key],
+            'aria-label': label ?? key,
+            onChange: (event) => save({ [key]: event.target.value }),
+          },
+          ...options.map(([value, label]) => h('option', { key: value, value }, label)),
+        )
+
+      const row = (label, control) =>
+        h('div', { className: 'dshst-settingsRow', key: label }, h('label', null, label), control)
+
+      return h(
+        'div',
+        { className: 'dshst dshst-settings', 'data-scheme': prefs.colorMode === 'intl' ? 'intl' : 'cn' },
+        row(
+          t('refreshSeconds'),
+          h('input', {
+            className: 'dshst-input dshst-inputSmall',
+            type: 'number',
+            min: 5,
+            max: 300,
+            value: draft.refreshSeconds,
+            onChange: (event) => setDraft((current) => ({ ...current, refreshSeconds: event.target.value })),
+            onBlur: () => save({ refreshSeconds: Number(draft.refreshSeconds) }),
+          }),
+        ),
+        row(
+          t('klineDays'),
+          h('input', {
+            className: 'dshst-input dshst-inputSmall',
+            type: 'number',
+            min: 10,
+            max: 120,
+            value: draft.klineDays,
+            onChange: (event) => setDraft((current) => ({ ...current, klineDays: event.target.value })),
+            onBlur: () => save({ klineDays: Number(draft.klineDays) }),
+          }),
+        ),
+        row(
+          t('colorMode'),
+          select('colorMode', [
+            ['cn', t('colorCn')],
+            ['intl', t('colorIntl')],
+          ]),
+        ),
+        row(
+          t('defaultPeriod'),
+          select('defaultPeriod', [
+            ['trend', t('tabTrend')],
+            ['m5', t('tabMinute')],
+            ['m15', t('tabM15')],
+            ['m30', t('tabM30')],
+            ['m60', t('tabM60')],
+            ['day', t('tabDay')],
+            ['week', t('tabWeek')],
+            ['month', t('tabMonth')],
+          ]),
+        ),
+        row(
+          t('defaultTrendDays'),
+          select('defaultTrendDays', [
+            [1, `1${t('days')}`],
+            [3, `3${t('days')}`],
+            [5, `5${t('days')}`],
+          ]),
+        ),
+        row(
+          t('adjust'),
+          select('adjust', [
+            ['qfq', t('adjustQfq')],
+            ['hfq', t('adjustHfq')],
+            ['none', t('adjustNone')],
+          ]),
+        ),
+        row(
+          t('dataSource'),
+          select(
+            'source',
+            [
+              ['auto', t('sourceAuto')],
+              ['tencent', t('sourceTencent')],
+              ['sina', t('sourceSina')],
+              ['eastmoney', t('sourceEastmoney')],
+            ],
+            t('dataSource'),
+          ),
+        ),
+        row(t('showMA'), toggle('showMA', t('showMA'))),
+        row(t('showVolume'), toggle('showVolume', t('showVolume'))),
+        row(t('showMiniChart'), toggle('showMiniChart', t('showMiniChart'))),
+        row(t('showOrderBook'), toggle('showOrderBook', t('showOrderBook'))),
+        row(t('showStats'), toggle('showStats', t('showStats'))),
+        row(t('showExtended'), toggle('showExtended', t('showExtended'))),
+        row(t('alertToast'), toggle('alertToast', t('alertToast'))),
+        row(t('sourceDot'), toggle('sourceDot', t('sourceDot'))),
+        h(
+          'div',
+          { className: 'dshst-settingsGroup' },
+          h('strong', null, t('groups')),
+          ...groups.map((group) =>
+            h(
+              'div',
+              { className: 'dshst-settingsRow', key: group.id },
+              h('input', {
+                className: 'dshst-input',
+                defaultValue: group.name,
+                onBlur: (event) => renameGroup(group.id, event.target.value),
+                'aria-label': t('groupName'),
+              }),
+              h('span', { className: 'dshst-hint' }, `${group.symbols?.length ?? group.count ?? 0}`),
+              group.preset ? h('span', { className: 'dshst-preset' }, t('preset')) : null,
+              group.id === 'default'
+                ? null
+                : h('button', { type: 'button', className: 'dshst-link', onClick: () => removeGroup(group.id) }, t('deleteGroup')),
+            ),
+          ),
+          h('button', { type: 'button', className: 'dshst-button', onClick: addGroup }, t('newGroup')),
+          h('button', { type: 'button', className: 'dshst-button', onClick: addMarketGroup }, t('addMarketGroup')),
+        ),
+        error ? h('span', { className: 'dshst-error' }, error) : null,
+        saved ? h('span', { className: 'dshst-notice' }, t('prefsSaved')) : null,
+      )
+    }
+
+    /**
+     * The settings surface as a first-class Settings section (the dialog's own
+     * left-nav entry), not a tab inside 内置插件: a stock plugin's display and
+     * source options are not "plugin management".
+     */
+    function SettingsSection(props) {
+      const t = props.t
+      ensureStyles()
+      return h(
+        'div',
+        { className: 'dshst dshst-settingsPage' },
+        h('h2', { className: 'dshst-settingsHeading' }, t('settingsTitle')),
+        h('p', { className: 'dshst-settingsIntro' }, t('settingsHint')),
+        h(SettingsCard, { t }),
+      )
+    }
+
+    /* ---------------------------------------------------------------- apply */
 
     return {
       inject: ['slots'],
       apply(ctx) {
+        ensureStyles()
         // The strip must appear even when the dictionary registry is unavailable
         // or rejects a registration, so localization is best-effort only.
         let translate = (key) => DICT_ZH[key] ?? key
@@ -1449,6 +3462,57 @@ window.__ModuleLoader__.load({
             (slotProps) => h(Ticker, { ...slotProps, t: translate }),
           ),
         )
+
+        // A first-class Settings section (the dialog's left nav), not a tab under
+        // 内置插件: display and data-source options belong next to 通用设置/模型.
+        // The in-strip gear stays as the shortcut that always works.
+        if (typeof ctx.slots.inject === 'function') {
+          try {
+            ctx.slots.inject('settings.section', () =>
+              ctx.slots.register(
+                {
+                  name: 'settings.section',
+                  id: 'stock-ticker',
+                  order: 40,
+                  label: () => translate('settingsTitle'),
+                  inject: () => ({}),
+                },
+                (slotProps) => h(SettingsSection, { ...slotProps, t: translate }),
+              ),
+            )
+          } catch (failure) {
+            console.error('[stock-ticker] settings section unavailable', failure)
+          }
+        }
+
+        // Optional dsh-better-sidebar integration: a soft dependency, so it is
+        // waited for at runtime instead of being listed in the static `inject`
+        // (a missing service there would suspend the whole plugin).
+        if (typeof ctx.inject === 'function') {
+          ctx.effect(() => {
+            const seat = ctx.inject(['betterSidebar'], (owner) => {
+              const service =
+                (owner && owner.betterSidebar) ||
+                (owner && typeof owner.get === 'function' ? owner.get('betterSidebar') : undefined)
+              if (!service || typeof service.registerTab !== 'function') return
+              owner.effect(
+                () =>
+                  service.registerTab({
+                    id: 'dsh-stock-ticker:quotes',
+                    title: translate('sidebarTitle'),
+                    description: translate('title'),
+                    order: 60,
+                    single: true,
+                    component: (slotProps) => h(SidebarPage, { ...slotProps, t: translate }),
+                  }),
+                'stock-ticker: sidebar tab',
+              )
+            })
+            if (seat && typeof seat.dispose === 'function') return () => seat.dispose()
+            if (typeof seat === 'function') return seat
+            return undefined
+          }, 'stock-ticker: sidebar')
+        }
       },
     }
   },
