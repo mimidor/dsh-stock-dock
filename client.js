@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.8.5'
+    const BUILD = 'v1.8.6'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -378,9 +378,9 @@ window.__ModuleLoader__.load({
 }
 .dshst-head {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 4px;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
   min-height: 20px;
   color: var(--dsw-alias-label-secondary);
 }
@@ -389,9 +389,9 @@ window.__ModuleLoader__.load({
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  min-height: 18px;
+  min-width: 0;
 }
-.dshst-headBar {
+.dshst-foot {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -3712,186 +3712,6 @@ window.__ModuleLoader__.load({
             : null,
             notice ? h('span', { className: 'dshst-meta dshst-notice' }, notice) : null,
           ),
-          h(
-            'div',
-            { className: 'dshst-headBar' },
-            groups.length > 1
-            ? h(
-                'span',
-                { className: 'dshst-groups' },
-                ...groups.map((group) =>
-                  h(
-                    'button',
-                    {
-                      key: group.id,
-                      type: 'button',
-                      className: 'dshst-pill',
-                      'data-active': data?.activeGroup === group.id ? 'true' : 'false',
-                      title: `${group.name} (${group.count})`,
-                      onClick: () => switchGroup(group.id),
-                    },
-                    `${group.name} ${group.count}`,
-                  ),
-                ),
-              )
-            : null,
-            h('span', { className: 'dshst-spacer' }),
-          prefs.showMiniChart === false
-            ? null
-            : h(
-                'span',
-                { className: 'dshst-miniTypes', role: 'group', 'aria-label': t('miniChartType') },
-                ...[
-                  ['intraday', t('miniIntraday')],
-                  ['day', t('miniDay')],
-                  ['week', t('miniWeek')],
-                  ['month', t('miniMonth')],
-                ].map(([value, label]) =>
-                  h(
-                    'button',
-                    {
-                      key: value,
-                      type: 'button',
-                      className: 'dshst-pill',
-                      title: `${t('miniChartType')} · ${label}`,
-                      'aria-pressed': (prefs.miniChartType ?? 'day') === value ? 'true' : 'false',
-                      'data-active': (prefs.miniChartType ?? 'day') === value ? 'true' : 'false',
-                      onClick: () => savePrefs({ miniChartType: value }),
-                    },
-                    label,
-                  ),
-                ),
-              ),
-          h(
-            'button',
-            {
-              type: 'button',
-              className: 'dshst-icon',
-              title: t('settingsTitle'),
-              'aria-label': t('settingsTitle'),
-              'aria-expanded': settingsOpen ? 'true' : 'false',
-              onClick: () => {
-                if (collapsed) {
-                  writeCollapsed(false)
-                  setCollapsed(false)
-                }
-                setSettingsOpen((current) => !current)
-              },
-            },
-            h(
-              'svg',
-              { width: 14, height: 14, viewBox: '0 0 24 24', 'aria-hidden': true },
-              h('circle', {
-                cx: 12,
-                cy: 12,
-                r: 3,
-                fill: 'none',
-                stroke: 'currentColor',
-                strokeWidth: 1.8,
-              }),
-              h('path', {
-                d: 'M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z',
-                fill: 'none',
-                stroke: 'currentColor',
-                strokeWidth: 1.8,
-                strokeLinecap: 'round',
-                strokeLinejoin: 'round',
-              }),
-            ),
-          ),
-          h(
-            'button',
-            {
-              type: 'button',
-              className: 'dshst-icon dshst-refresh',
-              title: t('refresh'),
-              'aria-label': t('refresh'),
-              'aria-busy': busy ? 'true' : 'false',
-              'data-busy': busy ? 'true' : 'false',
-              onClick: manualRefresh,
-            },
-            h(
-              'svg',
-              { width: 14, height: 14, viewBox: '0 0 16 16', 'aria-hidden': true },
-              h('path', {
-                d: 'M12.5 8a4.5 4.5 0 1 1-1.5-3.35',
-                fill: 'none',
-                stroke: 'currentColor',
-                strokeWidth: 1.5,
-                strokeLinecap: 'round',
-              }),
-              h('path', {
-                d: 'M11.6 1.7v3.2H8.4',
-                fill: 'none',
-                stroke: 'currentColor',
-                strokeWidth: 1.5,
-                strokeLinecap: 'round',
-                strokeLinejoin: 'round',
-              }),
-            ),
-          ),
-          h(
-            'button',
-            {
-              type: 'button',
-              className: 'dshst-icon',
-              title: t('settings'),
-              'aria-label': t('settings'),
-              'aria-expanded': formOpen && !collapsed ? 'true' : 'false',
-              onClick: () => {
-                // Opening the form from the collapsed header must also unfold the
-                // strip; otherwise the click looks like it did nothing.
-                if (collapsed) {
-                  writeCollapsed(false)
-                  setCollapsed(false)
-                }
-                setFormOpen((current) => !current)
-              },
-            },
-            h(
-              'svg',
-              { width: 14, height: 14, viewBox: '0 0 16 16', 'aria-hidden': true },
-              h('path', {
-                d: 'M8 3.2v9.6M3.2 8h9.6',
-                fill: 'none',
-                stroke: 'currentColor',
-                strokeWidth: 1.7,
-                strokeLinecap: 'round',
-              }),
-            ),
-          ),
-          variant === 'dock'
-            ? h(
-                'button',
-                {
-                  type: 'button',
-                  className: 'dshst-icon',
-                  title: collapsed ? t('expand') : t('collapse'),
-                  'aria-label': collapsed ? t('expand') : t('collapse'),
-                  'aria-expanded': collapsed ? 'false' : 'true',
-                  onClick: toggleCollapsed,
-                },
-                h(
-                  'svg',
-                  {
-                    width: 14,
-                    height: 14,
-                    viewBox: '0 0 16 16',
-                    'aria-hidden': true,
-                    style: { transform: collapsed ? 'rotate(180deg)' : 'none' },
-                  },
-                  h('path', {
-                    d: 'M4 6.5 8 10.5l4-4',
-                    fill: 'none',
-                    stroke: 'currentColor',
-                    strokeWidth: 1.6,
-                    strokeLinecap: 'round',
-                    strokeLinejoin: 'round',
-                  }),
-                ),
-              )
-            : null,
-          ),
         ),
         toast.length > 0
           ? h(
@@ -3912,6 +3732,186 @@ window.__ModuleLoader__.load({
             )
           : null,
         variant === 'dock' && collapsed ? null : body,
+        h(
+          'div',
+          { className: 'dshst-foot' },
+          groups.length > 1
+          ? h(
+              'span',
+              { className: 'dshst-groups' },
+              ...groups.map((group) =>
+                h(
+                  'button',
+                  {
+                    key: group.id,
+                    type: 'button',
+                    className: 'dshst-pill',
+                    'data-active': data?.activeGroup === group.id ? 'true' : 'false',
+                    title: `${group.name} (${group.count})`,
+                    onClick: () => switchGroup(group.id),
+                  },
+                  `${group.name} ${group.count}`,
+                ),
+              ),
+            )
+          : null,
+          h('span', { className: 'dshst-spacer' }),
+        prefs.showMiniChart === false
+          ? null
+          : h(
+              'span',
+              { className: 'dshst-miniTypes', role: 'group', 'aria-label': t('miniChartType') },
+              ...[
+                ['intraday', t('miniIntraday')],
+                ['day', t('miniDay')],
+                ['week', t('miniWeek')],
+                ['month', t('miniMonth')],
+              ].map(([value, label]) =>
+                h(
+                  'button',
+                  {
+                    key: value,
+                    type: 'button',
+                    className: 'dshst-pill',
+                    title: `${t('miniChartType')} · ${label}`,
+                    'aria-pressed': (prefs.miniChartType ?? 'day') === value ? 'true' : 'false',
+                    'data-active': (prefs.miniChartType ?? 'day') === value ? 'true' : 'false',
+                    onClick: () => savePrefs({ miniChartType: value }),
+                  },
+                  label,
+                ),
+              ),
+            ),
+        h(
+          'button',
+          {
+            type: 'button',
+            className: 'dshst-icon',
+            title: t('settingsTitle'),
+            'aria-label': t('settingsTitle'),
+            'aria-expanded': settingsOpen ? 'true' : 'false',
+            onClick: () => {
+              if (collapsed) {
+                writeCollapsed(false)
+                setCollapsed(false)
+              }
+              setSettingsOpen((current) => !current)
+            },
+          },
+          h(
+            'svg',
+            { width: 14, height: 14, viewBox: '0 0 24 24', 'aria-hidden': true },
+            h('circle', {
+              cx: 12,
+              cy: 12,
+              r: 3,
+              fill: 'none',
+              stroke: 'currentColor',
+              strokeWidth: 1.8,
+            }),
+            h('path', {
+              d: 'M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z',
+              fill: 'none',
+              stroke: 'currentColor',
+              strokeWidth: 1.8,
+              strokeLinecap: 'round',
+              strokeLinejoin: 'round',
+            }),
+          ),
+        ),
+        h(
+          'button',
+          {
+            type: 'button',
+            className: 'dshst-icon dshst-refresh',
+            title: t('refresh'),
+            'aria-label': t('refresh'),
+            'aria-busy': busy ? 'true' : 'false',
+            'data-busy': busy ? 'true' : 'false',
+            onClick: manualRefresh,
+          },
+          h(
+            'svg',
+            { width: 14, height: 14, viewBox: '0 0 16 16', 'aria-hidden': true },
+            h('path', {
+              d: 'M12.5 8a4.5 4.5 0 1 1-1.5-3.35',
+              fill: 'none',
+              stroke: 'currentColor',
+              strokeWidth: 1.5,
+              strokeLinecap: 'round',
+            }),
+            h('path', {
+              d: 'M11.6 1.7v3.2H8.4',
+              fill: 'none',
+              stroke: 'currentColor',
+              strokeWidth: 1.5,
+              strokeLinecap: 'round',
+              strokeLinejoin: 'round',
+            }),
+          ),
+        ),
+        h(
+          'button',
+          {
+            type: 'button',
+            className: 'dshst-icon',
+            title: t('settings'),
+            'aria-label': t('settings'),
+            'aria-expanded': formOpen && !collapsed ? 'true' : 'false',
+            onClick: () => {
+              // Opening the form from the collapsed header must also unfold the
+              // strip; otherwise the click looks like it did nothing.
+              if (collapsed) {
+                writeCollapsed(false)
+                setCollapsed(false)
+              }
+              setFormOpen((current) => !current)
+            },
+          },
+          h(
+            'svg',
+            { width: 14, height: 14, viewBox: '0 0 16 16', 'aria-hidden': true },
+            h('path', {
+              d: 'M8 3.2v9.6M3.2 8h9.6',
+              fill: 'none',
+              stroke: 'currentColor',
+              strokeWidth: 1.7,
+              strokeLinecap: 'round',
+            }),
+          ),
+        ),
+        variant === 'dock'
+          ? h(
+              'button',
+              {
+                type: 'button',
+                className: 'dshst-icon',
+                title: collapsed ? t('expand') : t('collapse'),
+                'aria-label': collapsed ? t('expand') : t('collapse'),
+                'aria-expanded': collapsed ? 'false' : 'true',
+                onClick: toggleCollapsed,
+              },
+              h(
+                'svg',
+                {
+                  width: 14,
+                  height: 14,
+                  viewBox: '0 0 16 16',
+                  'aria-hidden': true,
+                  style: { transform: collapsed ? 'rotate(180deg)' : 'none' },
+                },
+                h('path', {
+                  d: 'M4 6.5 8 10.5l4-4',
+                  fill: 'none',
+                  stroke: 'currentColor',
+                  strokeWidth: 1.6,
+                  strokeLinecap: 'round',
+                  strokeLinejoin: 'round',
+                }),
+              ),
+            )
+          : null,
+        ),
       )
     }
 

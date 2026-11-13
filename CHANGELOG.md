@@ -469,3 +469,12 @@ Settings discoverability and the options the strip was missing.
   mini-chart pills and header icons are pinned to the right, so switching to a
   group with a longer name/count no longer shifts the action buttons.
 - No behaviour changes; screenshots refreshed. 81 tests.
+
+## 1.8.6 — 2026-11-13
+
+- Moved the groups and action bar below the cards, as requested: the top row is
+  just the quote title/source/session/build/time, then the cards (and detail
+  panel), then a footer with the groups on the left and the mini-chart pills and
+  header icons pinned to the right. Switching to a group with a different width
+  now only changes the left part of the footer; the action buttons stay put.
+- Screenshots refreshed. 81 tests.
