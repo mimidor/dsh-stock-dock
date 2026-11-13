@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.8.8'
+    const BUILD = 'v1.8.9'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -380,7 +380,8 @@ window.__ModuleLoader__.load({
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+  flex: 0 1 auto;
+  min-width: 0;
   min-height: 20px;
   color: var(--dsw-alias-label-secondary);
 }
@@ -3709,35 +3710,35 @@ window.__ModuleLoader__.load({
         variant === 'dock' && collapsed ? null : body,
         h(
           'div',
-          { className: 'dshst-head' },
+          { className: 'dshst-foot' },
           h(
             'div',
-            { className: 'dshst-headTop' },
-            h('span', { className: 'dshst-title' }, t('title')),
-          data?.source
-            ? h(
-                'span',
-                { className: 'dshst-chip' },
-                data.source === 'sina' ? t('sourceSina') : data.source === 'eastmoney' ? t('sourceEastmoney') : t('sourceTencent'),
-              )
-            : null,
-          data?.session ? h('span', { className: 'dshst-chip' }, sessionLabel(t, data.session)) : null,
-          h('span', { className: 'dshst-chip', title: 'stock-ticker build' }, BUILD),
-          data?.updatedAt ? h('span', { className: 'dshst-meta' }, formatClock(data.updatedAt)) : null,
-          error && data
-            ? h(
-                'span',
-                { className: 'dshst-meta dshst-error', title: error },
-                `${t('staleData')} · `,
-                h('button', { type: 'button', className: 'dshst-link', onClick: load }, t('retry')),
-              )
-            : null,
-            notice ? h('span', { className: 'dshst-meta dshst-notice' }, notice) : null,
+            { className: 'dshst-head' },
+            h(
+              'div',
+              { className: 'dshst-headTop' },
+              h('span', { className: 'dshst-title' }, t('title')),
+            data?.source
+              ? h(
+                  'span',
+                  { className: 'dshst-chip' },
+                  data.source === 'sina' ? t('sourceSina') : data.source === 'eastmoney' ? t('sourceEastmoney') : t('sourceTencent'),
+                )
+              : null,
+            data?.session ? h('span', { className: 'dshst-chip' }, sessionLabel(t, data.session)) : null,
+            h('span', { className: 'dshst-chip', title: 'stock-ticker build' }, BUILD),
+            data?.updatedAt ? h('span', { className: 'dshst-meta' }, formatClock(data.updatedAt)) : null,
+            error && data
+              ? h(
+                  'span',
+                  { className: 'dshst-meta dshst-error', title: error },
+                  `${t('staleData')} · `,
+                  h('button', { type: 'button', className: 'dshst-link', onClick: load }, t('retry')),
+                )
+              : null,
+              notice ? h('span', { className: 'dshst-meta dshst-notice' }, notice) : null,
+            ),
           ),
-        ),
-        h(
-          'div',
-          { className: 'dshst-foot' },
           groups.length > 1
           ? h(
               'span',

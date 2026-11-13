@@ -497,3 +497,12 @@ Settings discoverability and the options the strip was missing.
   restores the previous width on unmount, so the cards and the footer always
   span the composer. The two-row/footer layout is unchanged.
 - Test: the dock is asserted to be full width. 81 tests.
+
+## 1.8.9 — 2026-11-13
+
+- Put the status row on the same line as the groups and actions: the strip is
+  now cards on top, then a single control line `行情 腾讯 盘中 v1.8.9 时间`,
+  the group pills, a flexible gap, and the mini-chart pills/icons on the right.
+  The status block shrinks and wraps internally on narrow widths while the
+  action buttons stay right-pinned and the dock stays full width.
+- Screenshots refreshed. 81 tests.
