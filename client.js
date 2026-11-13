@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.7.2'
+    const BUILD = 'v1.7.3'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -743,42 +743,11 @@ window.__ModuleLoader__.load({
   outline: none;
   border-color: var(--dsw-alias-brand-primary);
 }
-.dshst-miniType {
-  position: relative;
+.dshst-miniTypes {
   display: inline-flex;
   align-items: center;
+  gap: 4px;
   flex: 0 0 auto;
-  padding: 0 6px;
-  border: 1px solid var(--dsw-alias-border-l1);
-  border-radius: 999px;
-  color: var(--dsw-alias-label-secondary);
-  font-size: 11px;
-  line-height: 17px;
-}
-.dshst-miniType select {
-  appearance: none;
-  -webkit-appearance: none;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  line-height: 17px;
-  padding: 0 13px 0 0;
-  cursor: pointer;
-  outline: none;
-}
-.dshst-miniType::after {
-  content: "▾";
-  position: absolute;
-  right: 5px;
-  font-size: 9px;
-  opacity: 0.7;
-  pointer-events: none;
-}
-.dshst-miniType:hover,
-.dshst-miniType:focus-within {
-  border-color: var(--dsw-alias-brand-primary);
-  color: var(--dsw-alias-label-primary);
 }
 .dshst-icon:focus-visible,
 .dshst-card:focus-visible,
@@ -3559,20 +3528,26 @@ window.__ModuleLoader__.load({
             ? null
             : h(
                 'span',
-                { className: 'dshst-miniType', title: t('miniChartType') },
-                h(
-                  'select',
-                  {
-                    'aria-label': t('miniChartType'),
-                    value: prefs.miniChartType ?? 'day',
-                    onChange: (event) => savePrefs({ miniChartType: event.target.value }),
-                  },
-                  ...[
-                    ['intraday', t('miniIntraday')],
-                    ['day', t('miniDay')],
-                    ['week', t('miniWeek')],
-                    ['month', t('miniMonth')],
-                  ].map(([value, label]) => h('option', { key: value, value }, label)),
+                { className: 'dshst-miniTypes', role: 'group', 'aria-label': t('miniChartType') },
+                ...[
+                  ['intraday', t('miniIntraday')],
+                  ['day', t('miniDay')],
+                  ['week', t('miniWeek')],
+                  ['month', t('miniMonth')],
+                ].map(([value, label]) =>
+                  h(
+                    'button',
+                    {
+                      key: value,
+                      type: 'button',
+                      className: 'dshst-pill',
+                      title: `${t('miniChartType')} · ${label}`,
+                      'aria-pressed': (prefs.miniChartType ?? 'day') === value ? 'true' : 'false',
+                      'data-active': (prefs.miniChartType ?? 'day') === value ? 'true' : 'false',
+                      onClick: () => savePrefs({ miniChartType: value }),
+                    },
+                    label,
+                  ),
                 ),
               ),
           h(

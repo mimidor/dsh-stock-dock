@@ -369,3 +369,12 @@ Settings discoverability and the options the strip was missing.
   the selected option, the tooltip names it, and it disappears with the mini
   chart. The settings row is unchanged.
 - Screenshots refreshed for the header/detail/settings surfaces.
+
+## 1.7.3 — 2026-11-13
+
+- The header mini-chart switch is now a row of pills like the watchlist groups
+  (`分时线 / 日K / 周K / 月K`), one active at a time, instead of a dropdown. It
+  reuses the group-pill style, hides with the mini chart, and saves the same
+  `miniChartType` preference.
+- Test: the active pill switches the preference and refetches with
+  `type=intraday`. 79 tests.
