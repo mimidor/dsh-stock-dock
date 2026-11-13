@@ -411,3 +411,13 @@ Settings discoverability and the options the strip was missing.
 - The client asks `/trend?baseline=1`; the Host already supports the count, so
   the route and cache shape are unchanged.
 - Tests: the previous-session baseline and the `放量` signal. 79 tests.
+
+## 1.8.1 — 2026-11-13
+
+- Hovering an intraday point now reports that minute's volume verdict explicitly:
+  `量 389.14万 · 放量 1.08× · 昨 360.12万`, coloured orange/grey like the bar,
+  and the hovered volume bar gets a thin highlight so it is obvious which bar
+  the readout describes. The 3/5-day overlays keep the plain readout because
+  they have no previous-session baseline.
+- Test: hovering the detail chart exposes `放量` and the previous volume. 80
+  tests.

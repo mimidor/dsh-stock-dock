@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.8.0'
+    const BUILD = 'v1.8.1'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -1830,6 +1830,7 @@ window.__ModuleLoader__.load({
                   ? 'var(--dsw-alias-state-warn-primary)'
                   : 'var(--dsw-alias-label-secondary)'
             const fillOpacity = above === null ? 0.5 : above ? 0.9 : 0.3
+            const hovered = hover === index
             children.push(
               h('rect', {
                 key: `v${index}`,
@@ -1837,7 +1838,11 @@ window.__ModuleLoader__.load({
                 y: height - barHeight,
                 width: barWidth,
                 height: barHeight,
-                style: { fill, fillOpacity },
+                style: {
+                  fill,
+                  fillOpacity: hovered ? 1 : fillOpacity,
+                  ...(hovered ? { stroke: 'var(--dsw-alias-label-primary)', strokeWidth: 0.8 } : {}),
+                },
               }),
             )
           })
@@ -1879,6 +1884,14 @@ window.__ModuleLoader__.load({
       const xLabels = [points[0]?.time, points[Math.floor(points.length / 2)]?.time, points[points.length - 1]?.time]
 
       const active = hover !== null ? points[hover] : null
+      const activeReference = active ? baselineAt.get(active.time) : undefined
+      const activeRatio =
+        active && typeof active.volume === 'number' && typeof activeReference === 'number' && activeReference > 0
+          ? active.volume / activeReference
+          : null
+      const activeSignal = activeRatio === null ? null : activeRatio > 1 ? 'up' : activeRatio < 1 ? 'down' : 'flat'
+      const activeLabel =
+        activeSignal === 'up' ? t('volumeExpand') : activeSignal === 'down' ? t('volumeShrink') : t('volumeFlat')
       return h(
         'div',
         { className: 'dshst-chartWrap' },
@@ -1943,13 +1956,15 @@ window.__ModuleLoader__.load({
               { className: 'dshst-readout' },
               `${active.day ? `${active.day} ` : ''}${active.time} ${formatPrice(active.price)}${
                 typeof active.avg === 'number' ? ` ${t('ma')} ${formatPrice(active.avg)}` : ''
-              }${typeof active.volume === 'number' ? ` ${t('volume')} ${shortNumber(active.volume)}` : ''}${
-                (() => {
-                  const previous = baselineAt.get(active.time)
-                  if (typeof previous !== 'number' || previous <= 0 || typeof active.volume !== 'number') return ''
-                  return ` · ${t('volumePrev')} ${shortNumber(previous)} (${(active.volume / previous).toFixed(2)}×)`
-                })()
-              }`,
+              }${typeof active.volume === 'number' ? ` ${t('volume')} ${shortNumber(active.volume)}` : ''}`,
+              activeSignal === null
+                ? null
+                : h(
+                    'span',
+                    { className: 'dshst-volumeSignal', 'data-trend': activeSignal },
+                    ` · ${activeLabel} ${activeRatio.toFixed(2)}×`,
+                  ),
+              activeSignal === null ? null : ` · ${t('volumePrev')} ${shortNumber(activeReference)}`,
             )
           : null,
       )

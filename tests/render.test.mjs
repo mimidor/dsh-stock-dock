@@ -862,3 +862,22 @@ test('the header switches the card mini chart type', async () => {
   assert.ok(calls.some((call) => call.path.includes('/sparklines') && call.path.includes('type=intraday')))
   assert.equal(picker().props['data-active'], 'true')
 })
+
+test('hovering an intraday point reports its volume versus yesterday', async () => {
+  const baseline = points(1).map((point, index) => ({ time: point.time, volume: (1000 + index) / 2 }))
+  const { harness, component, t } = boot({ trendBaseline: baseline })
+  harness.mount(component, { t })
+  let tree = await harness.settle()
+  click(findAll(tree, (element) => hasClass(element, 'dshst-card') && textOf(element).includes('贵州茅台'))[0])
+  tree = await harness.settle()
+  const detail = findAll(tree, (element) => hasClass(element, 'dshst-detail'))[0]
+  const chart = findAll(detail, (element) => element.tag === 'svg' && hasClass(element, 'dshst-chart'))[0]
+  assert.ok(chart, 'the intraday chart is mounted')
+  chart.props.onMouseMove({ clientX: 300, currentTarget: chart })
+  tree = await harness.settle()
+  const readout = findAll(tree, (element) => hasClass(element, 'dshst-readout'))[0]
+  assert.ok(readout, 'the hover readout is visible')
+  const text = textOf(readout)
+  assert.match(text, /放量/)
+  assert.match(text, /昨/)
+})
