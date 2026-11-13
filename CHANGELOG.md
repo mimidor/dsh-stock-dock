@@ -378,3 +378,13 @@ Settings discoverability and the options the strip was missing.
   `miniChartType` preference.
 - Test: the active pill switches the preference and refetches with
   `type=intraday`. 79 tests.
+
+## 1.7.4 — 2026-11-13
+
+- The strip no longer draws a native horizontal scrollbar over the price row.
+  macOS could show a full-height bar that covered the bottom of every card, so
+  the native bar is hidden (`scrollbar-width: none` and a zero-sized
+  `::-webkit-scrollbar`) and the existing 3 px custom track is the only
+  indicator. The strip reserves 6 px of bottom padding, keeping the track below
+  the cards instead of on top of them.
+- Screenshots refreshed.

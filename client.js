@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.7.3'
+    const BUILD = 'v1.7.4'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -429,8 +429,15 @@ window.__ModuleLoader__.load({
   gap: 6px;
   overflow-x: auto;
   overscroll-behavior-x: contain;
-  padding-bottom: 2px;
-  scrollbar-width: thin;
+  /* The 3 px custom track below the cards is the only scrollbar; a native one
+     would be drawn over the price row on macOS. The padding reserves its room. */
+  padding-bottom: 6px;
+  scrollbar-width: none;
+}
+.dshst-strip::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 .dshst-card {
   display: flex;
