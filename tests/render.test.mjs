@@ -727,13 +727,28 @@ test('a changed quote remounts the price block so its flash replays', async () =
     String(element.props?.className ?? '').split(/\s+/).includes('dshst-quote')).map((element) => element.props.key)
   const before = quoteKeys(tree)
   assert.equal(before.length, 2, 'both cards expose a keyed price block')
+  // The poll (not the manual button) is the value-change path.
+  await harness.flushIntervals(20_000)
+  tree = harness.getTree()
+  const after = quoteKeys(tree)
+  assert.notEqual(after[0], before[0], 'the changed price gets a fresh key and replays the flash')
+  assert.equal(after[1], before[1], 'an unchanged price keeps its key, so it does not blink')
+})
+
+test('a manual refresh pulses every price block even when values do not change', async () => {
+  const { harness, component, t } = boot()
+  harness.mount(component, { t })
+  let tree = await harness.settle()
+  const quoteKeys = (rendered) => findAll(rendered, (element) =>
+    String(element.props?.className ?? '').split(/\s+/).includes('dshst-quote')).map((element) => element.props.key)
+  const before = quoteKeys(tree)
   const button = findAll(tree, (element) =>
     element.tag === 'button' && String(element.props?.className ?? '').split(/\s+/).includes('dshst-refresh'))[0]
   click(button)
   tree = await harness.settle()
   const after = quoteKeys(tree)
-  assert.notEqual(after[0], before[0], 'the changed price gets a fresh key and replays the flash')
-  assert.equal(after[1], before[1], 'an unchanged price keeps its key, so it does not blink')
+  assert.equal(after.length, before.length)
+  assert.ok(after.every((key, index) => key !== before[index]), 'every card acknowledges the manual refresh')
 })
 
 test('the one-day intraday chart overlays the same-time volume baseline', async () => {

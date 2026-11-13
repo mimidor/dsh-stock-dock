@@ -317,3 +317,17 @@ Settings discoverability and the options the strip was missing.
   each consumed `[stock-ticker] strip wheel {deltaX, deltaY, max, scrollLeft}`.
 - Tests: the scroll track is absent when the cards fit, and the strip's own
   listener scrolls once (the window listener does not double it). 76 tests.
+
+## 1.6.3 — 2026-11-13
+
+- The manual refresh button now acknowledges itself even when nothing changed:
+  after the request settles, every card's price block remounts and replays the
+  flash. This is the common case outside trading hours, where the poll returns
+  identical values and the previous value-keyed flash stayed silent by design.
+  Automatic polls keep the value-driven behavior, so a 5-second poll does not
+  blink every card when the market is quiet.
+- The price flash is an opacity fade, not motion, so it remains enabled under
+  `prefers-reduced-motion`; only the rotating refresh spinner is disabled there.
+- Tests: simulate the poll interval to cover the auto value-change path, and
+  assert a manual refresh remounts every price block with unchanged values.
+  77 tests total.

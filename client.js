@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.6.2'
+    const BUILD = 'v1.6.3'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -507,11 +507,8 @@ window.__ModuleLoader__.load({
   from { opacity: 0.22; }
   to { opacity: 0; }
 }
-@media (prefers-reduced-motion: reduce) {
-  .dshst-quote::before {
-    animation: none;
-  }
-}
+/* The quote cue is a short opacity fade, not motion; keep it for reduced
+   motion. Only the rotating spinner is removed below. */
 .dshst-price { font-size: 13px; font-weight: 600; }
 .dshst-chg { font-size: 11px; }
 .dshst-up { color: var(--dshst-up); }
@@ -1445,7 +1442,7 @@ window.__ModuleLoader__.load({
       const trend = trendClass(quote.changePct)
       // Remounting the block on a displayed-value change replays the CSS flash;
       // an unchanged price keeps the same key, so a silent poll does not blink.
-      const flashKey = `${formatPrice(quote.price)}|${formatPct(quote.changePct)}`
+      const flashKey = `${formatPrice(quote.price)}|${formatPct(quote.changePct)}|${props.pulse ?? 0}`
       const armed = Array.isArray(quote.alerts) ? quote.alerts.filter((alert) => !alert.firedAt).length : 0
       const rows = Array.isArray(props.sparkline) ? props.sparkline : Array.isArray(quote.kline) ? quote.kline : []
       return h(
@@ -2912,6 +2909,9 @@ window.__ModuleLoader__.load({
         if (node) restoreStripRow.current = claimOwnRow(node)
       }, [])
       const [scrollRatio, setScrollRatio] = useState(0)
+      // A manual refresh should confirm itself even when the market is closed
+      // and every displayed value is identical; auto polls stay value-driven.
+      const [manualPulse, setManualPulse] = useState(0)
       // The custom scroll track is also the affordance: showing it when the
       // cards fit made a dead gesture look broken. Measure the real overflow.
       const measureStrip = useCallback((node = stripRef.current) => {
@@ -3040,6 +3040,11 @@ window.__ModuleLoader__.load({
           }
         }
       }, [t, active])
+
+      const manualRefresh = useCallback(async () => {
+        await load()
+        if (alive.current) setManualPulse((count) => count + 1)
+      }, [load])
 
       useEffect(() => {
         load()
@@ -3313,6 +3318,7 @@ window.__ModuleLoader__.load({
                   sourceDot: prefs.sourceDot !== false,
                   selected: selected === quote.symbol,
                   sparkline: prefs.showMiniChart === false ? null : sparks[quote.symbol],
+                  pulse: manualPulse,
                   showMiniChart: prefs.showMiniChart !== false,
                   showExtended: prefs.showExtended === true,
                   onSelect: () => onCardSelect(quote.symbol),
@@ -3460,7 +3466,7 @@ window.__ModuleLoader__.load({
               'aria-label': t('refresh'),
               'aria-busy': busy ? 'true' : 'false',
               'data-busy': busy ? 'true' : 'false',
-              onClick: load,
+              onClick: manualRefresh,
             },
             h(
               'svg',

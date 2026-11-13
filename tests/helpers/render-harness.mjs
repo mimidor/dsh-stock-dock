@@ -69,6 +69,8 @@ export function createHarness({ fetchImpl, hidden = false, metrics, contentsWrap
   const layout = { scrollWidth: 900, clientWidth: 600, ...metrics }
   const storage = new Map()
   const timers = []
+  const intervals = new Map()
+  let intervalId = 0
   const instances = new Map()
   const elements = new Map()
   const pendingEffects = []
@@ -101,8 +103,14 @@ export function createHarness({ fetchImpl, hidden = false, metrics, contentsWrap
       const index = timers.findIndex((timer) => timer.id === id)
       if (index >= 0) timers.splice(index, 1)
     },
-    setInterval: () => 0,
-    clearInterval: () => undefined,
+    setInterval(fn, ms) {
+      const id = (intervalId += 1)
+      intervals.set(id, { fn, ms: ms ?? 0 })
+      return id
+    },
+    clearInterval(id) {
+      intervals.delete(id)
+    },
     getComputedStyle(node) {
       return node?.__computed ?? { display: 'block', flexDirection: 'row', flexWrap: 'nowrap' }
     },
@@ -407,6 +415,16 @@ export function createHarness({ fetchImpl, hidden = false, metrics, contentsWrap
         tree = renderRoot()
       }
       return tree
+    },
+    /** Fire the due intervals once (the quote poll). */
+    async flushIntervals(maxMs = 60_000) {
+      await this.settle()
+      const due = []
+      for (const timer of intervals.values()) {
+        if (timer.ms <= maxMs) due.push(timer)
+      }
+      for (const timer of due) timer.fn()
+      return this.settle()
     },
     /** Fire the harness timers (debounced search and notice timers). */
     async flushTimers(maxMs = 1000) {
