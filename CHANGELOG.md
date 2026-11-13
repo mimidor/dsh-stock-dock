@@ -229,3 +229,17 @@ Settings discoverability and the options the strip was missing.
   overlay, which rebuilds the average per day.
 - Tests: fixture-level checks for the CN and HK index averages and the symbol
   classification. 69 tests total.
+
+## 1.5.5 — 2026-11-13
+
+- The intraday volume bars now show the volume of each minute instead of the
+  day's cumulative total. Tencent's minute rows carry cumulative volume, so the
+  bars grew monotonically and said nothing about when trading happened; the
+  provider now emits the per-minute delta (the opening minute keeps its own
+  total) while the running average still accumulates the cumulative figures.
+  Eastmoney already serves per-minute volume, so both sources now agree on the
+  field's meaning.
+- The Eastmoney intraday fallback also derives an index's average from the
+  quoted values, so a Tencent failure cannot bring back the off-scale y-axis.
+- Tests: per-minute deltas for the Tencent stock/CN index/HK index fixtures and
+  the Eastmoney index average. 70 tests total.

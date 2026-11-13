@@ -130,6 +130,11 @@ test('tencent intraday fixture carries previous close and a running average', as
   assert.ok(trend.points.length > 200)
   assert.ok(trend.prevClose > 0)
   const last = trend.points.at(-1)
+  assert.deepEqual(
+    trend.points.slice(0, 4).map((point) => point.volume),
+    [257, 1420, 507, 407],
+    'the cumulative Tencent rows become per-minute bars',
+  )
   assert.equal(typeof last.avg, 'number')
   assert.ok(Math.abs(last.avg - last.price) / last.price < 0.05)
 })
@@ -240,10 +245,29 @@ test('index intraday averages stay on the quoted index scale', async () => {
   // used to land around 27 and squashed the whole line against the top).
   assert.equal(cn.points[0].avg, 2525.39)
   assert.deepEqual(cn.points.map((point) => point.avg), [2525.39, 2521.335, 2516.177])
+  assert.deepEqual(cn.points.map((point) => point.volume), [1124033, 4975273, 3293156])
   const cnPrices = cn.points.map((point) => point.price)
   assert.ok(cn.points.every((point) => point.avg >= Math.min(...cnPrices) && point.avg <= Math.max(...cnPrices)))
 
   const hk = await withFetchText(payload, () => tencent.fetchTrend('hkHSI'))
   assert.deepEqual(hk.points.map((point) => point.avg), [23900, 23875, 23856.667])
+  assert.deepEqual(hk.points.map((point) => point.volume), [1000, 1000, 1000])
   assert.equal(hk.prevClose, 24008.55)
+})
+
+test('eastmoney index trends ignore the amount/volume average', async () => {
+  const payload = {
+    data: {
+      preClose: 2509.43,
+      trends: [
+        '2026-11-13 09:30,2525.39,2525.39,2525.39,2525.39,100,252539000,25.0',
+        '2026-11-13 09:31,2517.28,2517.28,2517.28,2517.28,200,503456000,25.2',
+        '2026-11-13 09:32,2505.86,2505.86,2505.86,2505.86,300,751758000,25.4',
+      ],
+    },
+  }
+  const trend = await withFetchText(payload, () => eastmoney.fetchTrend('sz399006'))
+  assert.deepEqual(trend.points.map((point) => point.avg), [2525.39, 2521.335, 2516.177])
+  assert.deepEqual(trend.points.map((point) => point.volume), [100, 200, 300])
+  assert.equal(trend.prevClose, 2509.43)
 })
