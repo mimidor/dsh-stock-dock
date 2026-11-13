@@ -12,7 +12,7 @@ import {
 } from '../lib/alerts.js'
 import { normalizePrefs, normalizeSettings, publicSettings } from '../lib/config.js'
 import { extendedWindow, freshnessByMarket, marketState, parseQuoteDate, sessionFor } from '../lib/session.js'
-import { normalizeSymbol, parseSymbols } from '../lib/symbols.js'
+import { isIndexSymbol, normalizeSymbol, parseSymbols } from '../lib/symbols.js'
 import { buildToolDefinition } from '../lib/tool.js'
 
 test('an alert fires in the declared direction only', () => {
@@ -147,4 +147,13 @@ test('the tool definition is registry shaped', async () => {
 
   const fromWatchlist = await definition.execute({})
   assert.equal(fromWatchlist.quotes[0].symbol, 'sh600519')
+})
+
+test('index symbols are told apart from stocks and ETFs', () => {
+  for (const symbol of ['sh000001', 'sh000688', 'sz399001', 'sz399006', 'hkHSI', 'hkHSCEI', 'hkHSTECH']) {
+    assert.equal(isIndexSymbol(symbol), true, symbol)
+  }
+  for (const symbol of ['sh600519', 'sz000001', 'sh510300', 'sz159915', 'hk00700', 'usAAPL', 'usIXIC']) {
+    assert.equal(isIndexSymbol(symbol), false, symbol)
+  }
 })

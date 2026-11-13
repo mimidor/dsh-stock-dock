@@ -214,3 +214,18 @@ Settings discoverability and the options the strip was missing.
   native pill and can nest multiple contents wrappers, asserting the pill keeps
   its order/flex; a parser test covers the one-row suffix and the cached
   winner. 67 tests total.
+
+## 1.5.4 — 2026-11-13
+
+- Intraday averages for indices are now on the index scale. Tencent's minute
+  `amount / volume` is a turnover-weighted share price, which is meaningless for
+  an index: `sz399006` produced averages around 25.8 while the index traded near
+  2500. The chart includes the average in its y-domain, so the real line (and
+  the axis labels) collapsed against the top of the panel — a flat line reading
+  `+0.64% / -49.17% / -98.97%`. `isIndexSymbol()` now distinguishes indices
+  (`sh000xxx`, `sz399xxx`, lettered Hong Kong codes such as `hkHSI`) from
+  stocks/ETFs, and their average is the cumulative mean of the quoted values;
+  stocks keep the turnover-weighted average. The same fix covers the five-day
+  overlay, which rebuilds the average per day.
+- Tests: fixture-level checks for the CN and HK index averages and the symbol
+  classification. 69 tests total.

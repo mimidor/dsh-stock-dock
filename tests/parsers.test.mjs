@@ -206,3 +206,44 @@ test('US index klines probe past a one-row venue suffix', async () => {
     globalThis.fetch = real
   }
 })
+
+test('index intraday averages stay on the quoted index scale', async () => {
+  const payload = {
+    code: 0,
+    data: {
+      sz399006: {
+        qt: { sz399006: ['51', '创业板指', '399006', '2505.86', '2509.43'] },
+        data: {
+          date: '20261113',
+          data: [
+            '0930 2525.39 1124033 3104550679.53',
+            '0931 2517.28 6099306 17424117647.64',
+            '0932 2505.86 9392462 26898134400.43',
+          ],
+        },
+      },
+      hkHSI: {
+        qt: { hkHSI: ['100', '恒生指数', 'HSI', '23820', '24008.55'] },
+        data: {
+          date: '20261113',
+          data: [
+            '0930 23900 1000 2390000000',
+            '0931 23850 2000 4770000000',
+            '0932 23820 3000 7146000000',
+          ],
+        },
+      },
+    },
+  }
+  const cn = await withFetchText(payload, () => tencent.fetchTrend('sz399006'))
+  // The first index point's average is its own quote, not amount/volume (which
+  // used to land around 27 and squashed the whole line against the top).
+  assert.equal(cn.points[0].avg, 2525.39)
+  assert.deepEqual(cn.points.map((point) => point.avg), [2525.39, 2521.335, 2516.177])
+  const cnPrices = cn.points.map((point) => point.price)
+  assert.ok(cn.points.every((point) => point.avg >= Math.min(...cnPrices) && point.avg <= Math.max(...cnPrices)))
+
+  const hk = await withFetchText(payload, () => tencent.fetchTrend('hkHSI'))
+  assert.deepEqual(hk.points.map((point) => point.avg), [23900, 23875, 23856.667])
+  assert.equal(hk.prevClose, 24008.55)
+})
