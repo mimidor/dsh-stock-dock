@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.8.2'
+    const BUILD = 'v1.8.3'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -181,6 +181,8 @@ window.__ModuleLoader__.load({
       showExtended: '显示美股盘前 / 盘后',
       premarket: '盘前',
       afterHours: '盘后',
+      premarketShort: '前',
+      afterHoursShort: '后',
       settingsHint: '改动立即生效，保存在插件数据文件',
     }
 
@@ -342,6 +344,8 @@ window.__ModuleLoader__.load({
       showExtended: 'Show US pre/post market',
       premarket: 'Pre',
       afterHours: 'After',
+      premarketShort: 'Pre',
+      afterHoursShort: 'AH',
       settingsHint: 'Changes apply immediately and are stored in the plugin data file',
     }
 
@@ -1078,13 +1082,16 @@ window.__ModuleLoader__.load({
   font-variant-numeric: tabular-nums;
 }
 .dshst-ext {
-  padding: 0 3px;
-  border: 1px solid var(--dsw-alias-border-l1);
-  border-radius: 3px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
   font-size: 9px;
   line-height: 12px;
   color: var(--dsw-alias-label-secondary);
   font-variant-numeric: tabular-nums;
+}
+.dshst-extTag {
+  color: var(--dsw-alias-label-secondary);
 }
 .dshst-settingsPage {
   display: flex;
@@ -1660,8 +1667,22 @@ window.__ModuleLoader__.load({
             props.showExtended && quote.extended
               ? h(
                   'span',
-                  { className: 'dshst-ext', title: quote.extended.time ?? '' },
-                  `${quote.extended.session === 'post' ? t('afterHours') : t('premarket')} ${formatPct(quote.extended.changePct)}`,
+                  {
+                    className: 'dshst-ext',
+                    title: `${quote.extended.session === 'post' ? t('afterHours') : t('premarket')} ${formatPrice(
+                      quote.extended.price,
+                    )} ${formatPct(quote.extended.changePct)} ${quote.extended.time ?? ''}`.trim(),
+                  },
+                  h(
+                    'span',
+                    { className: 'dshst-extTag' },
+                    quote.extended.session === 'post' ? t('afterHoursShort') : t('premarketShort'),
+                  ),
+                  h(
+                    'span',
+                    { className: trendClass(quote.extended.changePct) },
+                    formatPct(quote.extended.changePct),
+                  ),
                 )
               : null,
             limitState(quote) === 'up' ? h('span', { className: 'dshst-limitMark dshst-up' }, t('limitUp')) : null,

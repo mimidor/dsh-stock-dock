@@ -437,3 +437,12 @@ Settings discoverability and the options the strip was missing.
 - Preview pages skip transient animations so README screenshots capture the
   settled state.
 - No behaviour changes. 80 tests.
+
+## 1.8.3 — 2026-11-13
+
+- The card's US extended-hours chip no longer says `盘前 +1.84%` in a bordered
+  pill; it is now a compact `前 +1.84%` (or `后`) with the percent coloured by
+  its own direction and no border/padding. The full session, price and timestamp
+  move to the tooltip, so the card stops growing just because pre-market is on.
+  The detail header keeps the full label because it has the room.
+- Test updated for the compact chip and its tooltip. 80 tests.

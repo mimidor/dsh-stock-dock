@@ -616,7 +616,11 @@ test('US pre/post market prices render when the preference is on', async () => {
   const { harness, component, t } = boot({ quotes: payload })
   harness.mount(component, { t })
   const tree = await harness.settle()
-  assert.match(textOf(tree), /盘前/)
+  const chip = findAll(tree, (element) => hasClass(element, 'dshst-ext'))[0]
+  assert.ok(chip, 'the extended-hours chip is on the card')
+  assert.match(textOf(chip), /前/)
+  assert.match(textOf(chip), /\+0\.38%/)
+  assert.match(chip.props.title, /盘前/, 'the full session label stays in the tooltip')
 })
 
 const wheel = (target, overrides = {}) => ({
