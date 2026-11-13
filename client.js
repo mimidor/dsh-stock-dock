@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.5.2'
+    const BUILD = 'v1.5.3'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -2619,12 +2619,12 @@ window.__ModuleLoader__.load({
         }
       }
       let container
-      let fallback
       let node = element.parentElement
-      for (let depth = 0; node && depth < 8; depth += 1) {
+      for (let depth = 0; node && depth < 10; depth += 1) {
         const style = styleOf(node)
-        if (style && style.display === 'flex') {
-          fallback = fallback ?? node
+        // `inline-flex` is a flex formatting context too; the shipped dock is
+        // `flex`, but a wrapper may add `inline-flex` without changing intent.
+        if (style && (style.display === 'flex' || style.display === 'inline-flex')) {
           if (String(style.flexDirection || 'row').startsWith('row')) {
             container = node
             break
@@ -2632,64 +2632,109 @@ window.__ModuleLoader__.load({
         }
         node = node.parentElement
       }
-      container = container ?? fallback
-      if (!container && typeof element.closest === 'function') {
-        // Last resort: the dock container is the only DSH element whose class
-        // ends in `_dock`; if no flex ancestor was found, style it directly.
-        container = element.closest('[class*="_dock"]') ?? undefined
-      }
       if (!container) {
         if (debugEnabled()) {
           const chain = []
           let cursor = element
-          for (let depth = 0; cursor && depth < 8; depth += 1) {
+          for (let depth = 0; cursor && depth < 10; depth += 1) {
             const style = styleOf(cursor)
-            chain.push({ tag: cursor.tagName, className: String(cursor.className ?? ''), display: style?.display, flexDirection: style?.flexDirection })
+            chain.push({
+              tag: cursor.tagName,
+              className: String(cursor.className ?? ''),
+              display: style?.display,
+              flexDirection: style?.flexDirection,
+              flexWrap: style?.flexWrap,
+            })
             cursor = cursor.parentElement
           }
-          console.warn('[stock-ticker] dock row: no flex ancestor found', chain)
+          console.warn('[stock-ticker] dock row: no row-flex ancestor found', chain)
         }
         return undefined
       }
 
-      let item = element
-      while (item && item.parentElement && item.parentElement !== container) item = item.parentElement
-      if (!item || item.parentElement !== container) return undefined
-      // The slot outlet inserts a display:contents [data-slot] element between
-      // the owner and the content; the real flex item is that wrapper's first
-      // element child (our own root), not the wrapper and not the inner strip.
-      const itemStyle = styleOf(item)
-      if (itemStyle && itemStyle.display === 'contents') {
-        item = item.firstElementChild ?? element
+      // Walk up to the flex container's direct child. The slot outlet puts a
+      // display:contents `[data-slot]` wrapper between the container and every
+      // entry, and ONE outlet is shared by all list entries (DSH's stats pills
+      // register before us). That wrapper is not the flex item, and neither is
+      // its `firstElementChild` — that is a sibling pill. The flex item is the
+      // outermost box on OUR ancestor path: skip `display:contents` wrappers
+      // down from the shared outlet until reaching the first real box.
+      let top = element
+      while (top.parentElement && top.parentElement !== container) top = top.parentElement
+      if (!top || top.parentElement !== container) return undefined
+      let item = top
+      if (styleOf(top)?.display === 'contents') {
+        const path = []
+        let cursor = element
+        while (cursor && cursor !== top) {
+          path.push(cursor)
+          cursor = cursor.parentElement
+        }
+        // Outer-to-inner: the first box below the container wins.
+        item = path.reverse().find((candidate) => {
+          const style = styleOf(candidate)
+          return style !== undefined && style.display !== 'contents'
+        }) ?? element
       }
 
-      const previous = {
-        wrap: container.style.flexWrap,
-        order: item.style.order,
-        flex: item.style.flex,
-        width: item.style.width,
-        minWidth: item.style.minWidth,
+      const snapshot = []
+      const remember = (target, property) => {
+        const style = target.style
+        const value = typeof style.getPropertyValue === 'function' ? style.getPropertyValue(property) : style[property]
+        const priority = typeof style.getPropertyPriority === 'function' ? style.getPropertyPriority(property) : ''
+        snapshot.push({ target, property, value: value ?? '', priority })
       }
-      container.style.flexWrap = 'wrap'
-      item.style.order = '99'
-      item.style.flex = '0 0 100%'
-      item.style.width = '100%'
-      item.style.minWidth = '0'
+      for (const property of ['flex-wrap']) remember(container, property)
+      for (const property of ['order', 'flex', 'width', 'min-width']) remember(item, property)
+
+      // `wrap` is written with priority so a future stylesheet `!important`
+      // cannot keep the dock on one line; the item styles stay normal because
+      // the root's own `flex: 1 1 auto` rule is not important.
+      container.style.setProperty('flex-wrap', 'wrap', 'important')
+      item.style.setProperty('order', '99')
+      item.style.setProperty('flex', '0 0 100%')
+      item.style.setProperty('width', '100%')
+      item.style.setProperty('min-width', '0')
 
       if (debugEnabled()) {
         console.debug('[stock-ticker] dock row claimed', {
           container: container.className,
+          containerDisplay: styleOf(container)?.display,
+          containerWrap: styleOf(container)?.flexWrap,
           item: item.className,
-          wrapped: item !== element,
+          itemTag: item.tagName,
+          itemIsRoot: item === element,
+          sharedOutlet: top !== element,
+        })
+      }
+
+      // One frame later the browser has laid the row out; log the resolved
+      // values so a failed claim reports why instead of just "still one line".
+      let frame = 0
+      if (typeof window.requestAnimationFrame === 'function') {
+        frame = window.requestAnimationFrame(() => {
+          frame = 0
+          if (!debugEnabled()) return
+          const containerStyle = styleOf(container)
+          const itemStyle = styleOf(item)
+          console.debug('[stock-ticker] dock row applied', {
+            wrap: containerStyle?.flexWrap,
+            order: itemStyle?.order,
+            flexBasis: itemStyle?.flexBasis,
+            width: itemStyle?.width,
+          })
+          if (containerStyle?.flexWrap !== 'wrap') {
+            console.warn('[stock-ticker] dock row: flex-wrap did not resolve to wrap; the dock may be a grid or a column')
+          }
         })
       }
 
       return () => {
-        container.style.flexWrap = previous.wrap
-        item.style.order = previous.order
-        item.style.flex = previous.flex
-        item.style.width = previous.width
-        item.style.minWidth = previous.minWidth
+        if (frame && typeof window.cancelAnimationFrame === 'function') window.cancelAnimationFrame(frame)
+        for (const { target, property, value, priority } of snapshot) {
+          if (value) target.style.setProperty(property, value, priority)
+          else target.style.removeProperty(property)
+        }
       }
     }
 

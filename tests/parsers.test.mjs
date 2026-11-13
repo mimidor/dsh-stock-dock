@@ -179,3 +179,30 @@ test('symbols map to Eastmoney secids and back', () => {
   assert.equal(symbolFromSecid(105, 'AAPL'), 'usAAPL')
   assert.equal(symbolFromSecid(90, 'BK1036'), undefined)
 })
+
+test('US index klines probe past a one-row venue suffix', async () => {
+  const real = globalThis.fetch
+  const calls = []
+  const bars = (count) => Array.from({ length: count }, (_, index) => [
+    `2026-09-${String((index % 28) + 1).padStart(2, '0')}`, '100', '101', '102', '99', '1000',
+  ])
+  globalThis.fetch = async (url) => {
+    const candidate = decodeURIComponent(String(url).split('param=')[1] ?? '').split(',')[0]
+    calls.push(candidate)
+    const rows = bars(candidate === 'usTESTIX' ? 40 : 1)
+    return new Response(JSON.stringify({ code: 0, data: { [candidate]: { day: rows } } }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    })
+  }
+  try {
+    const rows = await tencent.fetchKline('usTESTIX', 'day', 'qfq', 40)
+    assert.equal(rows.length, 40, 'the bare symbol carries the history')
+    assert.deepEqual(calls, ['usTESTIX.OQ', 'usTESTIX.N', 'usTESTIX'])
+    calls.length = 0
+    await tencent.fetchKline('usTESTIX', 'day', 'qfq', 40)
+    assert.deepEqual(calls, ['usTESTIX'], 'the winning spelling is cached')
+  } finally {
+    globalThis.fetch = real
+  }
+})

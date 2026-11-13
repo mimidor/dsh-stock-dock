@@ -21,6 +21,43 @@ const clientPath = join(dirname(dirname(dirname(fileURLToPath(import.meta.url)))
 
 export const FRAGMENT = Symbol('Fragment')
 
+/**
+ * A CSSStyleDeclaration stand-in: the client writes both camelCase properties
+ * (from CSS-in-JS style objects) and kebab-case ones through setProperty, and
+ * reads priorities back when restoring the row after unmount.
+ */
+function createStyle() {
+  const values = new Map()
+  const kebab = (name) => String(name).replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)
+  const api = {
+    setProperty(name, value, priority = '') {
+      values.set(name, { value: String(value), priority: priority ?? '' })
+    },
+    getPropertyValue(name) {
+      return values.get(name)?.value ?? ''
+    },
+    getPropertyPriority(name) {
+      return values.get(name)?.priority ?? ''
+    },
+    removeProperty(name) {
+      const previous = api.getPropertyValue(name)
+      values.delete(name)
+      return previous
+    },
+  }
+  return new Proxy(api, {
+    get(target, property) {
+      if (property in target || typeof property !== 'string') return target[property]
+      return target.getPropertyValue(kebab(property))
+    },
+    set(target, property, value) {
+      if (typeof property !== 'string') return false
+      target.setProperty(kebab(property), value)
+      return true
+    },
+  })
+}
+
 function depsChanged(previous, next) {
   if (previous === undefined || next === undefined) return true
   if (previous === null || next === null) return previous !== next
@@ -28,7 +65,7 @@ function depsChanged(previous, next) {
   return previous.some((value, index) => !Object.is(value, next[index]))
 }
 
-export function createHarness({ fetchImpl, hidden = false, metrics } = {}) {
+export function createHarness({ fetchImpl, hidden = false, metrics, contentsWrappers = 0 } = {}) {
   const layout = { scrollWidth: 900, clientWidth: 600, ...metrics }
   const storage = new Map()
   const timers = []
@@ -223,7 +260,7 @@ export function createHarness({ fetchImpl, hidden = false, metrics } = {}) {
     elements.set(path, element)
     element.tag = node.type
     element.props = node.props
-    element.style = element.style ?? {}
+    element.style = element.style ?? createStyle()
     element.tagName = String(node.type).toUpperCase()
     if (node.props?.['data-plugin'] === 'stock-ticker' && node.props?.['data-variant'] === 'dock') {
       // Reproduce DSH's real slot outlet: a display:contents [data-slot] element
@@ -231,7 +268,7 @@ export function createHarness({ fetchImpl, hidden = false, metrics } = {}) {
       const dock = element.__dock ?? {
         tagName: 'DIV',
         className: 'uiqlVW_dock',
-        style: {},
+        style: createStyle(),
         __computed: { display: 'flex', flexDirection: 'row', flexWrap: 'nowrap' },
         parentElement: null,
         closest: () => null,
@@ -239,15 +276,44 @@ export function createHarness({ fetchImpl, hidden = false, metrics } = {}) {
       const outlet = element.__outlet ?? {
         tagName: 'DIV',
         className: '',
-        style: {},
+        style: createStyle(),
         __computed: { display: 'contents', flexDirection: 'row', flexWrap: 'nowrap' },
         parentElement: dock,
         closest: () => null,
       }
+      // A list slot shares ONE outlet between every entry: DSH's own stats
+      // pills register before us, so our root is never `firstElementChild`.
+      // A row claim that reaches for that first child styles a native pill and
+      // leaves the strip in place — the exact failure this fixture guards.
+      const pill = element.__pill ?? {
+        tagName: 'SPAN',
+        className: '',
+        style: createStyle(),
+        __computed: { display: 'inline-flex', flexDirection: 'row', flexWrap: 'nowrap' },
+        parentElement: outlet,
+        closest: () => null,
+      }
+      // Some slot chains nest more than one addressable wrapper; the claim
+      // must skip every display:contents layer, not just the first.
+      let parent = outlet
+      const wrappers = element.__wrappers ?? (element.__wrappers = [])
+      for (let index = 0; index < contentsWrappers; index += 1) {
+        const wrapper = wrappers[index] ?? (wrappers[index] = {
+          tagName: 'DIV',
+          className: '',
+          style: createStyle(),
+          __computed: { display: 'contents', flexDirection: 'row', flexWrap: 'nowrap' },
+          parentElement: parent,
+          closest: () => null,
+        })
+        parent = wrapper
+      }
       element.__dock = dock
       element.__outlet = outlet
-      outlet.firstElementChild = element
-      element.parentElement = outlet
+      element.__pill = pill
+      outlet.firstElementChild = pill
+      outlet.children = [pill, ...wrappers]
+      element.parentElement = parent
     }
     element.scrollWidth = layout.scrollWidth
     element.clientWidth = layout.clientWidth

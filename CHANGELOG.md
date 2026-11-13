@@ -192,3 +192,25 @@ Settings discoverability and the options the strip was missing.
   is also scoped to the dock variant, so the sidebar tab is untouched.
 - Failed claims log the ancestor chain when
   `localStorage['dsh-stock-ticker:debug'] = '1'`.
+
+## 1.5.3 — 2026-11-13
+
+- The dock row claim now targets our own root, not a sibling: a list slot shares
+  ONE `display: contents` `[data-slot]` outlet between every entry, and DSH's
+  stats pills register before the strip, so the 1.5.2 `firstElementChild`
+  descent styled the "18 轮 331 步" pill (moving it to its own row) while the
+  strip stayed inline. The claim walks our ancestor path instead, skips every
+  `display: contents` layer, and promotes the outermost real box to
+  `order: 99; flex: 0 0 100%`; `flex-wrap: wrap` is written with priority and
+  the resolved values are checked one frame later when debug logging is on.
+- US index K-lines no longer come back as a single bar: Tencent answers only
+  the latest bar for a venue-suffixed index (`usIXIC.OQ`, `usNDX.OQ`) but the
+  full page for the bare symbol (`usIXIC`). The provider used to accept the
+  first non-empty answer and cache that spelling, so the Nasdaq mini chart and
+  detail panel stayed empty until restart. It now probes the candidates, keeps
+  the longest page, and caches the winning spelling (stocks still answer on the
+  first candidate, so their request count is unchanged).
+- Tests: the render harness reproduces the shared outlet with a co-located
+  native pill and can nest multiple contents wrappers, asserting the pill keeps
+  its order/flex; a parser test covers the one-row suffix and the cached
+  winner. 67 tests total.

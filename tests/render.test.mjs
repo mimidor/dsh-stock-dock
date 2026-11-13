@@ -238,7 +238,11 @@ function makeFetch(calls, overrides = {}) {
 
 function boot(options = {}) {
   const calls = []
-  const harness = createHarness({ fetchImpl: makeFetch(calls, options), metrics: options.metrics })
+  const harness = createHarness({
+    fetchImpl: makeFetch(calls, options),
+    metrics: options.metrics,
+    contentsWrappers: options.contentsWrappers,
+  })
   const definition = harness.boot()
   const dictionaries = {}
   const locale = {
@@ -649,7 +653,7 @@ test('the wheel keeps working after the settings panel remounts the strip', asyn
   assert.equal(strip.scrollLeft, 90)
 })
 
-test('the strip claims its own dock row through the display:contents outlet', async () => {
+test('the strip claims its own dock row through the shared display:contents outlet', async () => {
   const { harness, component, t } = boot()
   harness.mount(component, { t })
   await harness.settle()
@@ -661,4 +665,22 @@ test('the strip claims its own dock row through the display:contents outlet', as
   assert.equal(dock.style.flexWrap, 'wrap', 'the dock row is allowed to wrap')
   assert.equal(root.style.order, '99')
   assert.equal(root.style.flex, '0 0 100%')
+  // The outlet is shared by every list entry (DSH's stats pills register
+  // first); the row must be claimed for our root, never for a sibling.
+  assert.equal(root.__pill.style.order, '', 'a co-located native pill keeps its order')
+  assert.equal(root.__pill.style.flex, '', 'a co-located native pill keeps its flex')
+})
+
+test('the row claim skips nested display:contents outlet layers', async () => {
+  const { harness, component, t } = boot({ contentsWrappers: 2 })
+  harness.mount(component, { t })
+  await harness.settle()
+  const root = harness.findElement((element) => element.props?.['data-variant'] === 'dock')
+  assert.ok(root, 'the component root is mounted')
+  assert.equal(root.__wrappers.length, 2, 'the fixture nests two addressable wrappers')
+  assert.equal(root.__dock.style.flexWrap, 'wrap')
+  assert.equal(root.style.order, '99', 'the root, not an outer wrapper, becomes the item')
+  assert.equal(root.style.flex, '0 0 100%')
+  assert.equal(root.__wrappers[0].style.order, '', 'the wrapper stays layout-neutral')
+  assert.equal(root.__pill.style.order, '', 'the sibling pill stays put')
 })
