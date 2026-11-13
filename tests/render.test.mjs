@@ -638,15 +638,15 @@ test('a wheel outside the strip is ignored', async () => {
   assert.notEqual(event.defaultPrevented, true)
 })
 
-test('a horizontal trackpad swipe is not hijacked', async () => {
+test('a horizontal trackpad swipe scrolls the strip', async () => {
   const { harness, component, t } = boot()
   harness.mount(component, { t })
   await harness.settle()
   const strip = stripElement(harness)
   const event = wheel(strip, { deltaX: 120, deltaY: 4 })
   harness.dispatchWindow('wheel', event)
-  assert.equal(strip.scrollLeft, 0)
-  assert.notEqual(event.defaultPrevented, true)
+  assert.equal(strip.scrollLeft, 120)
+  assert.equal(event.defaultPrevented, true)
 })
 
 test('the wheel keeps working after the settings panel remounts the strip', async () => {

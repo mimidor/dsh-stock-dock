@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.6.0'
+    const BUILD = 'v1.6.1'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -2714,11 +2714,14 @@ window.__ModuleLoader__.load({
       if (max <= 2) return false
       const deltaX = event.deltaX ?? 0
       const deltaY = event.deltaY ?? 0
-      if (Math.abs(deltaX) > Math.abs(deltaY)) return false
-      if (deltaY === 0) return false
+      // A Mac trackpad reports a horizontal swipe as deltaX; a mouse wheel (and
+      // an old two-finger vertical gesture) reports deltaY. The dominant axis
+      // drives the strip either way, so both gestures work over the strip.
+      const delta = Math.abs(deltaX) > Math.abs(deltaY) ? deltaX : deltaY
+      if (delta === 0) return false
       const scale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? element.clientWidth : 1
       event.preventDefault?.()
-      const next = element.scrollLeft + deltaY * scale
+      const next = element.scrollLeft + delta * scale
       element.scrollLeft = Math.max(0, Math.min(max, next))
       return true
     }
@@ -3355,21 +3358,22 @@ window.__ModuleLoader__.load({
             },
             h(
               'svg',
-              { width: 14, height: 14, viewBox: '0 0 16 16', 'aria-hidden': true },
+              { width: 14, height: 14, viewBox: '0 0 24 24', 'aria-hidden': true },
               h('circle', {
-                cx: 8,
-                cy: 8,
-                r: 2.4,
+                cx: 12,
+                cy: 12,
+                r: 3,
                 fill: 'none',
                 stroke: 'currentColor',
-                strokeWidth: 1.4,
+                strokeWidth: 1.8,
               }),
               h('path', {
-                d: 'M8 1.6v2.1M8 12.3v2.1M1.6 8h2.1M12.3 8h2.1M3.5 3.5l1.5 1.5M11 11l1.5 1.5M12.5 3.5L11 5M5 11l-1.5 1.5',
+                d: 'M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z',
                 fill: 'none',
                 stroke: 'currentColor',
-                strokeWidth: 1.3,
+                strokeWidth: 1.8,
                 strokeLinecap: 'round',
+                strokeLinejoin: 'round',
               }),
             ),
           ),
@@ -3425,12 +3429,13 @@ window.__ModuleLoader__.load({
             h(
               'svg',
               { width: 14, height: 14, viewBox: '0 0 16 16', 'aria-hidden': true },
-              h('line', { x1: 2.5, y1: 4.5, x2: 13.5, y2: 4.5, stroke: 'currentColor', strokeWidth: 1.3, strokeLinecap: 'round' }),
-              h('circle', { cx: 10.5, cy: 4.5, r: 1.9, fill: 'currentColor' }),
-              h('line', { x1: 2.5, y1: 8, x2: 13.5, y2: 8, stroke: 'currentColor', strokeWidth: 1.3, strokeLinecap: 'round' }),
-              h('circle', { cx: 5.5, cy: 8, r: 1.9, fill: 'currentColor' }),
-              h('line', { x1: 2.5, y1: 11.5, x2: 13.5, y2: 11.5, stroke: 'currentColor', strokeWidth: 1.3, strokeLinecap: 'round' }),
-              h('circle', { cx: 11.5, cy: 11.5, r: 1.9, fill: 'currentColor' }),
+              h('path', {
+                d: 'M8 3.2v9.6M3.2 8h9.6',
+                fill: 'none',
+                stroke: 'currentColor',
+                strokeWidth: 1.7,
+                strokeLinecap: 'round',
+              }),
             ),
           ),
           variant === 'dock'

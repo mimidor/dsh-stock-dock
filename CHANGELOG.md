@@ -286,3 +286,17 @@ Settings discoverability and the options the strip was missing.
   heavy prior day cannot clip the reference line.
 - Tests: the pure baseline fold (prior days averaged per minute-of-day) and the
   client request/overlay/report. 74 tests total.
+
+## 1.6.1 — 2026-11-13
+
+- The settings button used a sun glyph (circle plus rays); it is a real gear
+  now. The symbol-form button used a sliders glyph that read as filtering; it
+  is a plus now, matching what the button does (add/edit the watchlist).
+- Trackpad horizontal swipes scroll the strip. The wheel handler used to ignore
+  a horizontal delta as "the browser's job", but the strip sits inside the
+  composer where that gesture reached the page instead. The dominant axis now
+  drives the strip (deltaX for a trackpad swipe, deltaY for a wheel), still
+  scoped to the strip's bounding box and still preventing the page's
+  back/forward gesture while the strip can move.
+- Test: a horizontal trackpad event scrolls the strip and is consumed. 74 tests
+  total (the former "not hijacked" assertion now covers the intended behavior).
