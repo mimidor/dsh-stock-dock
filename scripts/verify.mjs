@@ -710,10 +710,11 @@ check('apply survives a missing locale service', (() => {
 
 const css = clientSource.match(/const CSS = `([\s\S]*?)`/)?.[1] ?? ''
 check(
-  'the stylesheet claims a full-width dock row',
-  css.includes(':has(> [data-plugin="stock-ticker"][data-variant="dock"])') &&
-    css.includes('flex: 0 0 100%'),
-  css.length,
+  'the client claims a full-width dock row at runtime',
+  clientSource.includes('claimOwnRow') &&
+    clientSource.includes('display === \'contents\'') &&
+    clientSource.includes('firstElementChild'),
+  null,
 )
 check('stylesheet covers the new surfaces', ['.dshst-toast', '.dshst-results', '.dshst-settings', '.dshst-pill'].every((selector) => css.includes(selector)), css.length)
 

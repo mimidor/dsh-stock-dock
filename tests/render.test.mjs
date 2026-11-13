@@ -648,3 +648,17 @@ test('the wheel keeps working after the settings panel remounts the strip', asyn
   harness.dispatchWindow('wheel', event)
   assert.equal(strip.scrollLeft, 90)
 })
+
+test('the strip claims its own dock row through the display:contents outlet', async () => {
+  const { harness, component, t } = boot()
+  harness.mount(component, { t })
+  await harness.settle()
+  const root = harness.findElement((element) => element.props?.['data-variant'] === 'dock')
+  assert.ok(root, 'the component root is mounted')
+  const dock = root.__dock
+  const outlet = root.__outlet
+  assert.equal(outlet.__computed.display, 'contents', 'DSH inserts a display:contents outlet')
+  assert.equal(dock.style.flexWrap, 'wrap', 'the dock row is allowed to wrap')
+  assert.equal(root.style.order, '99')
+  assert.equal(root.style.flex, '0 0 100%')
+})

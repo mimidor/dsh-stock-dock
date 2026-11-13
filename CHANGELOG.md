@@ -181,3 +181,14 @@ Settings discoverability and the options the strip was missing.
 - The GitHub Actions workflow was removed at the maintainer's request. The same
   checks still run locally: `npm run lint`, `npm test`, `npm run verify:offline`,
   `npm run pack:check`, `npm run check:readme`.
+
+## 1.5.2 — 2026-11-13
+
+- Fixed the dock row claim against DSH's real slot layout: the slot outlet inserts
+  a `display: contents` `[data-slot]` element between the dock and the entry, so
+  the 1.5.1 walk styled the inner scroll strip instead of the flex item. The
+  claim now starts from the component root and, when it meets the contents
+  wrapper, descends to that wrapper's first element child (our root). The claim
+  is also scoped to the dock variant, so the sidebar tab is untouched.
+- Failed claims log the ancestor chain when
+  `localStorage['dsh-stock-ticker:debug'] = '1'`.

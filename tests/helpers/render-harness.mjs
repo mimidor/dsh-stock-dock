@@ -66,6 +66,9 @@ export function createHarness({ fetchImpl, hidden = false, metrics } = {}) {
     },
     setInterval: () => 0,
     clearInterval: () => undefined,
+    getComputedStyle(node) {
+      return node?.__computed ?? { display: 'block', flexDirection: 'row', flexWrap: 'nowrap' }
+    },
   }
 
   // A tiny DOM: `ensureStyles` needs createElement/head/querySelector, and the
@@ -220,6 +223,32 @@ export function createHarness({ fetchImpl, hidden = false, metrics } = {}) {
     elements.set(path, element)
     element.tag = node.type
     element.props = node.props
+    element.style = element.style ?? {}
+    element.tagName = String(node.type).toUpperCase()
+    if (node.props?.['data-plugin'] === 'stock-ticker' && node.props?.['data-variant'] === 'dock') {
+      // Reproduce DSH's real slot outlet: a display:contents [data-slot] element
+      // between the dock flex row and the entry content.
+      const dock = element.__dock ?? {
+        tagName: 'DIV',
+        className: 'uiqlVW_dock',
+        style: {},
+        __computed: { display: 'flex', flexDirection: 'row', flexWrap: 'nowrap' },
+        parentElement: null,
+        closest: () => null,
+      }
+      const outlet = element.__outlet ?? {
+        tagName: 'DIV',
+        className: '',
+        style: {},
+        __computed: { display: 'contents', flexDirection: 'row', flexWrap: 'nowrap' },
+        parentElement: dock,
+        closest: () => null,
+      }
+      element.__dock = dock
+      element.__outlet = outlet
+      outlet.firstElementChild = element
+      element.parentElement = outlet
+    }
     element.scrollWidth = layout.scrollWidth
     element.clientWidth = layout.clientWidth
     element.children = renderTree(node.props.children, `${path}/${node.type}`)

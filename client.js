@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.5.1'
+    const BUILD = 'v1.5.2'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -801,26 +801,6 @@ window.__ModuleLoader__.load({
 .dshst-settingsRow > label { min-width: 132px; color: var(--dsw-alias-label-secondary); }
 .dshst-settingsGroup { display: flex; flex-direction: column; gap: 4px; }
 .dshst-sidebarWrap { height: 100%; }
-/* The composer dock is a flex row shared with DSH's own stats pills and the
-   context meter. Claim a full-width line of our own below them: the parent is
-   matched structurally (its hashed class always ends in _dock) and told to wrap,
-   and the order property pushes the strip after the meter so the first line
-   keeps the native widgets untouched. If a future DSH renames the container the
-   rule simply stops applying and the strip falls back to the inline row. */
-[class*="_dock"]:has(> [data-plugin="stock-ticker"][data-variant="dock"]) {
-  flex-wrap: wrap;
-}
-[class*="_dock"]:has(> [data-plugin="stock-ticker"][data-variant="dock"])
-  > [data-plugin="stock-ticker"][data-variant="dock"] {
-  order: 99;
-  flex: 0 0 100%;
-}
-/* Fallback for a host that wraps slot entries in its own element: the strip is
-   then a grandchild, so the flex item is the wrapper; the rules are inert there
-   and the layout degrades to the inline row instead of breaking. */
-[class*="_dock"]:has([data-plugin="stock-ticker"][data-variant="dock"]) {
-  flex-wrap: wrap;
-}
 .dshst-scrollWrap { position: relative; }
 .dshst-scrollTrack {
   position: absolute;
@@ -2659,15 +2639,29 @@ window.__ModuleLoader__.load({
         container = element.closest('[class*="_dock"]') ?? undefined
       }
       if (!container) {
-        if (debugEnabled()) console.warn('[stock-ticker] dock row: no flex ancestor found')
+        if (debugEnabled()) {
+          const chain = []
+          let cursor = element
+          for (let depth = 0; cursor && depth < 8; depth += 1) {
+            const style = styleOf(cursor)
+            chain.push({ tag: cursor.tagName, className: String(cursor.className ?? ''), display: style?.display, flexDirection: style?.flexDirection })
+            cursor = cursor.parentElement
+          }
+          console.warn('[stock-ticker] dock row: no flex ancestor found', chain)
+        }
         return undefined
       }
 
       let item = element
       while (item && item.parentElement && item.parentElement !== container) item = item.parentElement
       if (!item || item.parentElement !== container) return undefined
+      // The slot outlet inserts a display:contents [data-slot] element between
+      // the owner and the content; the real flex item is that wrapper's first
+      // element child (our own root), not the wrapper and not the inner strip.
       const itemStyle = styleOf(item)
-      if (itemStyle && itemStyle.display === 'contents') item = element
+      if (itemStyle && itemStyle.display === 'contents') {
+        item = item.firstElementChild ?? element
+      }
 
       const previous = {
         wrap: container.style.flexWrap,
@@ -2727,8 +2721,10 @@ window.__ModuleLoader__.load({
       const sparkMeta = useRef({ key: '', at: 0, etag: '' })
       const stripRef = useRef(null)
       const restoreStripRow = useRef(undefined)
-      const bindStrip = useCallback((node) => {
-        stripRef.current = node
+      // The row claim must start from the component root: the dock, the
+      // display:contents [data-slot] outlet and our root are three different
+      // elements, and only the third one is the flex item.
+      const bindRow = useCallback((node) => {
         if (typeof restoreStripRow.current === 'function') {
           restoreStripRow.current()
           restoreStripRow.current = undefined
@@ -3014,7 +3010,7 @@ window.__ModuleLoader__.load({
               'div',
               {
                 className: 'dshst-strip',
-                ref: bindStrip,
+                ref: stripRef,
                 onPointerDown: (event) => {
                   const element = stripRef.current
                   dragState.current = {
@@ -3096,7 +3092,13 @@ window.__ModuleLoader__.load({
 
       return h(
         'div',
-        { className: 'dshst', 'data-scheme': colorMode, 'data-plugin': 'stock-ticker', 'data-variant': variant },
+        {
+          className: 'dshst',
+          ref: variant === 'dock' ? bindRow : undefined,
+          'data-scheme': colorMode,
+          'data-plugin': 'stock-ticker',
+          'data-variant': variant,
+        },
         h('div', { className: 'dshst-live', 'aria-live': 'polite', role: 'status' }, notice || (error && !data ? error : '')),
         h(
           'div',
