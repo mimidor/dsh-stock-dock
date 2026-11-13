@@ -804,11 +804,11 @@ test('the one-day intraday chart overlays the previous session volume baseline',
   assert.ok(calls.some((call) => call.path.includes('days=1') && call.path.includes('baseline=1')), 'the chart asks for the comparison')
   const text = textOf(tree)
   assert.match(text, /同期量比/)
-  assert.match(text, /昨日同期量/)
+  assert.match(text, /昨日量/)
   assert.match(text, /放量 ↑/, 'a ratio above one is labelled as expanding volume')
-  const dashed = findAll(tree, (element) =>
-    element.tag === 'path' && element.props.style?.strokeDasharray === '2 3')
-  assert.ok(dashed.length > 0, 'the dashed previous-session baseline is drawn')
+  const ghosts = findAll(tree, (element) =>
+    element.tag === 'rect' && element.props.style?.fill === 'var(--dsw-alias-label-secondary)' && element.props.style?.fillOpacity === 0.12)
+  assert.ok(ghosts.length > 0, 'yesterday volume is drawn as a ghost bar')
 })
 
 test('the custom scroll track appears only while the strip overflows', async () => {
@@ -940,9 +940,13 @@ test('minute K volume bars compare with the previous trading day', async () => {
   const detail = findAll(tree, (element) => hasClass(element, 'dshst-detail'))[0]
   const chart = findAll(detail, (element) => element.tag === 'svg' && hasClass(element, 'dshst-chart'))[0]
   assert.ok(chart, 'the minute K chart is mounted')
+  assert.match(textOf(tree), /量能/)
+  assert.match(textOf(tree), /昨日量/)
   assert.ok(
-    findAll(detail, (element) => element.tag === 'path' && element.props.style?.strokeDasharray === '2 3').length > 0,
-    'the previous-session baseline is drawn',
+    findAll(detail, (element) =>
+      element.tag === 'rect' && element.props.style?.fill === 'var(--dsw-alias-label-secondary)' && element.props.style?.fillOpacity === 0.12,
+    ).length > 0,
+    'yesterday volume is drawn as a ghost bar',
   )
   // The last bar (60) is below the same slot yesterday (120).
   chart.props.onMouseMove({ clientX: 500, currentTarget: chart })

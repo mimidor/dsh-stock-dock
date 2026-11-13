@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.10.3'
+    const BUILD = 'v1.10.4'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -77,7 +77,11 @@ window.__ModuleLoader__.load({
       volumeFlat: '平量',
       volumeBaseline: '前{n}日均量',
       volumeBaselinePrev: '昨日同期量',
-      volumeKlineHint: '红/橙=放量 · 越淡越缩量 · 虚线=上一交易日同期',
+      volumeLegendTitle: '量能',
+      volumeLegendHeavy: '大幅放量',
+      volumeLegendSlight: '微放量',
+      volumeLegendDeepShrink: '大幅缩量',
+      volumeLegendPrevious: '昨日量',
       range: '区间',
       rangeBars: '根',
       rangeChange: '涨跌幅',
@@ -246,7 +250,11 @@ window.__ModuleLoader__.load({
       volumeFlat: 'Steady',
       volumeBaseline: 'prior {n}-day avg',
       volumeBaselinePrev: 'prev session',
-      volumeKlineHint: 'red/orange = expanding · paler = shrinking · dashed = previous session',
+      volumeLegendTitle: 'Volume',
+      volumeLegendHeavy: 'Heavy',
+      volumeLegendSlight: 'Slight',
+      volumeLegendDeepShrink: 'Heavy shrink',
+      volumeLegendPrevious: 'Previous',
       range: 'Range',
       rangeBars: 'bars',
       rangeChange: 'Change',
@@ -620,11 +628,35 @@ window.__ModuleLoader__.load({
 .dshst-volumeSignal[data-trend="up"][data-strength="strong"] { color: var(--dsw-alias-state-error-primary); }
 .dshst-volumeSignal[data-trend="down"],
 .dshst-volumeSignal[data-trend="flat"] { color: var(--dsw-alias-label-secondary); }
-.dshst-baselineSwatch {
-  width: 14px;
-  height: 0;
-  border-top: 1px dashed var(--dsw-alias-label-secondary);
-  opacity: 0.8;
+.dshst-volumeLegend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding: 0 2px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+.dshst-volumeLegendTitle {
+  color: var(--dsw-alias-label-secondary);
+  font-weight: 600;
+}
+.dshst-volumeLegendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.dshst-volumeSwatch {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex: 0 0 auto;
+}
+.dshst-volumeSwatchGhost {
+  background: color-mix(in srgb, var(--dsw-alias-label-secondary) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-label-secondary) 35%, transparent);
 }
 .dshst-readout {
   position: absolute;
@@ -1354,6 +1386,34 @@ window.__ModuleLoader__.load({
       return { fill: 'var(--dsw-alias-border-l2)', fillOpacity: 0.8 }
     }
 
+    /** A compact swatch legend for the volume tiers and the previous-session ghost. */
+    function VolumeLegend(props) {
+      const t = props.t ?? ((key) => key)
+      const item = (fill, opacity, label) =>
+        h(
+          'span',
+          { className: 'dshst-volumeLegendItem', key: label },
+          h('i', { className: 'dshst-volumeSwatch', style: { background: fill, opacity }, 'aria-hidden': true }),
+          label,
+        )
+      return h(
+        'div',
+        { className: 'dshst-volumeLegend' },
+        h('span', { className: 'dshst-volumeLegendTitle' }, t('volumeLegendTitle')),
+        item('var(--dsw-alias-state-error-primary)', 0.95, t('volumeLegendHeavy')),
+        item('var(--dsw-alias-state-warn-primary)', 0.9, t('volumeExpand')),
+        item('var(--dsw-alias-state-warn-primary)', 0.55, t('volumeLegendSlight')),
+        item('var(--dsw-alias-label-secondary)', 0.35, t('volumeShrink')),
+        item('var(--dsw-alias-border-l2)', 0.8, t('volumeLegendDeepShrink')),
+        h(
+          'span',
+          { className: 'dshst-volumeLegendItem', key: 'previous' },
+          h('i', { className: 'dshst-volumeSwatch dshst-volumeSwatchGhost', 'aria-hidden': true }),
+          t('volumeLegendPrevious'),
+        ),
+      )
+    }
+
     /**
      * Minute K rows spell their timestamp as YYYYMMDDHHMM. For each row, find
      * the same HHMM on the previous trading day present in this page, which is
@@ -1548,6 +1608,26 @@ window.__ModuleLoader__.load({
           const baseline = volumeBaseline.get(String(row.date))
           const ratio = typeof baseline === 'number' && baseline > 0 ? row.volume / baseline : null
           const tone = volumeBarTone(ratio)
+          if (typeof baseline === 'number' && baseline > 0) {
+            const ghostHeight = Math.max(0.6, (baseline / maxVolume) * (volumeBand - 3))
+            children.push(
+              h('rect', {
+                key: `gv${index}`,
+                x: center - bodyWidth / 2,
+                y: height - ghostHeight,
+                width: bodyWidth,
+                height: ghostHeight,
+                style: {
+                  fill: 'var(--dsw-alias-label-secondary)',
+                  fillOpacity: 0.12,
+                  stroke: 'var(--dsw-alias-label-secondary)',
+                  strokeOpacity: 0.35,
+                  strokeWidth: 0.5,
+                },
+                pointerEvents: 'none',
+              }),
+            )
+          }
           children.push(
             h('rect', {
               key: `v${index}`,
@@ -1560,6 +1640,7 @@ window.__ModuleLoader__.load({
           )
         }
       })
+
 
       if (volumeBaseline.size > 0 && maxVolume > 0) {
         let path = ''
@@ -1581,7 +1662,7 @@ window.__ModuleLoader__.load({
               key: 'vbaseline',
               d: path.trim(),
               fill: 'none',
-              style: { stroke: 'var(--dsw-alias-label-secondary)', strokeDasharray: '2 3', strokeOpacity: 0.8 },
+              style: { stroke: 'var(--dsw-alias-label-secondary)', strokeDasharray: '2 3', strokeOpacity: 0.75 },
               strokeWidth: 1,
               vectorEffect: 'non-scaling-stroke',
             }),
@@ -1840,9 +1921,7 @@ window.__ModuleLoader__.load({
           h('span', null, rows[0]?.date ?? ''),
           h('span', null, rows[rows.length - 1]?.date ?? ''),
         ),
-        minutePeriod && volumeBaseline.size > 0
-          ? h('div', { className: 'dshst-chartNote' }, h('span', null, t('volumeKlineHint')))
-          : null,
+        minutePeriod && volumeBaseline.size > 0 ? h(VolumeLegend, { t }) : null,
         selectedRange
           ? h(
               'div',
@@ -2307,6 +2386,26 @@ window.__ModuleLoader__.load({
             const fill = tone?.fill ?? (rising ? up : 'var(--dshst-down)')
             const fillOpacity = tone?.fillOpacity ?? 0.5
             const hovered = hover === index
+            if (typeof reference === 'number' && reference > 0) {
+              const ghostHeight = Math.max(0.5, (reference / maxVolume) * (volumeBand - 4))
+              children.push(
+                h('rect', {
+                  key: `gv${index}`,
+                  x: (index / (points.length - 1)) * width,
+                  y: height - ghostHeight,
+                  width: barWidth,
+                  height: ghostHeight,
+                  style: {
+                    fill: 'var(--dsw-alias-label-secondary)',
+                    fillOpacity: 0.12,
+                    stroke: 'var(--dsw-alias-label-secondary)',
+                    strokeOpacity: 0.35,
+                    strokeWidth: 0.5,
+                  },
+                  pointerEvents: 'none',
+                }),
+              )
+            }
             children.push(
               h('rect', {
                 key: `v${index}`,
@@ -2341,7 +2440,7 @@ window.__ModuleLoader__.load({
                 key: 'vbaseline',
                 d: path.trim(),
                 fill: 'none',
-                style: { stroke: 'var(--dsw-alias-label-secondary)', strokeDasharray: '2 3', strokeOpacity: 0.8 },
+                style: { stroke: 'var(--dsw-alias-label-secondary)', strokeDasharray: '2 3', strokeOpacity: 0.75 },
                 strokeWidth: 1,
                 vectorEffect: 'non-scaling-stroke',
               }),
@@ -2418,16 +2517,9 @@ window.__ModuleLoader__.load({
             { className: 'dshst-chartNote' },
             h('span', { className: 'dshst-volumeSignal', 'data-trend': signal, 'data-strength': strength }, `${label} ${arrow}`),
             h('span', null, `${t('volumeCompare')} `, h('b', null, ratio.toFixed(2))),
-            h('span', { className: 'dshst-baselineSwatch', 'aria-hidden': true }),
-            h(
-              'span',
-              null,
-              baselineDays === 1
-                ? t('volumeBaselinePrev')
-                : t('volumeBaseline').replace('{n}', String(baselineDays)),
-            ),
           )
         })(),
+        baselineDays > 0 && baselineAt.size > 0 ? h(VolumeLegend, { t }) : null,
         active
           ? h(
               'span',

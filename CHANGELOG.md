@@ -575,3 +575,14 @@ Settings discoverability and the options the strip was missing.
 - Applies to both the intraday volume band and the 5/15/30/60-minute K bars;
   the hover/readout signal turns red for the heavy tier and the minute-K legend
   now says "red/orange = expanding · paler = shrinking". 84 tests.
+
+## 1.10.4 — 2026-11-13
+
+- Added a **volume legend** under the intraday and minute-K charts: coloured
+  swatches for heavy/normal/slight expansion, shrinking, heavy shrinking, and a
+  hollow swatch for yesterday's volume.
+- Yesterday's actual volume is now drawn as **hollow ghost bars** behind each
+  bar (and the prior-session dashed line stays on top), so an expanding minute
+  still shows how much yesterday traded, not just a colour. Hovering keeps the
+  numeric `昨 ...` reading.
+- Applies to the intraday band and 5/15/30/60-minute K. 84 tests.
