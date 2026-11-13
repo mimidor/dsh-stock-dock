@@ -183,6 +183,7 @@ function settingsPayload() {
 }
 
 function makeFetch(calls, overrides = {}) {
+  let quotesCalls = 0
   return async (url, init = {}) => {
     const path = String(url).replace('/dsh-stock-ticker', '')
     const method = (init.method ?? 'GET').toUpperCase()
@@ -217,6 +218,11 @@ function makeFetch(calls, overrides = {}) {
     if (path.startsWith('/quotes')) {
       if (overrides.quotesStatus && overrides.quotesStatus !== 200) {
         return new Response(JSON.stringify({ ok: false, error: 'unauthorized' }), { status: overrides.quotesStatus })
+      }
+      if (Array.isArray(overrides.quotesSequence)) {
+        const index = Math.min(quotesCalls, overrides.quotesSequence.length - 1)
+        quotesCalls += 1
+        return respond(overrides.quotesSequence[index])
       }
       return respond(overrides.quotes ?? quotesPayload())
     }
@@ -697,4 +703,25 @@ test('the refresh button reports an in-flight poll', async () => {
   await harness.flushTimers(1000)
   tree = harness.getTree()
   assert.equal(refreshButton(tree).props['data-busy'], 'false', 'the indicator clears after the hold')
+})
+
+test('a changed quote remounts the price block so its flash replays', async () => {
+  const first = quotesPayload()
+  const second = quotesPayload({
+    quotes: [quote({ price: 1420.5, change: 18.2, changePct: 1.3 }), first.quotes[1]],
+  })
+  const { harness, component, t } = boot({ quotesSequence: [first, second] })
+  harness.mount(component, { t })
+  let tree = await harness.settle()
+  const quoteKeys = (rendered) => findAll(rendered, (element) =>
+    String(element.props?.className ?? '').split(/\s+/).includes('dshst-quote')).map((element) => element.props.key)
+  const before = quoteKeys(tree)
+  assert.equal(before.length, 2, 'both cards expose a keyed price block')
+  const button = findAll(tree, (element) =>
+    element.tag === 'button' && String(element.props?.className ?? '').split(/\s+/).includes('dshst-refresh'))[0]
+  click(button)
+  tree = await harness.settle()
+  const after = quoteKeys(tree)
+  assert.notEqual(after[0], before[0], 'the changed price gets a fresh key and replays the flash')
+  assert.equal(after[1], before[1], 'an unchanged price keeps its key, so it does not blink')
 })

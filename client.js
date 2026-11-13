@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.5.6'
+    const BUILD = 'v1.5.7'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -402,20 +402,11 @@ window.__ModuleLoader__.load({
 .dshst-refresh[data-busy="true"] svg {
   animation: dshst-spin 700ms linear infinite;
 }
-/* The clock flashes once per successful poll; the key change replays it. */
-.dshst-flash {
-  animation: dshst-flash 700ms ease-out;
-}
 @keyframes dshst-spin {
   to { transform: rotate(360deg); }
 }
-@keyframes dshst-flash {
-  from { color: var(--dsw-alias-brand-primary); }
-  to { color: var(--dsw-alias-label-secondary); }
-}
 @media (prefers-reduced-motion: reduce) {
-  .dshst-refresh[data-busy="true"] svg,
-  .dshst-flash {
+  .dshst-refresh[data-busy="true"] svg {
     animation: none;
   }
 }
@@ -488,6 +479,33 @@ window.__ModuleLoader__.load({
   margin-left: auto;
   text-align: right;
   font-variant-numeric: tabular-nums;
+  position: relative;
+}
+/* A quote app's tick cue: the price and percent highlight briefly when their
+   displayed values change; the highlight is a pseudo-element so no text moves. */
+.dshst-quote::before {
+  content: "";
+  position: absolute;
+  inset: -1px -4px;
+  border-radius: 4px;
+  background: var(--dsw-alias-brand-primary);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 0;
+  animation: dshst-quote-flash 700ms ease-out;
+}
+.dshst-quote > span {
+  position: relative;
+  z-index: 1;
+}
+@keyframes dshst-quote-flash {
+  from { opacity: 0.22; }
+  to { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dshst-quote::before {
+    animation: none;
+  }
 }
 .dshst-price { font-size: 13px; font-weight: 600; }
 .dshst-chg { font-size: 11px; }
@@ -1404,6 +1422,9 @@ window.__ModuleLoader__.load({
         )
       }
       const trend = trendClass(quote.changePct)
+      // Remounting the block on a displayed-value change replays the CSS flash;
+      // an unchanged price keeps the same key, so a silent poll does not blink.
+      const flashKey = `${formatPrice(quote.price)}|${formatPct(quote.changePct)}`
       const armed = Array.isArray(quote.alerts) ? quote.alerts.filter((alert) => !alert.firedAt).length : 0
       const rows = Array.isArray(props.sparkline) ? props.sparkline : Array.isArray(quote.kline) ? quote.kline : []
       return h(
@@ -1453,7 +1474,7 @@ window.__ModuleLoader__.load({
         ),
         h(
           'span',
-          { className: 'dshst-quote' },
+          { key: flashKey, className: 'dshst-quote' },
           h('span', { className: `dshst-price ${trend}` }, formatPrice(quote.price)),
           h('span', { className: `dshst-chg ${trend}` }, formatPct(quote.changePct)),
         ),
@@ -3209,9 +3230,7 @@ window.__ModuleLoader__.load({
             : null,
           data?.session ? h('span', { className: 'dshst-chip' }, sessionLabel(t, data.session)) : null,
           h('span', { className: 'dshst-chip', title: 'stock-ticker build' }, BUILD),
-          data?.updatedAt
-            ? h('span', { key: data.updatedAt, className: 'dshst-meta dshst-flash' }, formatClock(data.updatedAt))
-            : null,
+          data?.updatedAt ? h('span', { className: 'dshst-meta' }, formatClock(data.updatedAt)) : null,
           error && data
             ? h(
                 'span',

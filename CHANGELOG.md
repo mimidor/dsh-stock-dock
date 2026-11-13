@@ -257,3 +257,14 @@ Settings discoverability and the options the strip was missing.
   unmount.
 - Test: the refresh button reports `data-busy="true"` during the fetch and
   `"false"` once the hold expires. 71 tests total.
+
+## 1.5.7 — 2026-11-13
+
+- Moved the update cue from the header clock to the values themselves: when a
+  card's displayed price or percent changes, that price block remounts and a
+  brief brand-colored highlight fades out behind the price and the change. An
+  unchanged value keeps its key and does not blink, so a poll where nothing
+  traded stays quiet; the header refresh spinner still shows that a request is
+  running. The flash respects `prefers-reduced-motion`.
+- Test: a changed quote gets a fresh price-block key while the unchanged card
+  keeps its key. 72 tests total.
