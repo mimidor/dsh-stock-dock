@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.6.3'
+    const BUILD = 'v1.7.0'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -120,6 +120,11 @@ window.__ModuleLoader__.load({
       settingsTitle: '行情条',
       refreshSeconds: '刷新间隔（秒）',
       klineDays: '迷你K线根数',
+      miniChartType: '迷你图类型',
+      miniIntraday: '分时线',
+      miniDay: '日K',
+      miniWeek: '周K',
+      miniMonth: '月K',
       colorMode: '配色',
       colorCn: '红涨绿跌',
       colorIntl: '绿涨红跌',
@@ -165,7 +170,7 @@ window.__ModuleLoader__.load({
       deleteTrade: '删除',
       dataSource: '数据源',
       sourceAuto: '自动（腾讯 → 新浪 → 东财）',
-      showMiniChart: '显示迷你 K 线',
+      showMiniChart: '显示迷你图',
       showOrderBook: '显示五档盘口',
       showStats: '显示指标行',
       showExtended: '显示美股盘前 / 盘后',
@@ -271,6 +276,11 @@ window.__ModuleLoader__.load({
       settingsTitle: 'Quote strip',
       refreshSeconds: 'Refresh seconds',
       klineDays: 'Mini chart bars',
+      miniChartType: 'Mini chart type',
+      miniIntraday: 'Intraday line',
+      miniDay: 'Daily',
+      miniWeek: 'Weekly',
+      miniMonth: 'Monthly',
       colorMode: 'Colours',
       colorCn: 'Red up / green down',
       colorIntl: 'Green up / red down',
@@ -316,7 +326,7 @@ window.__ModuleLoader__.load({
       deleteTrade: 'Delete',
       dataSource: 'Data source',
       sourceAuto: 'Auto (Tencent → Sina → Eastmoney)',
-      showMiniChart: 'Show mini K-line',
+      showMiniChart: 'Show mini chart',
       showOrderBook: 'Show order book',
       showStats: 'Show metrics row',
       showExtended: 'Show US pre/post market',
@@ -515,6 +525,7 @@ window.__ModuleLoader__.load({
 .dshst-down { color: var(--dshst-down); }
 .dshst-flat { color: var(--dsw-alias-label-secondary); }
 .dshst-chart { display: block; flex: 0 0 auto; }
+.dshst-miniLine { display: block; flex: 0 0 auto; }
 .dshst-chartWrap { position: relative; width: 100%; }
 .dshst-chartNote {
   display: flex;
@@ -1388,6 +1399,64 @@ window.__ModuleLoader__.load({
       return value.toFixed(0)
     }
 
+    /**
+     * The card-sized intraday line. Prices are already sampled by the Host, so
+     * this only maps them to the 54x24 box and keeps the day's direction colour.
+     */
+    function MiniTrend(props) {
+      const points = Array.isArray(props.points) ? props.points : []
+      const width = props.width ?? 54
+      const height = props.height ?? 24
+      const values = points.map((point) => point.price).filter((value) => typeof value === 'number' && Number.isFinite(value))
+      if (values.length < 2) {
+        return h('div', { className: 'dshst-chartEmpty', style: { width, height }, title: props.emptyLabel ?? '' })
+      }
+      let min = Math.min(...values)
+      let max = Math.max(...values)
+      if (max <= min) {
+        const pad = Math.abs(max) * 0.005 || 0.01
+        min -= pad
+        max += pad
+      }
+      const inset = 2
+      const scaleX = (index) => (index / (points.length - 1)) * width
+      const scaleY = (value) => height - inset - ((value - min) / (max - min)) * (height - inset * 2)
+      const line = points
+        .map((point, index) =>
+          typeof point.price === 'number' ? `${scaleX(index).toFixed(1)},${scaleY(point.price).toFixed(1)}` : null,
+        )
+        .filter(Boolean)
+      if (line.length < 2) {
+        return h('div', { className: 'dshst-chartEmpty', style: { width, height }, title: props.emptyLabel ?? '' })
+      }
+      const color = props.up ?? 'var(--dshst-up)'
+      return h(
+        'svg',
+        {
+          className: 'dshst-miniLine',
+          width,
+          height,
+          viewBox: `0 0 ${width} ${height}`,
+          preserveAspectRatio: 'none',
+          role: 'img',
+          'aria-label': props.label ?? '',
+        },
+        h('path', {
+          d: `M0,${height} L${line.join(' L')} L${width},${height} Z`,
+          fill: color,
+          fillOpacity: 0.12,
+          stroke: 'none',
+        }),
+        h('path', {
+          d: `M${line.join(' L')}`,
+          fill: 'none',
+          stroke: color,
+          strokeWidth: 1.2,
+          vectorEffect: 'non-scaling-stroke',
+        }),
+      )
+    }
+
     function QuoteCard(props) {
       const { quote, t, index } = props
       const dragProps = {
@@ -1444,7 +1513,14 @@ window.__ModuleLoader__.load({
       // an unchanged price keeps the same key, so a silent poll does not blink.
       const flashKey = `${formatPrice(quote.price)}|${formatPct(quote.changePct)}|${props.pulse ?? 0}`
       const armed = Array.isArray(quote.alerts) ? quote.alerts.filter((alert) => !alert.firedAt).length : 0
-      const rows = Array.isArray(props.sparkline) ? props.sparkline : Array.isArray(quote.kline) ? quote.kline : []
+      const chart = props.chart && typeof props.chart === 'object' ? props.chart : null
+      const rows = chart?.kind === 'candles' ? chart.rows : Array.isArray(quote.kline) ? quote.kline : []
+      const miniUp =
+        trend === 'dshst-up'
+          ? 'var(--dshst-up)'
+          : trend === 'dshst-down'
+            ? 'var(--dshst-down)'
+            : 'var(--dsw-alias-label-secondary)'
       return h(
         'div',
         {
@@ -1498,13 +1574,22 @@ window.__ModuleLoader__.load({
         ),
         props.showMiniChart === false
           ? null
-          : h(Candles, {
-              rows: rows.slice(-Math.min(props.previewDays ?? 20, 20)),
-              width: 54,
-              height: 24,
-              label: `${quote.name ?? quote.symbol} ${t('title')}`,
-              emptyLabel: t('noKline'),
-            }),
+          : chart?.kind === 'line'
+            ? h(MiniTrend, {
+                points: chart.points,
+                up: miniUp,
+                width: 54,
+                height: 24,
+                label: `${quote.name ?? quote.symbol} ${t('title')}`,
+                emptyLabel: t('noKline'),
+              })
+            : h(Candles, {
+                rows: rows.slice(-Math.min(props.previewDays ?? 20, 20)),
+                width: 54,
+                height: 24,
+                label: `${quote.name ?? quote.symbol} ${t('title')}`,
+                emptyLabel: t('noKline'),
+              }),
         h(
           'button',
           {
@@ -3054,25 +3139,38 @@ window.__ModuleLoader__.load({
       // refreshed every five minutes; the quote poll no longer carries them.
       const symbolKey = Array.isArray(data?.symbols) ? data.symbols.join(',') : ''
       const sparkDays = data?.settings?.klineDays ?? 40
+      const chartType = data?.settings?.miniChartType ?? 'day'
+      const sparkKey = `${symbolKey}|${chartType}|${sparkDays}`
+      // An intraday line moves during the session; a K-line page does not. The
+      // quote poll supplies the tick, and the 60 s TTL below limits refetches.
+      const sparkTick = chartType === 'intraday' ? data?.updatedAt : 0
       useEffect(() => {
         if (!active || symbolKey === '') return undefined
         const cached = sparkMeta.current
-        if (cached.key === symbolKey && Date.now() - cached.at < SPARK_TTL_MS) return undefined
+        const ttl = chartType === 'intraday' ? 60_000 : SPARK_TTL_MS
+        if (cached.key === sparkKey && Date.now() - cached.at < ttl) return undefined
         let cancelled = false
         ;(async () => {
           try {
-            const payload = await api(`/sparklines?days=${sparkDays}&symbols=${encodeURIComponent(symbolKey)}`, {
-              headers: cached.etag ? { 'If-None-Match': cached.etag } : {},
+            const etag = cached.key === sparkKey ? cached.etag : ''
+            const payload = await api(`/sparklines?days=${sparkDays}&type=${encodeURIComponent(chartType)}&symbols=${encodeURIComponent(symbolKey)}`, {
+              headers: etag ? { 'If-None-Match': etag } : {},
               cache: 'default',
             })
             if (cancelled || !alive.current) return
             if (payload.notModified) {
-              sparkMeta.current = { ...cached, key: symbolKey, at: Date.now() }
+              sparkMeta.current = { ...cached, key: sparkKey, at: Date.now() }
               return
             }
             if (payload.ok !== true) throw new Error(payload.error || 'sparklines-failed')
-            setSparks(payload.rows ?? {})
-            sparkMeta.current = { key: symbolKey, at: Date.now(), etag: payload.etag ?? '' }
+            const charts =
+              payload.charts && typeof payload.charts === 'object'
+                ? payload.charts
+                : Object.fromEntries(
+                    Object.entries(payload.rows ?? {}).map(([symbol, rows]) => [symbol, { kind: 'candles', rows }]),
+                  )
+            setSparks(charts)
+            sparkMeta.current = { key: sparkKey, at: Date.now(), etag: payload.etag ?? '' }
           } catch (failure) {
             if (!cancelled && failure?.code !== 'host-missing') console.error('[stock-ticker] sparklines failed', failure)
           }
@@ -3080,7 +3178,7 @@ window.__ModuleLoader__.load({
         return () => {
           cancelled = true
         }
-      }, [active, symbolKey, sparkDays])
+      }, [active, sparkKey, chartType, sparkDays, sparkTick])
 
       const refreshSeconds = data?.settings?.refreshSeconds
       const serverInterval = data?.session?.intervalMs
@@ -3317,7 +3415,7 @@ window.__ModuleLoader__.load({
                   previewDays: prefs.klineDays,
                   sourceDot: prefs.sourceDot !== false,
                   selected: selected === quote.symbol,
-                  sparkline: prefs.showMiniChart === false ? null : sparks[quote.symbol],
+                  chart: prefs.showMiniChart === false ? null : sparks[quote.symbol],
                   pulse: manualPulse,
                   showMiniChart: prefs.showMiniChart !== false,
                   showExtended: prefs.showExtended === true,
@@ -3712,6 +3810,19 @@ window.__ModuleLoader__.load({
             onChange: (event) => setDraft((current) => ({ ...current, klineDays: event.target.value })),
             onBlur: () => save({ klineDays: Number(draft.klineDays) }),
           }),
+        ),
+        row(
+          t('miniChartType'),
+          select(
+            'miniChartType',
+            [
+              ['intraday', t('miniIntraday')],
+              ['day', t('miniDay')],
+              ['week', t('miniWeek')],
+              ['month', t('miniMonth')],
+            ],
+            t('miniChartType'),
+          ),
         ),
         row(
           t('colorMode'),

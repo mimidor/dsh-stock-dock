@@ -122,6 +122,7 @@ function quotesPayload(overrides = {}) {
       showMA: true,
       showVolume: true,
       showMiniChart: true,
+      miniChartType: 'day',
       showOrderBook: true,
       showStats: true,
       showExtended: false,
@@ -197,12 +198,33 @@ function makeFetch(calls, overrides = {}) {
     if (method === 'POST' && path.startsWith('/groups')) return respond({ ok: true, groups: [], activeGroup: 'default' })
     if (method === 'POST' && path.startsWith('/config')) return respond({ ok: true, symbols: ['sh600519'], persisted: 'store' })
     if (path.startsWith('/sparklines')) {
+      const type = /[?&]type=([a-z]+)/.exec(path)?.[1] ?? 'day'
+      if (type === 'intraday') {
+        const line = (offset) => points(1)
+          .filter((_, index) => index % 4 === 0)
+          .map((point) => ({ time: point.time, price: point.price + offset }))
+        return respond({
+          ok: true,
+          updatedAt: Date.now(),
+          days: 40,
+          type,
+          etag: '"spark-line"',
+          charts: {
+            sh600519: { kind: 'line', prevClose: 1402.3, points: line(0) },
+            hk00700: { kind: 'line', prevClose: 409.6, points: line(-10) },
+          },
+          rows: {},
+        })
+      }
+      const rows = { sh600519: candles(40), hk00700: candles(40) }
       return respond({
         ok: true,
         updatedAt: Date.now(),
         days: 40,
+        type,
         etag: '"spark-1"',
-        rows: { sh600519: candles(40), hk00700: candles(40) },
+        charts: Object.fromEntries(Object.entries(rows).map(([symbol, list]) => [symbol, { kind: 'candles', rows: list }])),
+        rows,
       })
     }
     if (path.startsWith('/trades')) {
@@ -549,7 +571,7 @@ test('the header gear opens the settings panel inside the strip', async () => {
   tree = await harness.settle()
   const text = textOf(tree)
   assert.match(text, /数据源/)
-  assert.match(text, /显示迷你 K 线/)
+  assert.match(text, /显示迷你图/)
   assert.match(text, /显示美股盘前/)
 })
 
@@ -566,6 +588,13 @@ test('the settings panel switches the data source and the visibility toggles', a
   tree = await harness.settle()
   const sourceCall = calls.filter((call) => call.method === 'POST' && call.path === '/prefs').at(-1)
   assert.deepEqual(sourceCall.body.patch, { source: 'sina' })
+
+  const miniType = findAll(tree, (element) => element.tag === 'select' && element.props['aria-label'] === '迷你图类型')[0]
+  assert.ok(miniType, 'the mini chart type select exists')
+  change(miniType, 'intraday')
+  tree = await harness.settle()
+  const miniCall = calls.filter((call) => call.method === 'POST' && call.path === '/prefs').at(-1)
+  assert.deepEqual(miniCall.body.patch, { miniChartType: 'intraday' })
 
   const orderBookToggle = findAll(tree, (element) => element.tag === 'input' && element.props['aria-label'] === '显示五档盘口')[0]
   assert.ok(orderBookToggle, 'the order book toggle exists')
@@ -799,4 +828,18 @@ test('the strip node itself handles a wheel event, not only the window', async (
   // The same event must not be scrolled again by the window capture listener.
   harness.dispatchWindow('wheel', event)
   assert.equal(strip.scrollLeft, 90)
+})
+
+test('the mini chart follows the configured type', async () => {
+  const payload = quotesPayload()
+  payload.settings = { ...payload.settings, miniChartType: 'intraday' }
+  const { harness, component, t, calls } = boot({ quotes: payload })
+  harness.mount(component, { t })
+  const tree = await harness.settle()
+  assert.ok(calls.some((call) => call.path.includes('/sparklines') && call.path.includes('type=intraday')))
+  assert.equal(
+    findAll(tree, (element) => hasClass(element, 'dshst-miniLine')).length,
+    2,
+    'both cards draw the intraday line',
+  )
 })

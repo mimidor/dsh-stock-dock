@@ -2,7 +2,7 @@
 
 **中文** · [English](README.en.md)
 
-![version](https://img.shields.io/badge/version-1.6.3-blue)
+![version](https://img.shields.io/badge/version-1.7.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![dsh](https://img.shields.io/badge/DSH-0.2.x-6f5bd6)
 ![data](https://img.shields.io/badge/data-Tencent%20%7C%20Sina%20%7C%20Eastmoney-orange)
@@ -20,7 +20,8 @@
 ## 功能
 
 - **行情条**：常驻输入框下方，滚轮或触摸板左右滑动转横向、按住可拖动、悬停浮出进度条；涨红跌绿（可切国际配色），A 股打 `涨停`/`跌停`，每张卡带数据源点
-- **设置面板**：头部齿轮直接打开（不依赖 DSH 设置页）；可切数据源（自动/腾讯/新浪/东财）、默认图表、复权、刷新节奏，以及逐项显示开关（迷你 K 线、均线、成交量、五档盘口、指标行、数据源标记、预警提示、美股盘前/盘后）
+- **设置面板**：头部齿轮直接打开（不依赖 DSH 设置页）；可切数据源（自动/腾讯/新浪/东财）、默认图表、复权、刷新节奏，以及逐项显示开关（迷你图、均线、成交量、五档盘口、指标行、数据源标记、预警提示、美股盘前/盘后）
+- **迷你图类型**：每张卡右侧的小图可切 `分时线 / 日K / 周K / 月K`；分时线随行情刷新，A 股/港股优先，美股分时源不可用时自动退回日K
 - **卡片管理**：悬停出现 `×` 单只移除，拖拽卡片调整顺序，末尾 `＋` 直接打开搜索
 - **搜索添加**：按代码、中文名或拼音搜（东财 suggest + 腾讯 smartbox 双源合并）
 - **分组自选**：多个自选表，头部胶囊切换；新装有「大盘」预置组（上证/深证/创业板/科创50/恒生/纳斯达克）
@@ -31,7 +32,7 @@
 - **持仓与流水**：填股数/成本画成本虚线；记买卖流水后按加权平均成本算已实现盈亏，并可一键"按流水同步持仓"
 - **价格预警**：上破/下破目标价，命中弹提示；确认后要等价格离开目标价才会再次触发
 - **agent 工具**：`stock_quote`（批量行情）与 `stock_events`（公告 / 龙虎榜）
-- **插件设置页**：刷新间隔、迷你 K 线根数、配色、默认周期、默认分时天数、复权、均线/成交量/预警提示开关、分组管理
+- **插件设置页**：刷新间隔、迷你图类型与根数、配色、默认周期、默认分时天数、复权、均线/成交量/预警提示开关、分组管理
 - **可选侧栏页**：装了 [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) 时可作为右侧栏标签页；标签页不可见时自动暂停轮询
 - **省电的刷新**：按三地交易时段给节奏，周末与节假日自动降频；页面隐藏或配置面板打开时暂停，失败退避到最长 2 分钟
 - **轻量轮询**：迷你 K 线不再随行情轮询下发，改由 `/sparklines` 单独取并用 ETag 复用；30 只标的单次轮询从 ~129 KB 降到 ~22 KB
@@ -107,7 +108,7 @@ Host 路由（同源；`/dsh-stock-dock` 是等价前缀）：
 
 ```text
 GET  /dsh-stock-ticker/quotes?symbols=...&source=tencent|sina|eastmoney&group=<id>
-GET  /dsh-stock-ticker/sparklines?symbols=...&days=40
+GET  /dsh-stock-ticker/sparklines?symbols=...&days=40&type=intraday|day|week|month
 GET  /dsh-stock-ticker/kline?symbol=...&period=day|week|month|m1|m5|m15|m30|m60&adjust=qfq|hfq|none&limit=40&refresh=1
 GET  /dsh-stock-ticker/trend?symbol=...&days=1|3|5&refresh=1
 GET  /dsh-stock-ticker/search?q=<term>&limit=8
@@ -155,6 +156,7 @@ npm run preview        # 用真实组件生成 docs/preview/*.html 与截图
 - 数据源是公开非官方接口，可能限流、改字段或不可用；没有 SLA。
 - **美股分时不可用**（腾讯只回 1 个点，东财 trends2 在本机被断开）；港股 3/5 日分时可用。盘前/盘后只有价格快照，没有分时。
 - **同期量比不落盘**：用腾讯最近 5 个交易日的分钟量算前 4 日同期均量，只覆盖 A 股/港股；超过 5 个交易日的对比需要后续的分钟量归档。
+- **美股迷你分时不可用**：免费源没有可靠美股分时，迷你图选「分时线」时美股卡片会退回日K。
 - 指数没有五档，港股五档腾讯返回 0，这两类卡片不显示盘口；分钟 K 只有 A 股有。
 - 东财历史接口（`push2his`）在部分网络被服务端直接断开，只作备源并冷却 5 分钟。
 - 节假日是从"报价时间不是今天"推断的，半天市或延迟报价可能晚一两轮。

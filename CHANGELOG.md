@@ -331,3 +331,22 @@ Settings discoverability and the options the strip was missing.
 - Tests: simulate the poll interval to cover the auto value-change path, and
   assert a manual refresh remounts every price block with unchanged values.
   77 tests total.
+
+## 1.7.0 — 2026-11-13
+
+- The card mini chart can now be an intraday line or a K-line: a new
+  `miniChartType` preference selects `intraday / day / week / month`, exposed in
+  both settings surfaces. The default stays `day`, so existing installs do not
+  change appearance.
+- `GET /sparklines?type=...` now returns a per-symbol chart descriptor:
+  `{kind:'line', points, prevClose}` for intraday or `{kind:'candles', rows}` for
+  K-lines. The legacy `rows` map is still present for compatibility and
+  verification, and the ETag includes the type.
+- Intraday lines are built from `trendFor` for A-shares and Hong Kong; US cards
+  fall back to daily candles because free intraday is unavailable. The line is
+  sampled to about 80 points and refreshes once a minute (driven by the quote
+  poll), while K-line mini charts keep the five-minute TTL.
+- The card draws the line with a direction-coloured stroke and a light area
+  fill; the settings row is `迷你图类型` / `Mini chart type`.
+- Tests: the settings select sends the preference, the intraday route fixture
+  renders line charts, and the daily route still renders candles. 78 tests.

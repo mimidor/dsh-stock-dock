@@ -2,7 +2,7 @@
 
 [中文](README.md) · **English**
 
-![version](https://img.shields.io/badge/version-1.6.3-blue)
+![version](https://img.shields.io/badge/version-1.7.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![dsh](https://img.shields.io/badge/DSH-0.2.x-6f5bd6)
 ![data](https://img.shields.io/badge/data-Tencent%20%7C%20Sina%20%7C%20Eastmoney-orange)
@@ -20,7 +20,8 @@ A quote strip pinned under the DeepSeek Harness composer for A-shares, Hong Kong
 ## Features
 
 - **Strip**: always under the composer; wheel or trackpad horizontal swipe, drag to scroll, hover progress bar; red-up/green-down (switchable), A-share limit marks, a source dot per card
-- **Settings panel**: a gear in the header opens it right inside the strip (no dependence on the DSH settings page); switch the data source (auto/Tencent/Sina/Eastmoney), default chart, adjust mode and cadence, and toggle each display element (mini K-line, MAs, volume, order book, metrics row, source dot, alert toast, US pre/post market)
+- **Settings panel**: a gear in the header opens it right inside the strip (no dependence on the DSH settings page); switch the data source (auto/Tencent/Sina/Eastmoney), default chart, adjust mode and cadence, and toggle each display element (mini chart, MAs, volume, order book, metrics row, source dot, alert toast, US pre/post market)
+- **Mini chart type**: the small chart on each card switches between `intraday line / daily / weekly / monthly`; the line follows the poll for A-shares and Hong Kong, and US cards fall back to daily candles because free intraday is unavailable
 - **Card management**: a hover `×` removes one symbol, cards can be dragged into a new order, the trailing `＋` opens search
 - **Search**: code, Chinese name or pinyin, merged from Eastmoney suggest and Tencent smartbox
 - **Watchlist groups**: several lists switched by the header pills; a "market" group is seeded on first install (SSE, SZSE, ChiNext, STAR 50, Hang Seng, Nasdaq)
@@ -31,7 +32,7 @@ A quote strip pinned under the DeepSeek Harness composer for A-shares, Hong Kong
 - **Positions and trades**: shares/cost draw the cost line; recording buys and sells yields weighted-average cost and realised P/L, and one click rebuilds the position from the ledger
 - **Price alerts**: above/below targets surfaced as a toast; acknowledging re-arms but waits for the price to leave the line
 - **Agent tools**: `stock_quote` (batch quotes) and `stock_events` (announcements / daily billboard)
-- **Settings page**: refresh interval, mini-chart bars, colours, default period, default intraday days, adjust mode, MA/volume/toast switches, group management
+- **Settings page**: refresh interval, mini-chart type and bars, colours, default period, default intraday days, adjust mode, MA/volume/toast switches, group management
 - **Optional sidebar page**: with [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) the same panel opens as a tab, and polling pauses while the tab is hidden
 - **Frugal polling**: cadence follows each venue's session, drops on weekends and holidays, pauses when the page is hidden, and backs off after failures
 - **Small poll payload**: mini charts are no longer part of the quote poll; `/sparklines` serves them once with an ETag, taking thirty symbols from ~129 KB to ~22 KB per poll
@@ -107,7 +108,7 @@ Host routes (same origin; `/dsh-stock-dock` is an alias):
 
 ```text
 GET  /dsh-stock-ticker/quotes?symbols=...&source=tencent|sina|eastmoney&group=<id>
-GET  /dsh-stock-ticker/sparklines?symbols=...&days=40
+GET  /dsh-stock-ticker/sparklines?symbols=...&days=40&type=intraday|day|week|month
 GET  /dsh-stock-ticker/kline?symbol=...&period=day|week|month|m1|m5|m15|m30|m60&adjust=qfq|hfq|none&limit=40&refresh=1
 GET  /dsh-stock-ticker/trend?symbol=...&days=1|3|5&refresh=1
 GET  /dsh-stock-ticker/search?q=<term>&limit=8
@@ -155,6 +156,7 @@ npm run preview        # render docs/preview/*.html and the screenshots from the
 - Public, unofficial endpoints: they can rate-limit, change fields or disappear. No SLA.
 - **US intraday is unavailable** (Tencent returns a single point and Eastmoney's `trends2` is refused on some networks); Hong Kong 3/5-day intraday works. Pre/post market exposes a price snapshot only, no intraday line.
 - **The same-time ratio is not archived**: it uses Tencent's five-session minute data and therefore covers A-shares and Hong Kong only; comparing beyond five sessions needs the future minute-bar archive.
+- **US mini intraday is unavailable**: free sources have no reliable US intraday, so US cards fall back to daily candles when the mini chart is set to the intraday line.
 - Indices have no order book, Hong Kong depth comes back as zeroes, and minute K-lines exist for A-shares only.
 - Eastmoney's history host is a fallback only; a refused host cools down for five minutes.
 - Holidays are inferred from quote timestamps; a half-day session or a delayed quote can take a poll or two to notice.
