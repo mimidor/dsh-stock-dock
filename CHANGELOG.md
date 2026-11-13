@@ -563,3 +563,15 @@ Settings discoverability and the options the strip was missing.
 - The strip itself now accepts `dragover`/`drop` and chooses the nearest card,
   so releasing in the gap between cards also commits, not only on a card.
 - Test updated for the visible placeholder. 84 tests.
+
+## 1.10.3 — 2026-11-13
+
+- The volume bars now have graduated intensity instead of only orange/grey:
+  - `>= 1.5x` a heavy expansion → red;
+  - `>= 1.15x` a normal expansion → orange;
+  - `>= 1x` a slight expansion → pale orange;
+  - `< 1x` shrinking → progressively lighter greys, with very light grey below
+    `0.6x` for a clear "quiet" reading.
+- Applies to both the intraday volume band and the 5/15/30/60-minute K bars;
+  the hover/readout signal turns red for the heavy tier and the minute-K legend
+  now says "red/orange = expanding · paler = shrinking". 84 tests.

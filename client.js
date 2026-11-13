@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.10.2'
+    const BUILD = 'v1.10.3'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -77,7 +77,7 @@ window.__ModuleLoader__.load({
       volumeFlat: '平量',
       volumeBaseline: '前{n}日均量',
       volumeBaselinePrev: '昨日同期量',
-      volumeKlineHint: '橙=放量 · 灰=缩量 · 虚线=上一交易日同期',
+      volumeKlineHint: '红/橙=放量 · 越淡越缩量 · 虚线=上一交易日同期',
       range: '区间',
       rangeBars: '根',
       rangeChange: '涨跌幅',
@@ -246,7 +246,7 @@ window.__ModuleLoader__.load({
       volumeFlat: 'Steady',
       volumeBaseline: 'prior {n}-day avg',
       volumeBaselinePrev: 'prev session',
-      volumeKlineHint: 'orange = expanding · grey = shrinking · dashed = previous session',
+      volumeKlineHint: 'red/orange = expanding · paler = shrinking · dashed = previous session',
       range: 'Range',
       rangeBars: 'bars',
       rangeChange: 'Change',
@@ -617,6 +617,7 @@ window.__ModuleLoader__.load({
 .dshst-chartNote b { color: var(--dsw-alias-label-primary); font-weight: 600; }
 .dshst-volumeSignal { font-weight: 600; }
 .dshst-volumeSignal[data-trend="up"] { color: var(--dsw-alias-state-warn-primary); }
+.dshst-volumeSignal[data-trend="up"][data-strength="strong"] { color: var(--dsw-alias-state-error-primary); }
 .dshst-volumeSignal[data-trend="down"],
 .dshst-volumeSignal[data-trend="flat"] { color: var(--dsw-alias-label-secondary); }
 .dshst-baselineSwatch {
@@ -1339,6 +1340,21 @@ window.__ModuleLoader__.load({
     ]
 
     /**
+     * Volume intensity tiers: red for a heavy expansion, orange for a normal
+     * one, pale orange for a slight one, and progressively lighter greys for
+     * shrinking volume. Colours are theme tokens; opacity is the intensity.
+     */
+    function volumeBarTone(ratio) {
+      if (typeof ratio !== 'number' || !Number.isFinite(ratio)) return null
+      if (ratio >= 1.5) return { fill: 'var(--dsw-alias-state-error-primary)', fillOpacity: 0.95 }
+      if (ratio >= 1.15) return { fill: 'var(--dsw-alias-state-warn-primary)', fillOpacity: 0.9 }
+      if (ratio >= 1) return { fill: 'var(--dsw-alias-state-warn-primary)', fillOpacity: 0.55 }
+      if (ratio >= 0.85) return { fill: 'var(--dsw-alias-label-secondary)', fillOpacity: 0.45 }
+      if (ratio >= 0.6) return { fill: 'var(--dsw-alias-label-secondary)', fillOpacity: 0.3 }
+      return { fill: 'var(--dsw-alias-border-l2)', fillOpacity: 0.8 }
+    }
+
+    /**
      * Minute K rows spell their timestamp as YYYYMMDDHHMM. For each row, find
      * the same HHMM on the previous trading day present in this page, which is
      * the baseline the volume comparison uses.
@@ -1530,7 +1546,8 @@ window.__ModuleLoader__.load({
         if (maxVolume > 0 && typeof row.volume === 'number') {
           const barHeight = Math.max(0.6, (row.volume / maxVolume) * (volumeBand - 3))
           const baseline = volumeBaseline.get(String(row.date))
-          const above = typeof baseline === 'number' && baseline > 0 ? row.volume > baseline : null
+          const ratio = typeof baseline === 'number' && baseline > 0 ? row.volume / baseline : null
+          const tone = volumeBarTone(ratio)
           children.push(
             h('rect', {
               key: `v${index}`,
@@ -1538,10 +1555,7 @@ window.__ModuleLoader__.load({
               y: height - barHeight,
               width: bodyWidth,
               height: barHeight,
-              style: {
-                fill: above === null ? color : above ? 'var(--dsw-alias-state-warn-primary)' : 'var(--dsw-alias-label-secondary)',
-                fillOpacity: above === null ? 0.55 : above ? 0.9 : 0.3,
-              },
+              style: { fill: tone?.fill ?? color, fillOpacity: tone?.fillOpacity ?? 0.55 },
             }),
           )
         }
@@ -1781,6 +1795,8 @@ window.__ModuleLoader__.load({
           ? active.volume / activeBaseline
           : null
       const activeSignal = activeRatio === null ? null : activeRatio > 1 ? 'up' : activeRatio < 1 ? 'down' : 'flat'
+      const activeStrength =
+        activeRatio === null ? 'mild' : activeRatio >= 1.5 ? 'strong' : activeRatio >= 1.15 ? 'medium' : 'mild'
       const activeLabel =
         activeSignal === 'up' ? t('volumeExpand') : activeSignal === 'down' ? t('volumeShrink') : t('volumeFlat')
       const yLabels = [max, (max + min) / 2, min].map((value) => ({
@@ -1805,7 +1821,7 @@ window.__ModuleLoader__.load({
                 ? null
                 : h(
                     'span',
-                    { className: 'dshst-volumeSignal', 'data-trend': activeSignal },
+                    { className: 'dshst-volumeSignal', 'data-trend': activeSignal, 'data-strength': activeStrength },
                     ` · ${activeLabel} ${activeRatio.toFixed(2)}×`,
                   ),
               activeSignal === null ? null : ` · ${t('volumePrev')} ${shortNumber(activeBaseline)}`,
@@ -2286,19 +2302,10 @@ window.__ModuleLoader__.load({
             // Brighten bars that beat their same-time baseline and fade the ones
             // below it; the colour still means price direction, not volume.
             const reference = baselineAt.get(point.time)
-            // Binary against yesterday at this minute: orange = more, grey =
-            // less or equal. No third colour, so the volume story stays simple;
-            // the price line above already carries direction.
-            const above = typeof reference === 'number' && reference > 0 ? point.volume > reference : null
-            const fill =
-              above === null
-                ? rising
-                  ? up
-                  : 'var(--dshst-down)'
-                : above
-                  ? 'var(--dsw-alias-state-warn-primary)'
-                  : 'var(--dsw-alias-label-secondary)'
-            const fillOpacity = above === null ? 0.5 : above ? 0.9 : 0.3
+            const ratio = typeof reference === 'number' && reference > 0 ? point.volume / reference : null
+            const tone = volumeBarTone(ratio)
+            const fill = tone?.fill ?? (rising ? up : 'var(--dshst-down)')
+            const fillOpacity = tone?.fillOpacity ?? 0.5
             const hovered = hover === index
             children.push(
               h('rect', {
@@ -2359,6 +2366,7 @@ window.__ModuleLoader__.load({
           ? active.volume / activeReference
           : null
       const activeSignal = activeRatio === null ? null : activeRatio > 1 ? 'up' : activeRatio < 1 ? 'down' : 'flat'
+      const activeStrength = activeRatio === null ? 'mild' : activeRatio >= 1.5 ? 'strong' : activeRatio >= 1.15 ? 'medium' : 'mild'
       const activeLabel =
         activeSignal === 'up' ? t('volumeExpand') : activeSignal === 'down' ? t('volumeShrink') : t('volumeFlat')
       return h(
@@ -2402,12 +2410,13 @@ window.__ModuleLoader__.load({
           const ratio = baselineCum > 0 ? todayCum / baselineCum : null
           if (ratio === null) return null
           const signal = ratio >= 1.05 ? 'up' : ratio <= 0.95 ? 'down' : 'flat'
+          const strength = ratio >= 1.5 ? 'strong' : ratio >= 1.15 ? 'medium' : 'mild'
           const label = signal === 'up' ? t('volumeExpand') : signal === 'down' ? t('volumeShrink') : t('volumeFlat')
           const arrow = signal === 'up' ? '↑' : signal === 'down' ? '↓' : '→'
           return h(
             'div',
             { className: 'dshst-chartNote' },
-            h('span', { className: 'dshst-volumeSignal', 'data-trend': signal }, `${label} ${arrow}`),
+            h('span', { className: 'dshst-volumeSignal', 'data-trend': signal, 'data-strength': strength }, `${label} ${arrow}`),
             h('span', null, `${t('volumeCompare')} `, h('b', null, ratio.toFixed(2))),
             h('span', { className: 'dshst-baselineSwatch', 'aria-hidden': true }),
             h(
@@ -2430,7 +2439,7 @@ window.__ModuleLoader__.load({
                 ? null
                 : h(
                     'span',
-                    { className: 'dshst-volumeSignal', 'data-trend': activeSignal },
+                    { className: 'dshst-volumeSignal', 'data-trend': activeSignal, 'data-strength': activeStrength },
                     ` · ${activeLabel} ${activeRatio.toFixed(2)}×`,
                   ),
               activeSignal === null ? null : ` · ${t('volumePrev')} ${shortNumber(activeReference)}`,
