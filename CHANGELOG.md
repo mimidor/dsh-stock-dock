@@ -178,3 +178,6 @@ Settings discoverability and the options the strip was missing.
   last resort. Set `localStorage['dsh-stock-ticker:debug'] = '1'` to log the
   claimed container.
 - Header build chip bumped so a refresh can be verified at a glance.
+- The GitHub Actions workflow was removed at the maintainer's request. The same
+  checks still run locally: `npm run lint`, `npm test`, `npm run verify:offline`,
+  `npm run pack:check`, `npm run check:readme`.
