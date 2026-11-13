@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.5.0'
+    const BUILD = 'v1.5.1'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -2618,6 +2618,96 @@ window.__ModuleLoader__.load({
       return true
     }
 
+    /**
+     * Claim a full-width row for the strip inside DSH's composer dock.
+     *
+     * The dock is a flex row shared with DSH's own stats pills and the context
+     * meter, and the slot renderer may wrap each entry in its own element, so a
+     * class-name-based CSS rule is not reliable across releases. This walks up
+     * from the strip to the nearest row-flex ancestor, lets that container wrap,
+     * and promotes the flex item that owns the strip to a full-width, last row.
+     * It returns a restore function so a remount puts the host styles back.
+     */
+    function claimOwnRow(element) {
+      if (!element || typeof element.parentElement === 'undefined' || !element.parentElement) return undefined
+      if (typeof window.getComputedStyle !== 'function') return undefined
+      const styleOf = (node) => {
+        try {
+          return window.getComputedStyle(node)
+        } catch {
+          return undefined
+        }
+      }
+      let container
+      let fallback
+      let node = element.parentElement
+      for (let depth = 0; node && depth < 8; depth += 1) {
+        const style = styleOf(node)
+        if (style && style.display === 'flex') {
+          fallback = fallback ?? node
+          if (String(style.flexDirection || 'row').startsWith('row')) {
+            container = node
+            break
+          }
+        }
+        node = node.parentElement
+      }
+      container = container ?? fallback
+      if (!container && typeof element.closest === 'function') {
+        // Last resort: the dock container is the only DSH element whose class
+        // ends in `_dock`; if no flex ancestor was found, style it directly.
+        container = element.closest('[class*="_dock"]') ?? undefined
+      }
+      if (!container) {
+        if (debugEnabled()) console.warn('[stock-ticker] dock row: no flex ancestor found')
+        return undefined
+      }
+
+      let item = element
+      while (item && item.parentElement && item.parentElement !== container) item = item.parentElement
+      if (!item || item.parentElement !== container) return undefined
+      const itemStyle = styleOf(item)
+      if (itemStyle && itemStyle.display === 'contents') item = element
+
+      const previous = {
+        wrap: container.style.flexWrap,
+        order: item.style.order,
+        flex: item.style.flex,
+        width: item.style.width,
+        minWidth: item.style.minWidth,
+      }
+      container.style.flexWrap = 'wrap'
+      item.style.order = '99'
+      item.style.flex = '0 0 100%'
+      item.style.width = '100%'
+      item.style.minWidth = '0'
+
+      if (debugEnabled()) {
+        console.debug('[stock-ticker] dock row claimed', {
+          container: container.className,
+          item: item.className,
+          wrapped: item !== element,
+        })
+      }
+
+      return () => {
+        container.style.flexWrap = previous.wrap
+        item.style.order = previous.order
+        item.style.flex = previous.flex
+        item.style.width = previous.width
+        item.style.minWidth = previous.minWidth
+      }
+    }
+
+    /** Diagnostics are opt-in: localStorage['dsh-stock-ticker:debug'] = '1'. */
+    function debugEnabled() {
+      try {
+        return window.localStorage.getItem('dsh-stock-ticker:debug') === '1'
+      } catch {
+        return false
+      }
+    }
+
     function Ticker(props) {
       const t = props.t
       const variant = props.variant ?? 'dock'
@@ -2636,6 +2726,15 @@ window.__ModuleLoader__.load({
       const [sparks, setSparks] = useState({})
       const sparkMeta = useRef({ key: '', at: 0, etag: '' })
       const stripRef = useRef(null)
+      const restoreStripRow = useRef(undefined)
+      const bindStrip = useCallback((node) => {
+        stripRef.current = node
+        if (typeof restoreStripRow.current === 'function') {
+          restoreStripRow.current()
+          restoreStripRow.current = undefined
+        }
+        if (node) restoreStripRow.current = claimOwnRow(node)
+      }, [])
       const [scrollRatio, setScrollRatio] = useState(0)
       const dragState = useRef({ active: false, startX: 0, startLeft: 0, moved: false })
       const alive = useRef(true)
@@ -2649,6 +2748,10 @@ window.__ModuleLoader__.load({
         return () => {
           alive.current = false
           window.clearTimeout(noticeTimer.current)
+          if (typeof restoreStripRow.current === 'function') {
+            restoreStripRow.current()
+            restoreStripRow.current = undefined
+          }
         }
       }, [])
 
@@ -2911,7 +3014,7 @@ window.__ModuleLoader__.load({
               'div',
               {
                 className: 'dshst-strip',
-                ref: stripRef,
+                ref: bindStrip,
                 onPointerDown: (event) => {
                   const element = stripRef.current
                   dragState.current = {

@@ -166,3 +166,15 @@ Settings discoverability and the options the strip was missing.
 - 58 tests and 177 self-checks; the new coverage includes pre-market parsing, the
   settings panel, the source switch and the extended-hours chip.
 - READMEs document the in-strip settings panel and the pre-market data source.
+
+## 1.5.1 — 2026-11-13
+
+- The strip now claims its own full-width row at runtime: a CSS-only `:has()`
+  rule did not match the real dock in every DSH build (the slot renderer may wrap
+  entries in its own element), so the client walks up from the strip to the
+  nearest row-flex ancestor, lets it wrap, and promotes the flex item that owns
+  the strip to `order: 99; flex: 0 0 100%`. The previous inline styles are
+  restored when the strip unmounts, and the `_dock` class lookup is kept as a
+  last resort. Set `localStorage['dsh-stock-ticker:debug'] = '1'` to log the
+  claimed container.
+- Header build chip bumped so a refresh can be verified at a glance.
