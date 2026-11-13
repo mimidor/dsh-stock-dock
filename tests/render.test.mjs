@@ -251,7 +251,13 @@ function makeFetch(calls, overrides = {}) {
       return respond(group ? { ...payload, activeGroup: decodeURIComponent(group) } : payload)
     }
     if (path.startsWith('/settings')) return respond(settingsPayload())
-    if (path.startsWith('/kline')) return respond({ ok: true, symbol: 'sh600519', period: 'day', adjust: 'qfq', rows: candles(40), source: 'tencent' })
+    if (path.startsWith('/kline')) {
+      const period = /[?&]period=([a-z0-9]+)/.exec(path)?.[1]
+      if (period === 'm5' && Array.isArray(overrides.minuteKline)) {
+        return respond({ ok: true, symbol: 'sh600519', period, adjust: 'qfq', rows: overrides.minuteKline, source: 'tencent' })
+      }
+      return respond({ ok: true, symbol: 'sh600519', period: 'day', adjust: 'qfq', rows: candles(40), source: 'tencent' })
+    }
     if (path.startsWith('/trend')) {
       const days = /days=(\d+)/.exec(path)?.[1]
       const baseline = Array.isArray(overrides.trendBaseline) ? overrides.trendBaseline : []
@@ -913,4 +919,35 @@ test('switching a group highlights it and loads that group immediately', async (
     'the quote request names the selected group',
   )
   assert.equal(market().props['data-active'], 'true')
+})
+
+test('minute K volume bars compare with the previous trading day', async () => {
+  const bar = (date, volume) => ({ date, open: 100, close: 101, high: 102, low: 99, volume })
+  const minuteKline = [
+    bar('202611120935', 100),
+    bar('202611120940', 120),
+    bar('202611130935', 200),
+    bar('202611130940', 60),
+  ]
+  const { harness, component, t } = boot({ minuteKline })
+  harness.mount(component, { t })
+  let tree = await harness.settle()
+  click(findAll(tree, (element) => hasClass(element, 'dshst-card') && textOf(element).includes('贵州茅台'))[0])
+  tree = await harness.settle()
+  click(findAll(tree, (element) => element.tag === 'button' && textOf(element) === '5分')[0])
+  tree = await harness.settle()
+
+  const detail = findAll(tree, (element) => hasClass(element, 'dshst-detail'))[0]
+  const chart = findAll(detail, (element) => element.tag === 'svg' && hasClass(element, 'dshst-chart'))[0]
+  assert.ok(chart, 'the minute K chart is mounted')
+  assert.ok(
+    findAll(detail, (element) => element.tag === 'path' && element.props.style?.strokeDasharray === '2 3').length > 0,
+    'the previous-session baseline is drawn',
+  )
+  // The last bar (60) is below the same slot yesterday (120).
+  chart.props.onMouseMove({ clientX: 500, currentTarget: chart })
+  tree = await harness.settle()
+  const readout = findAll(tree, (element) => hasClass(element, 'dshst-readout'))[0]
+  assert.match(textOf(readout), /缩量/)
+  assert.match(textOf(readout), /昨/)
 })

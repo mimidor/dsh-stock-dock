@@ -2,7 +2,7 @@
 
 [中文](README.md) · **English**
 
-![version](https://img.shields.io/badge/version-1.8.10-blue)
+![version](https://img.shields.io/badge/version-1.9.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![dsh](https://img.shields.io/badge/DSH-0.2.x-6f5bd6)
 ![data](https://img.shields.io/badge/data-Tencent%20%7C%20Sina%20%7C%20Eastmoney-orange)
@@ -25,7 +25,7 @@ A quote strip pinned under the DeepSeek Harness composer for A-shares, Hong Kong
 - **Card management**: a hover `×` removes one symbol, cards can be dragged into a new order, the trailing `＋` opens search
 - **Search**: code, Chinese name or pinyin, merged from Eastmoney suggest and Tencent smartbox
 - **Watchlist groups**: several lists switched by the header pills; a "market" group is seeded on first install (SSE, SZSE, ChiNext, STAR 50, Hang Seng, Nasdaq)
-- **Charts**: `intraday / 5m / 15m / 30m / 60m / daily / weekly / monthly`; intraday overlays 1/3/5 days with day separators, volume and a percentage axis, and the one-day view adds the previous session's same-time volume plus the same-time ratio, with orange bars for expansion and grey for contraction; K-lines switch forward/backward/raw adjust, MA and volume toggles, hover crosshair with a readout
+- **Charts**: `intraday / 5m / 15m / 30m / 60m / daily / weekly / monthly`; intraday overlays 1/3/5 days with day separators, volume and a percentage axis, and the one-day view adds the previous session's same-time volume plus the same-time ratio, with orange bars for expansion and grey for contraction; 5/15/30/60-minute volume bars compare with the same slot on the previous session (orange expanding / grey shrinking, dashed prior-session line); K-lines switch forward/backward/raw adjust, MA and volume toggles, hover crosshair with a readout
 - **Order book**: five bids and asks plus the bid/ask ratio
 - **A-share fields**: turnover, turnover rate, volume ratio, amplitude, P/E, P/B, float and total market cap
 - **US pre/post market**: opt-in; cards and the detail header show the extended-hours price, percent and timestamp (from Sina's `gb_` rows)

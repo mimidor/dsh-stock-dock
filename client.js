@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.8.10'
+    const BUILD = 'v1.9.0'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -77,6 +77,7 @@ window.__ModuleLoader__.load({
       volumeFlat: '平量',
       volumeBaseline: '前{n}日均量',
       volumeBaselinePrev: '昨日同期量',
+      volumeKlineHint: '橙=放量 · 灰=缩量 · 虚线=上一交易日同期',
       volumePrev: '昨',
       amplitude: '振幅',
       marketCap: '市值',
@@ -240,6 +241,7 @@ window.__ModuleLoader__.load({
       volumeFlat: 'Steady',
       volumeBaseline: 'prior {n}-day avg',
       volumeBaselinePrev: 'prev session',
+      volumeKlineHint: 'orange = expanding · grey = shrinking · dashed = previous session',
       volumePrev: 'prev',
       amplitude: 'Range',
       marketCap: 'Cap',
@@ -1310,6 +1312,37 @@ window.__ModuleLoader__.load({
     ]
 
     /**
+     * Minute K rows spell their timestamp as YYYYMMDDHHMM. For each row, find
+     * the same HHMM on the previous trading day present in this page, which is
+     * the baseline the volume comparison uses.
+     */
+    function minuteVolumeBaseline(rows) {
+      const days = []
+      const slots = new Map()
+      for (const row of rows) {
+        const date = String(row.date ?? '')
+        if (!/^\d{12}$/.test(date)) continue
+        const day = date.slice(0, 8)
+        if (!slots.has(day)) {
+          slots.set(day, new Map())
+          days.push(day)
+        }
+        if (typeof row.volume === 'number') slots.get(day).set(date.slice(8), row.volume)
+      }
+      const baseline = new Map()
+      for (let index = 1; index < days.length; index += 1) {
+        const previous = slots.get(days[index - 1])
+        for (const row of rows) {
+          const date = String(row.date ?? '')
+          if (!date.startsWith(days[index])) continue
+          const value = previous.get(date.slice(8))
+          if (typeof value === 'number') baseline.set(date, value)
+        }
+      }
+      return baseline
+    }
+
+    /**
      * Candles with optional moving averages, an optional volume band and a hover
      * readout. The mini version on the strip draws bodies only.
      */
@@ -1321,6 +1354,8 @@ window.__ModuleLoader__.load({
       const showMA = block && props.showMA !== false
       const showVolume = block && props.showVolume !== false
       const t = props.t ?? ((key) => key)
+      const minutePeriod = props.period === 'm5' || props.period === 'm15' || props.period === 'm30' || props.period === 'm60'
+      const volumeBaseline = minutePeriod && showVolume ? minuteVolumeBaseline(rows) : new Map()
       const [hover, setHover] = useState(null)
       const chartStyle = block ? { width: '100%', height: `${height}px` } : { width: `${width}px`, height: `${height}px` }
       const empty = (extra) =>
@@ -1355,6 +1390,9 @@ window.__ModuleLoader__.load({
       let maxVolume = 0
       for (const row of rows) {
         if (typeof row.volume === 'number' && row.volume > maxVolume) maxVolume = row.volume
+      }
+      for (const value of volumeBaseline.values()) {
+        if (value > maxVolume) maxVolume = value
       }
 
       const children = []
@@ -1408,6 +1446,8 @@ window.__ModuleLoader__.load({
         )
         if (maxVolume > 0 && typeof row.volume === 'number') {
           const barHeight = Math.max(0.6, (row.volume / maxVolume) * (volumeBand - 3))
+          const baseline = volumeBaseline.get(String(row.date))
+          const above = typeof baseline === 'number' && baseline > 0 ? row.volume > baseline : null
           children.push(
             h('rect', {
               key: `v${index}`,
@@ -1415,11 +1455,42 @@ window.__ModuleLoader__.load({
               y: height - barHeight,
               width: bodyWidth,
               height: barHeight,
-              style: { fill: color, fillOpacity: 0.55 },
+              style: {
+                fill: above === null ? color : above ? 'var(--dsw-alias-state-warn-primary)' : 'var(--dsw-alias-label-secondary)',
+                fillOpacity: above === null ? 0.55 : above ? 0.9 : 0.3,
+              },
             }),
           )
         }
       })
+
+      if (volumeBaseline.size > 0 && maxVolume > 0) {
+        let path = ''
+        let drawing = false
+        rows.forEach((row, index) => {
+          const baseline = volumeBaseline.get(String(row.date))
+          if (typeof baseline !== 'number' || baseline <= 0) {
+            drawing = false
+            return
+          }
+          const x = step * (index + 0.5)
+          const y = height - (baseline / maxVolume) * (volumeBand - 3)
+          path += `${drawing ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)} `
+          drawing = true
+        })
+        if (path !== '') {
+          children.push(
+            h('path', {
+              key: 'vbaseline',
+              d: path.trim(),
+              fill: 'none',
+              style: { stroke: 'var(--dsw-alias-label-secondary)', strokeDasharray: '2 3', strokeOpacity: 0.8 },
+              strokeWidth: 1,
+              vectorEffect: 'non-scaling-stroke',
+            }),
+          )
+        }
+      }
 
       if (showMA) {
         MA_WINDOWS.forEach((window, order) => {
@@ -1504,11 +1575,19 @@ window.__ModuleLoader__.load({
 
       if (!block) return svg
       const active = hover !== null ? rows[hover] : null
+      const activeBaseline = active ? volumeBaseline.get(String(active.date)) : undefined
+      const activeRatio =
+        active && typeof active.volume === 'number' && typeof activeBaseline === 'number' && activeBaseline > 0
+          ? active.volume / activeBaseline
+          : null
+      const activeSignal = activeRatio === null ? null : activeRatio > 1 ? 'up' : activeRatio < 1 ? 'down' : 'flat'
+      const activeLabel =
+        activeSignal === 'up' ? t('volumeExpand') : activeSignal === 'down' ? t('volumeShrink') : t('volumeFlat')
       const yLabels = [max, (max + min) / 2, min].map((value) => ({
         text: formatPrice(value),
         top: (scaleY(value) / height) * 100,
       }))
-      const readout = active
+      const readoutBase = active
         ? `${active.date} ${t('open')} ${formatPrice(active.open)} ${t('high')} ${formatPrice(active.high)} ${t('low')} ${formatPrice(
             active.low,
           )} ${t('close')} ${formatPrice(active.close)}${typeof active.volume === 'number' ? ` ${t('volume')} ${shortNumber(active.volume)}` : ''}`
@@ -1517,7 +1596,21 @@ window.__ModuleLoader__.load({
         'div',
         { className: 'dshst-chartWrap' },
         svg,
-        readout ? h('span', { className: 'dshst-readout' }, readout) : null,
+        active
+          ? h(
+              'span',
+              { className: 'dshst-readout' },
+              readoutBase,
+              activeSignal === null
+                ? null
+                : h(
+                    'span',
+                    { className: 'dshst-volumeSignal', 'data-trend': activeSignal },
+                    ` · ${activeLabel} ${activeRatio.toFixed(2)}×`,
+                  ),
+              activeSignal === null ? null : ` · ${t('volumePrev')} ${shortNumber(activeBaseline)}`,
+            )
+          : null,
         h(
           'div',
           { className: 'dshst-axisY' },
@@ -1531,6 +1624,9 @@ window.__ModuleLoader__.load({
           h('span', null, rows[0]?.date ?? ''),
           h('span', null, rows[rows.length - 1]?.date ?? ''),
         ),
+        minutePeriod && volumeBaseline.size > 0
+          ? h('div', { className: 'dshst-chartNote' }, h('span', null, t('volumeKlineHint')))
+          : null,
       )
     }
 
@@ -2411,6 +2507,7 @@ window.__ModuleLoader__.load({
           height: 128,
           block: true,
           grid: true,
+          period: tab,
           showMA,
           showVolume,
           holdingCost: holding?.cost,

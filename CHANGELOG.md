@@ -514,3 +514,15 @@ Settings discoverability and the options the strip was missing.
   fill, matching the selected pills. The collapse arrow keeps its neutral state
   because `data-toggle` scopes the fill to panel-owning buttons.
 - No behaviour changes. 81 tests.
+
+## 1.9.0 — 2026-11-13
+
+- The 5/15/30/60-minute K charts now tell the same volume story as the intraday
+  line: each volume bar is coloured against the **same HH:MM on the previous
+  trading day** (orange = heavier, grey = lighter, dashed line = prior-session
+  level), and hovering reports `量 ... · 放量/缩量 x.xx× · 昨 ...` plus a small
+  legend under the chart.
+- This is computed entirely from the rows already returned by `/kline`; no new
+  endpoint, no larger fetch and no persistence. Day/week/month K are unchanged
+  as requested: they keep the ordinary volume colouring.
+- Tests: minute-K baseline, dashed line and the hover verdict. 82 tests.
