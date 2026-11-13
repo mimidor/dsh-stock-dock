@@ -594,3 +594,17 @@ Settings discoverability and the options the strip was missing.
   surface). It no longer costs vertical space; the signal/ratio line stays below
   the chart. Applies to the intraday and minute-K charts.
 - Screenshots refreshed. 84 tests.
+
+## 1.11.0 — 2026-11-13
+
+- The intraday y-axis now follows the domestic convention: it is symmetric
+  around the previous close, with five ticks (`+bound`, `+bound/2`, `0`,
+  `-bound/2`, `-bound`) and a dashed zero line. The bound is the largest price /
+  average deviation plus 8% headroom, rounded up to a half percentage point and
+  floored at 0.5%, so `+2.7%` reads on ±3% and a quiet day does not look wild.
+- The holding-cost line no longer stretches the axis (a low cost could flatten
+  the whole session); it is drawn only when it falls inside the symmetric band.
+  Multi-day intraday views keep the auto range because they have no single
+  previous close.
+- Subtle horizontal grid lines join the five ticks. Test: the axis labels are
+  `+1.00% / +0.50% / 0.00% / -0.50% / -1.00%` on the fixture. 85 tests.

@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.10.5'
+    const BUILD = 'v1.11.0'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -2256,31 +2256,51 @@ window.__ModuleLoader__.load({
       if (points.length < 2) {
         return h('div', { className: 'dshst-chartEmpty', style: { width: '100%', height: `${height}px` }, title: props.emptyLabel ?? '' })
       }
-      let min = Number.POSITIVE_INFINITY
-      let max = Number.NEGATIVE_INFINITY
-      for (const point of points) {
-        if (point.price < min) min = point.price
-        if (point.price > max) max = point.price
-        if (typeof point.avg === 'number') {
-          if (point.avg < min) min = point.avg
-          if (point.avg > max) max = point.avg
+      // Domestic intraday charts centre the price axis on the previous close:
+      // the top and bottom are the same percentage away, so a line above the
+      // dashed zero line is immediately "up" and below is "down". A cost line
+      // must never stretch this axis; it would flatten the whole session.
+      let min
+      let max
+      let yTicks = []
+      if (prevClose !== null && prevClose > 0) {
+        let maxAbsPct = 0
+        for (const point of points) {
+          for (const value of [point.price, point.avg]) {
+            if (typeof value !== 'number' || !Number.isFinite(value)) continue
+            const pct = Math.abs(((value - prevClose) / prevClose) * 100)
+            if (pct > maxAbsPct) maxAbsPct = pct
+          }
         }
-      }
-      if (prevClose !== null) {
-        min = Math.min(min, prevClose)
-        max = Math.max(max, prevClose)
-      }
-      if (typeof props.holdingCost === 'number' && props.holdingCost > 0) {
-        min = Math.min(min, props.holdingCost)
-        max = Math.max(max, props.holdingCost)
+        // Keep 8% headroom and round up to a half-point so the labels read like
+        // +3.00% / -3.00% rather than an arbitrary maximum.
+        const boundPct = Math.ceil(Math.max(0.5, maxAbsPct * 1.08) / 0.5) * 0.5
+        min = prevClose * (1 - boundPct / 100)
+        max = prevClose * (1 + boundPct / 100)
+        yTicks = [1, 0.5, 0, -0.5, -1].map((fraction) => ({
+          value: prevClose * (1 + (boundPct * fraction) / 100),
+          pct: boundPct * fraction,
+        }))
+      } else {
+        let low = Number.POSITIVE_INFINITY
+        let high = Number.NEGATIVE_INFINITY
+        for (const point of points) {
+          for (const value of [point.price, point.avg]) {
+            if (typeof value !== 'number' || !Number.isFinite(value)) continue
+            if (value < low) low = value
+            if (value > high) high = value
+          }
+        }
+        if (!Number.isFinite(low) || !Number.isFinite(high)) {
+          return h('div', { className: 'dshst-chartEmpty', style: { width: '100%', height: `${height}px` }, title: props.emptyLabel ?? '' })
+        }
+        const pad = Math.max((high - low) * 0.06, Math.abs(high) * 0.005 || 0.01)
+        min = low - pad
+        max = high + pad
+        yTicks = [max, max - (max - min) / 4, (max + min) / 2, min + (max - min) / 4, min].map((value) => ({ value, pct: null }))
       }
       if (!Number.isFinite(min) || !Number.isFinite(max)) {
         return h('div', { className: 'dshst-chartEmpty', style: { width: '100%', height: `${height}px` }, title: props.emptyLabel ?? '' })
-      }
-      if (max <= min) {
-        const pad = Math.abs(max) * 0.005 || 0.01
-        min -= pad
-        max += pad
       }
       const volumeBand = showVolume ? 26 : 0
       const priceHeight = height - volumeBand
@@ -2316,6 +2336,20 @@ window.__ModuleLoader__.load({
 
       const children = [
         h('path', { key: 'area', d: area, style: { fill: up, fillOpacity: 0.1 } }),
+        ...yTicks
+          .filter((tick) => tick.pct === null || tick.pct !== 0)
+          .map((tick, index) =>
+            h('line', {
+              key: `grid${index}`,
+              x1: 0,
+              x2: width,
+              y1: scaleY(tick.value),
+              y2: scaleY(tick.value),
+              style: { stroke: 'var(--dsw-alias-border-l1)', strokeOpacity: 0.7 },
+              strokeWidth: 1,
+              vectorEffect: 'non-scaling-stroke',
+            }),
+          ),
         prevClose !== null
           ? h('line', {
               key: 'prev',
@@ -2460,12 +2494,12 @@ window.__ModuleLoader__.load({
         }
       }
 
-      const yLabels = [max, (max + min) / 2, min].map((level) => ({
+      const yLabels = yTicks.map((tick) => ({
         text:
-          prevClose !== null && prevClose > 0
-            ? `${((level - prevClose) / prevClose) * 100 > 0 ? '+' : ''}${(((level - prevClose) / prevClose) * 100).toFixed(2)}%`
-            : formatPrice(level),
-        top: (scaleY(level) / height) * 100,
+          tick.pct !== null
+            ? `${tick.pct > 0 ? '+' : ''}${tick.pct.toFixed(2)}%`
+            : formatPrice(tick.value),
+        top: (scaleY(tick.value) / height) * 100,
       }))
       const xLabels = [points[0]?.time, points[Math.floor(points.length / 2)]?.time, points[points.length - 1]?.time]
 

@@ -997,3 +997,17 @@ test('dragging a card over another previews the gap before drop', async () => {
   assert.match(shifted[1].props.style?.transform ?? '', /translateX\(-/, 'the target slides into the source slot')
   assert.equal(calls.filter((call) => call.method === 'POST' && call.path === '/config').length, 0, 'nothing is saved yet')
 })
+
+test('the intraday axis is symmetric around the previous close', async () => {
+  const { harness, component, t } = boot()
+  harness.mount(component, { t })
+  let tree = await harness.settle()
+  click(findAll(tree, (element) => hasClass(element, 'dshst-card') && textOf(element).includes('贵州茅台'))[0])
+  tree = await harness.settle()
+  const axis = findAll(tree, (element) => hasClass(element, 'dshst-axisY'))[0]
+  assert.ok(axis, 'the intraday y-axis is mounted')
+  const text = textOf(axis)
+  assert.match(text, /\+1\.00%/)
+  assert.match(text, /0\.00%/)
+  assert.match(text, /-1\.00%/)
+})
