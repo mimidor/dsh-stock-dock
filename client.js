@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.8.6'
+    const BUILD = 'v1.8.7'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -3685,6 +3685,25 @@ window.__ModuleLoader__.load({
           'data-variant': variant,
         },
         h('div', { className: 'dshst-live', 'aria-live': 'polite', role: 'status' }, notice || (error && !data ? error : '')),
+        toast.length > 0
+          ? h(
+              'div',
+              { className: 'dshst-toast', role: 'alert' },
+              ...toast.map((entry) =>
+                h(
+                  'span',
+                  { key: entry.id },
+                  t('alertHit')
+                    .replace('{name}', entry.name ?? entry.symbol)
+                    .replace('{op}', entry.op === 'above' ? t('alertAbove') : t('alertBelow'))
+                    .replace('{price}', formatPrice(entry.price)),
+                ),
+              ),
+              h('button', { type: 'button', className: 'dshst-link', onClick: () => acknowledge(toast) }, t('alertAck')),
+              h('button', { type: 'button', className: 'dshst-link', onClick: () => setToast([]) }, t('dismiss')),
+            )
+          : null,
+        variant === 'dock' && collapsed ? null : body,
         h(
           'div',
           { className: 'dshst-head' },
@@ -3713,25 +3732,6 @@ window.__ModuleLoader__.load({
             notice ? h('span', { className: 'dshst-meta dshst-notice' }, notice) : null,
           ),
         ),
-        toast.length > 0
-          ? h(
-              'div',
-              { className: 'dshst-toast', role: 'alert' },
-              ...toast.map((entry) =>
-                h(
-                  'span',
-                  { key: entry.id },
-                  t('alertHit')
-                    .replace('{name}', entry.name ?? entry.symbol)
-                    .replace('{op}', entry.op === 'above' ? t('alertAbove') : t('alertBelow'))
-                    .replace('{price}', formatPrice(entry.price)),
-                ),
-              ),
-              h('button', { type: 'button', className: 'dshst-link', onClick: () => acknowledge(toast) }, t('alertAck')),
-              h('button', { type: 'button', className: 'dshst-link', onClick: () => setToast([]) }, t('dismiss')),
-            )
-          : null,
-        variant === 'dock' && collapsed ? null : body,
         h(
           'div',
           { className: 'dshst-foot' },

@@ -478,3 +478,10 @@ Settings discoverability and the options the strip was missing.
   header icons pinned to the right. Switching to a group with a different width
   now only changes the left part of the footer; the action buttons stay put.
 - Screenshots refreshed. 81 tests.
+
+## 1.8.7 — 2026-11-13
+
+- Moved the title/source/session/build/time row below the cards as well. The
+  strip now opens with the quote cards; the status row sits under them and above
+  the groups/actions footer, so everything except the quotes is in the fixed
+  control area at the bottom. Screenshots refreshed. 81 tests.
