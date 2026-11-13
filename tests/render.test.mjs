@@ -848,13 +848,13 @@ test('the header switches the card mini chart type', async () => {
   const { harness, component, t, calls } = boot()
   harness.mount(component, { t })
   let tree = await harness.settle()
-  const button = () => findAll(tree, (element) => element.tag === 'button' && textOf(element) === '分时线')[0]
-  assert.ok(button(), 'the header exposes the intraday switch')
-  assert.equal(button().props['data-active'], 'false', 'daily is the default')
-  click(button())
+  const picker = () => findAll(tree, (element) => element.tag === 'select' && element.props['aria-label'] === '迷你图类型')[0]
+  assert.ok(picker(), 'the header exposes the mini chart type')
+  assert.equal(picker().props.value, 'day', 'daily is the default')
+  change(picker(), 'intraday')
   tree = await harness.settle()
   const prefCall = calls.filter((call) => call.method === 'POST' && call.path === '/prefs').at(-1)
   assert.deepEqual(prefCall.body.patch, { miniChartType: 'intraday' })
   assert.ok(calls.some((call) => call.path.includes('/sparklines') && call.path.includes('type=intraday')))
-  assert.equal(button().props['data-active'], 'true')
+  assert.equal(picker().props.value, 'intraday')
 })

@@ -360,3 +360,12 @@ Settings discoverability and the options the strip was missing.
   the settings row remains for discoverability.
 - Tests: clicking the header switch posts the preference and refetches the cards
   with `type=intraday`. 79 tests.
+
+## 1.7.2 — 2026-11-13
+
+- The header mini-chart switch was four separate bordered boxes, too heavy for
+  the strip. It is now one compact pill with a native select and a chevron
+  (`分时线 ▾`), matching the group pills and the icon row; the active value is
+  the selected option, the tooltip names it, and it disappears with the mini
+  chart. The settings row is unchanged.
+- Screenshots refreshed for the header/detail/settings surfaces.

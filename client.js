@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.7.1'
+    const BUILD = 'v1.7.2'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -743,38 +743,42 @@ window.__ModuleLoader__.load({
   outline: none;
   border-color: var(--dsw-alias-brand-primary);
 }
-.dshst-miniTypes {
+.dshst-miniType {
+  position: relative;
   display: inline-flex;
   align-items: center;
   flex: 0 0 auto;
-  border: 1px solid var(--dsw-alias-border-l2);
-  border-radius: 6px;
-  overflow: hidden;
+  padding: 0 6px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 999px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  line-height: 17px;
 }
-.dshst-miniTypes button {
+.dshst-miniType select {
+  appearance: none;
+  -webkit-appearance: none;
   border: 0;
   background: transparent;
-  color: var(--dsw-alias-label-secondary);
+  color: inherit;
   font: inherit;
-  font-size: 10px;
-  line-height: 18px;
-  padding: 0 5px;
+  line-height: 17px;
+  padding: 0 13px 0 0;
   cursor: pointer;
+  outline: none;
 }
-.dshst-miniTypes button + button {
-  border-left: 1px solid var(--dsw-alias-border-l1);
+.dshst-miniType::after {
+  content: "▾";
+  position: absolute;
+  right: 5px;
+  font-size: 9px;
+  opacity: 0.7;
+  pointer-events: none;
 }
-.dshst-miniTypes button:hover {
+.dshst-miniType:hover,
+.dshst-miniType:focus-within {
+  border-color: var(--dsw-alias-brand-primary);
   color: var(--dsw-alias-label-primary);
-}
-.dshst-miniTypes button[data-active="true"] {
-  background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-primary);
-  font-weight: 600;
-}
-.dshst-miniTypes button:focus-visible {
-  outline: 2px solid var(--dsw-alias-brand-primary);
-  outline-offset: -2px;
 }
 .dshst-icon:focus-visible,
 .dshst-card:focus-visible,
@@ -3555,27 +3559,20 @@ window.__ModuleLoader__.load({
             ? null
             : h(
                 'span',
-                { className: 'dshst-miniTypes', role: 'group', 'aria-label': t('miniChartType') },
-                ...(
-                  [
+                { className: 'dshst-miniType', title: t('miniChartType') },
+                h(
+                  'select',
+                  {
+                    'aria-label': t('miniChartType'),
+                    value: prefs.miniChartType ?? 'day',
+                    onChange: (event) => savePrefs({ miniChartType: event.target.value }),
+                  },
+                  ...[
                     ['intraday', t('miniIntraday')],
                     ['day', t('miniDay')],
                     ['week', t('miniWeek')],
                     ['month', t('miniMonth')],
-                  ]
-                ).map(([value, label]) =>
-                  h(
-                    'button',
-                    {
-                      key: value,
-                      type: 'button',
-                      title: label,
-                      'aria-pressed': (prefs.miniChartType ?? 'day') === value ? 'true' : 'false',
-                      'data-active': (prefs.miniChartType ?? 'day') === value ? 'true' : 'false',
-                      onClick: () => savePrefs({ miniChartType: value }),
-                    },
-                    label,
-                  ),
+                  ].map(([value, label]) => h('option', { key: value, value }, label)),
                 ),
               ),
           h(
