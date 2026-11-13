@@ -951,3 +951,27 @@ test('minute K volume bars compare with the previous trading day', async () => {
   assert.match(textOf(readout), /缩量/)
   assert.match(textOf(readout), /昨/)
 })
+
+test('dragging on a K-line chart marks a range with summary stats', async () => {
+  const { harness, component, t } = boot()
+  harness.mount(component, { t })
+  let tree = await harness.settle()
+  click(findAll(tree, (element) => hasClass(element, 'dshst-card') && textOf(element).includes('贵州茅台'))[0])
+  tree = await harness.settle()
+  click(findAll(tree, (element) => element.tag === 'button' && hasClass(element, 'dshst-tab') && textOf(element) === '日K')[0])
+  tree = await harness.settle()
+
+  const detail = findAll(tree, (element) => hasClass(element, 'dshst-detail'))[0]
+  const chart = findAll(detail, (element) => element.tag === 'svg' && hasClass(element, 'dshst-chart'))[0]
+  assert.ok(chart, 'the daily chart is mounted')
+  chart.props.onMouseDown({ clientX: 90, currentTarget: chart, preventDefault() {} })
+  chart.props.onMouseMove({ clientX: 300, currentTarget: chart })
+  chart.props.onMouseUp({ clientX: 300, currentTarget: chart })
+  tree = await harness.settle()
+
+  const text = textOf(tree)
+  assert.match(text, /区间/)
+  assert.match(text, /涨跌幅/)
+  assert.match(text, /振幅/)
+  assert.match(text, /清除/)
+})

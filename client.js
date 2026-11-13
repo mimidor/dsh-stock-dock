@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.9.0'
+    const BUILD = 'v1.10.0'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -78,6 +78,11 @@ window.__ModuleLoader__.load({
       volumeBaseline: '前{n}日均量',
       volumeBaselinePrev: '昨日同期量',
       volumeKlineHint: '橙=放量 · 灰=缩量 · 虚线=上一交易日同期',
+      range: '区间',
+      rangeBars: '根',
+      rangeChange: '涨跌幅',
+      rangeAmplitude: '振幅',
+      rangeClear: '清除',
       volumePrev: '昨',
       amplitude: '振幅',
       marketCap: '市值',
@@ -242,6 +247,11 @@ window.__ModuleLoader__.load({
       volumeBaseline: 'prior {n}-day avg',
       volumeBaselinePrev: 'prev session',
       volumeKlineHint: 'orange = expanding · grey = shrinking · dashed = previous session',
+      range: 'Range',
+      rangeBars: 'bars',
+      rangeChange: 'Change',
+      rangeAmplitude: 'Amplitude',
+      rangeClear: 'Clear',
       volumePrev: 'prev',
       amplitude: 'Range',
       marketCap: 'Cap',
@@ -629,6 +639,23 @@ window.__ModuleLoader__.load({
   white-space: nowrap;
   animation: dshst-fade-in 120ms var(--dshst-ease);
 }
+.dshst-range {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+  padding: 3px 7px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary) 6%, var(--dsw-alias-bg-layer-1));
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  animation: dshst-fade-in 140ms var(--dshst-ease);
+}
+.dshst-rangeTitle { color: var(--dsw-alias-label-primary); font-weight: 600; }
+.dshst-range button { margin-left: auto; }
 .dshst-chartEmpty {
   display: block;
   flex: 0 0 auto;
@@ -1357,6 +1384,19 @@ window.__ModuleLoader__.load({
       const minutePeriod = props.period === 'm5' || props.period === 'm15' || props.period === 'm30' || props.period === 'm60'
       const volumeBaseline = minutePeriod && showVolume ? minuteVolumeBaseline(rows) : new Map()
       const [hover, setHover] = useState(null)
+      const [range, setRange] = useState(null)
+      const drag = useRef(null)
+      useEffect(() => {
+        // Periods have different x scales; a range from the old tab is meaningless.
+        setRange(null)
+        drag.current = null
+      }, [props.period, rows.length])
+      const indexAt = (event) => {
+        const rect = event.currentTarget.getBoundingClientRect()
+        if (!rect || rect.width <= 0) return null
+        const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width))
+        return Math.min(rows.length - 1, Math.max(0, Math.floor(ratio * rows.length)))
+      }
       const chartStyle = block ? { width: '100%', height: `${height}px` } : { width: `${width}px`, height: `${height}px` }
       const empty = (extra) =>
         h('div', { className: 'dshst-chartEmpty', style: chartStyle, title: props.emptyLabel ?? '' }, extra)
@@ -1395,6 +1435,35 @@ window.__ModuleLoader__.load({
         if (value > maxVolume) maxVolume = value
       }
 
+      let selectedRange = null
+      if (range) {
+        const start = Math.max(0, Math.min(range.start, range.end))
+        const end = Math.min(rows.length - 1, Math.max(range.start, range.end))
+        if (end > start) {
+          const list = rows.slice(start, end + 1)
+          const highRow = list.reduce((best, row) => (row.high > best.high ? row : best), list[0])
+          const lowRow = list.reduce((best, row) => (row.low < best.low ? row : best), list[0])
+          const first = rows[start]
+          const last = rows[end]
+          const entry = first.open ?? first.close
+          const exit = last.close
+          const changePct = Number.isFinite(entry) && entry !== 0 && Number.isFinite(exit) ? ((exit - entry) / entry) * 100 : null
+          const amplitude = Number.isFinite(entry) && entry !== 0 ? ((highRow.high - lowRow.low) / entry) * 100 : null
+          const volume = list.reduce((sum, row) => sum + (typeof row.volume === 'number' ? row.volume : 0), 0)
+          selectedRange = {
+            start,
+            end,
+            x1: step * start,
+            x2: step * (end + 1),
+            highRow,
+            lowRow,
+            changePct,
+            amplitude,
+            volume,
+          }
+        }
+      }
+
       const children = []
       if (props.grid) {
         for (let index = 0; index <= 3; index += 1) {
@@ -1412,6 +1481,20 @@ window.__ModuleLoader__.load({
             }),
           )
         }
+      }
+
+      if (selectedRange) {
+        children.push(
+          h('rect', {
+            key: 'rangeShade',
+            x: selectedRange.x1,
+            y: inset,
+            width: Math.max(0, selectedRange.x2 - selectedRange.x1),
+            height: height - inset,
+            style: { fill: 'var(--dsw-alias-brand-primary)', fillOpacity: 0.07 },
+            pointerEvents: 'none',
+          }),
+        )
       }
 
       rows.forEach((row, index) => {
@@ -1492,6 +1575,93 @@ window.__ModuleLoader__.load({
         }
       }
 
+      if (selectedRange) {
+        const highY = scaleY(selectedRange.highRow.high)
+        const lowY = scaleY(selectedRange.lowRow.low)
+        const highIndex = rows.indexOf(selectedRange.highRow)
+        const lowIndex = rows.indexOf(selectedRange.lowRow)
+        children.push(
+          h('line', {
+            key: 'rangeStart',
+            x1: selectedRange.x1,
+            x2: selectedRange.x1,
+            y1: inset,
+            y2: height,
+            style: { stroke: 'var(--dsw-alias-brand-primary)', strokeDasharray: '2 3', strokeOpacity: 0.8 },
+            strokeWidth: 1,
+            vectorEffect: 'non-scaling-stroke',
+          }),
+          h('line', {
+            key: 'rangeEnd',
+            x1: selectedRange.x2,
+            x2: selectedRange.x2,
+            y1: inset,
+            y2: height,
+            style: { stroke: 'var(--dsw-alias-brand-primary)', strokeDasharray: '2 3', strokeOpacity: 0.8 },
+            strokeWidth: 1,
+            vectorEffect: 'non-scaling-stroke',
+          }),
+          h('line', {
+            key: 'rangeHigh',
+            x1: selectedRange.x1,
+            x2: selectedRange.x2,
+            y1: highY,
+            y2: highY,
+            style: { stroke: 'var(--dsw-alias-brand-primary)', strokeDasharray: '2 3', strokeOpacity: 0.7 },
+            strokeWidth: 1,
+            vectorEffect: 'non-scaling-stroke',
+          }),
+          h('line', {
+            key: 'rangeLow',
+            x1: selectedRange.x1,
+            x2: selectedRange.x2,
+            y1: lowY,
+            y2: lowY,
+            style: { stroke: 'var(--dsw-alias-brand-primary)', strokeDasharray: '2 3', strokeOpacity: 0.7 },
+            strokeWidth: 1,
+            vectorEffect: 'non-scaling-stroke',
+          }),
+          h('circle', {
+            key: 'rangeHighDot',
+            cx: step * (highIndex + 0.5),
+            cy: highY,
+            r: 2,
+            style: { fill: 'var(--dsw-alias-brand-primary)' },
+            pointerEvents: 'none',
+          }),
+          h('circle', {
+            key: 'rangeLowDot',
+            cx: step * (lowIndex + 0.5),
+            cy: lowY,
+            r: 2,
+            style: { fill: 'var(--dsw-alias-brand-primary)' },
+            pointerEvents: 'none',
+          }),
+          h(
+            'text',
+            {
+              key: 'rangeHighText',
+              x: selectedRange.x1 + 3,
+              y: Math.max(9, highY - 3),
+              style: { fill: 'var(--dsw-alias-brand-primary)', fontSize: '8px' },
+              pointerEvents: 'none',
+            },
+            `${t('high')} ${formatPrice(selectedRange.highRow.high)}`,
+          ),
+          h(
+            'text',
+            {
+              key: 'rangeLowText',
+              x: selectedRange.x1 + 3,
+              y: Math.min(priceHeight - 2, lowY + 9),
+              style: { fill: 'var(--dsw-alias-brand-primary)', fontSize: '8px' },
+              pointerEvents: 'none',
+            },
+            `${t('low')} ${formatPrice(selectedRange.lowRow.low)}`,
+          ),
+        )
+      }
+
       if (showMA) {
         MA_WINDOWS.forEach((window, order) => {
           if (rows.length < window) return
@@ -1560,15 +1730,45 @@ window.__ModuleLoader__.load({
           style: chartStyle,
           role: 'img',
           'aria-label': props.label ?? '',
-          onMouseMove: block
+          onMouseDown: block
             ? (event) => {
-                const rect = event.currentTarget.getBoundingClientRect()
-                if (!rect || rect.width <= 0) return
-                const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width))
-                setHover(Math.min(rows.length - 1, Math.floor(ratio * rows.length)))
+                const index = indexAt(event)
+                if (index === null) return
+                event.preventDefault?.()
+                drag.current = { start: index, end: index }
+                setHover(index)
               }
             : undefined,
-          onMouseLeave: block ? () => setHover(null) : undefined,
+          onMouseMove: block
+            ? (event) => {
+                const index = indexAt(event)
+                if (index === null) return
+                setHover(index)
+                if (drag.current) {
+                  drag.current.end = index
+                  setRange(
+                    index === drag.current.start
+                      ? null
+                      : { start: Math.min(drag.current.start, index), end: Math.max(drag.current.start, index) },
+                  )
+                }
+              }
+            : undefined,
+          onMouseUp: block
+            ? (event) => {
+                if (!drag.current) return
+                const index = indexAt(event) ?? drag.current.end
+                const start = drag.current.start
+                drag.current = null
+                setRange(index === start ? null : { start: Math.min(start, index), end: Math.max(start, index) })
+              }
+            : undefined,
+          onMouseLeave: block
+            ? () => {
+                drag.current = null
+                setHover(null)
+              }
+            : undefined,
         },
         children,
       )
@@ -1627,7 +1827,42 @@ window.__ModuleLoader__.load({
         minutePeriod && volumeBaseline.size > 0
           ? h('div', { className: 'dshst-chartNote' }, h('span', null, t('volumeKlineHint')))
           : null,
+        selectedRange
+          ? h(
+              'div',
+              { className: 'dshst-range' },
+              h(
+                'span',
+                { className: 'dshst-rangeTitle' },
+                `${t('range')} ${shortDate(rows[selectedRange.start]?.date)} → ${shortDate(
+                  rows[selectedRange.end]?.date,
+                )} · ${selectedRange.end - selectedRange.start + 1}${t('rangeBars')}`,
+              ),
+              selectedRange.changePct === null
+                ? null
+                : h(
+                    'span',
+                    { className: trendClass(selectedRange.changePct) },
+                    `${t('rangeChange')} ${formatPct(selectedRange.changePct)}`,
+                  ),
+              h('span', null, `${t('high')} ${formatPrice(selectedRange.highRow.high)} (${shortDate(selectedRange.highRow.date)})`),
+              h('span', null, `${t('low')} ${formatPrice(selectedRange.lowRow.low)} (${shortDate(selectedRange.lowRow.date)})`),
+              selectedRange.amplitude === null
+                ? null
+                : h('span', null, `${t('rangeAmplitude')} ${formatPct(selectedRange.amplitude)}`),
+              h('span', null, `${t('volume')} ${shortNumber(selectedRange.volume)}`),
+              h('button', { type: 'button', className: 'dshst-link', onClick: () => setRange(null) }, t('rangeClear')),
+            )
+          : null,
       )
+    }
+
+    function shortDate(value) {
+      const text = String(value ?? '')
+      if (/^\d{12}$/.test(text)) return `${text.slice(4, 6)}-${text.slice(6, 8)} ${text.slice(8, 10)}:${text.slice(10, 12)}`
+      if (/^\d{8}$/.test(text)) return `${text.slice(4, 6)}-${text.slice(6, 8)}`
+      if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text.slice(5)
+      return text
     }
 
     function shortNumber(value) {

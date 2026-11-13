@@ -526,3 +526,19 @@ Settings discoverability and the options the strip was missing.
   endpoint, no larger fetch and no persistence. Day/week/month K are unchanged
   as requested: they keep the ordinary volume colouring.
 - Tests: minute-K baseline, dashed line and the hover verdict. 82 tests.
+
+## 1.10.0 — 2026-11-13
+
+- Added **range selection** to the detail K-line charts, in the spirit of the
+  domestic trading apps: drag horizontally across the chart to select an
+  interval. The range is shaded, both edges are marked, and the highest/lowest
+  points get a dashed guide plus a dot and a price label.
+- A summary strip under the chart shows the selected dates and bar count, the
+  interval change (`first open → last close`), the highest/lowest price with
+  their dates, the amplitude and the summed volume; `清除` clears it. A plain
+  click (without dragging) also clears the range.
+- Works for all K-line periods; the range resets when the period or the row set
+  changes. It composes with the minute-volume comparison (orange/grey bars and
+  the prior-session dashed line).
+- Test: drag selection produces the summary with change, amplitude and clear.
+  83 tests.
