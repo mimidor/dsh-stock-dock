@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.5.7'
+    const BUILD = 'v1.6.0'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -71,6 +71,8 @@ window.__ModuleLoader__.load({
       amount: '成交额',
       turnover: '换手',
       volumeRatio: '量比',
+      volumeCompare: '同期量比',
+      volumeBaseline: '前{n}日均量',
       amplitude: '振幅',
       marketCap: '市值',
       limitUp: '涨停',
@@ -220,6 +222,8 @@ window.__ModuleLoader__.load({
       amount: 'Turnover',
       turnover: 'Turn',
       volumeRatio: 'Vol ratio',
+      volumeCompare: 'Same-time ratio',
+      volumeBaseline: 'prior {n}-day avg',
       amplitude: 'Range',
       marketCap: 'Cap',
       limitUp: 'Limit up',
@@ -514,6 +518,22 @@ window.__ModuleLoader__.load({
 .dshst-flat { color: var(--dsw-alias-label-secondary); }
 .dshst-chart { display: block; flex: 0 0 auto; }
 .dshst-chartWrap { position: relative; width: 100%; }
+.dshst-chartNote {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 2px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.dshst-chartNote b { color: var(--dsw-alias-label-primary); font-weight: 600; }
+.dshst-baselineSwatch {
+  width: 14px;
+  height: 0;
+  border-top: 1px dashed var(--dsw-alias-label-secondary);
+  opacity: 0.8;
+}
 .dshst-readout {
   position: absolute;
   top: 2px;
@@ -1536,6 +1556,12 @@ window.__ModuleLoader__.load({
     function TrendChart(props) {
       const points = Array.isArray(props.points) ? props.points : []
       const prevClose = typeof props.prevClose === 'number' ? props.prevClose : null
+      const baseline = Array.isArray(props.baseline) ? props.baseline : []
+      const baselineAt = new Map()
+      for (const point of baseline) {
+        if (typeof point?.volume === 'number') baselineAt.set(point.time, point.volume)
+      }
+      const baselineDays = typeof props.baselineDays === 'number' ? props.baselineDays : 0
       const width = 640
       const height = 132
       const t = props.t ?? ((key) => key)
@@ -1667,6 +1693,11 @@ window.__ModuleLoader__.load({
         for (const point of points) {
           if (typeof point.volume === 'number' && point.volume > maxVolume) maxVolume = point.volume
         }
+        // The baseline shares the band; scaling to both keeps a heavy prior day
+        // from pushing its own line off the top.
+        for (const volume of baselineAt.values()) {
+          if (volume > maxVolume) maxVolume = volume
+        }
         if (maxVolume > 0) {
           const barWidth = Math.max(1, width / points.length - 0.4)
           points.forEach((point, index) => {
@@ -1684,6 +1715,31 @@ window.__ModuleLoader__.load({
               }),
             )
           })
+          let path = ''
+          let drawing = false
+          points.forEach((point, index) => {
+            const volume = baselineAt.get(point.time)
+            if (typeof volume !== 'number' || volume <= 0) {
+              drawing = false
+              return
+            }
+            const x = (index / (points.length - 1)) * width
+            const barHeight = Math.max(0.5, (volume / maxVolume) * (volumeBand - 4))
+            path += `${drawing ? 'L' : 'M'}${x.toFixed(1)},${(height - barHeight).toFixed(1)} `
+            drawing = true
+          })
+          if (path !== '') {
+            children.push(
+              h('path', {
+                key: 'vbaseline',
+                d: path.trim(),
+                fill: 'none',
+                style: { stroke: 'var(--dsw-alias-label-secondary)', strokeDasharray: '2 3', strokeOpacity: 0.8 },
+                strokeWidth: 1,
+                vectorEffect: 'non-scaling-stroke',
+              }),
+            )
+          }
         }
       }
 
@@ -1731,6 +1787,20 @@ window.__ModuleLoader__.load({
           { className: 'dshst-axisX' },
           ...xLabels.map((label, index) => h('span', { key: `x${index}` }, label ?? '')),
         ),
+        (() => {
+          if (baselineDays < 1 || baselineAt.size === 0) return null
+          const todayCum = points.reduce((sum, point) => sum + (typeof point.volume === 'number' ? point.volume : 0), 0)
+          const baselineCum = points.reduce((sum, point) => sum + (baselineAt.get(point.time) ?? 0), 0)
+          const ratio = baselineCum > 0 ? todayCum / baselineCum : null
+          if (ratio === null) return null
+          return h(
+            'div',
+            { className: 'dshst-chartNote' },
+            h('span', null, `${t('volumeCompare')} `, h('b', null, ratio.toFixed(2))),
+            h('span', { className: 'dshst-baselineSwatch', 'aria-hidden': true }),
+            h('span', null, t('volumeBaseline').replace('{n}', String(baselineDays))),
+          )
+        })(),
         active
           ? h(
               'span',
@@ -1899,10 +1969,14 @@ window.__ModuleLoader__.load({
           if (!(isTrend && Date.now() - entry.at > 30_000)) return undefined
         }
         let cancelled = false
+        // Five sessions of minute data already ship with the intraday endpoint,
+        // so the same-time volume baseline needs no archive; the five-day view
+        // keeps its sequential payload and omits the comparison.
+        const baselineParam = isTrend && trendDays === 1 && quote.market !== 'us' ? '&baseline=4' : ''
         ;(async () => {
           try {
             const payload = isTrend
-              ? await api(`/trend?symbol=${encodeURIComponent(quote.symbol)}&days=${trendDays}${force || entry ? '&refresh=1' : ''}`)
+              ? await api(`/trend?symbol=${encodeURIComponent(quote.symbol)}&days=${trendDays}${baselineParam}${force || entry ? '&refresh=1' : ''}`)
               : await api(
                   `/kline?symbol=${encodeURIComponent(quote.symbol)}&period=${tab}&adjust=${adjust}&limit=${
                     tab === 'm5' || tab === 'm15' || tab === 'm30' || tab === 'm60'
@@ -2028,6 +2102,8 @@ window.__ModuleLoader__.load({
           return h(TrendChart, {
             points: entry.payload.points,
             prevClose: entry.payload.prevClose,
+            baseline: entry.payload.baseline,
+            baselineDays: entry.payload.baselineDays,
             up: quote.changePct >= 0 ? 'var(--dshst-up)' : 'var(--dshst-down)',
             holdingCost: holding?.cost,
             showVolume,

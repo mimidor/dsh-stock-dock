@@ -10,6 +10,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import * as eastmoney from '../lib/providers/eastmoney.js'
+import { buildVolumeBaseline } from '../lib/providers/index.js'
 import * as tencent from '../lib/providers/tencent.js'
 import * as sina from '../lib/providers/sina.js'
 import { secidCandidates, symbolFromSecid } from '../lib/symbols.js'
@@ -277,4 +278,22 @@ test('eastmoney index trends ignore the amount/volume average', async () => {
   assert.deepEqual(trend.points.map((point) => point.volume), [100, 200, 300, 400, 500])
   assert.deepEqual(trend.days, ['20261113', '20261114'])
   assert.equal(trend.prevClose, 2509.43)
+})
+
+test('the same-time volume baseline averages prior days by minute', () => {
+  const points = []
+  for (const [day, base] of [['20261110', 100], ['20261111', 200], ['20261112', 300], ['20261113', 400]]) {
+    for (const [index, time] of ['0930', '0931', '0932'].entries()) {
+      points.push({ day, time, price: 10 + index, volume: base + index * 10 })
+    }
+  }
+  const built = buildVolumeBaseline(points, 2)
+  assert.equal(built.day, '20261113')
+  assert.equal(built.priorDays, 2)
+  assert.deepEqual(built.points.map((point) => point.volume), [400, 410, 420])
+  assert.deepEqual(built.baseline, [
+    { time: '0930', volume: 250 },
+    { time: '0931', volume: 260 },
+    { time: '0932', volume: 270 },
+  ])
 })

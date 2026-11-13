@@ -268,3 +268,21 @@ Settings discoverability and the options the strip was missing.
   running. The flash respects `prefers-reduced-motion`.
 - Test: a changed quote gets a fresh price-block key while the unchanged card
   keeps its key. 72 tests total.
+
+## 1.6.0 — 2026-11-13
+
+- The one-day intraday chart now answers "is volume expanding or shrinking?"
+  directly: it overlays the prior four sessions' same-time average volume as a
+  dashed line in the volume band and prints the same-time ratio
+  (`同期量比 1.23 · 前4日均量`). The ratio is today's cumulative volume divided
+  by the average cumulative volume of the prior four sessions at the same
+  minute.
+- No archive is needed for this window: Tencent's five-session minute endpoint
+  already carries it. `GET /trend?...&baseline=4` returns today's full line plus
+  the per-minute baseline and prevClose; if the five-session read fails, the
+  route falls back to the single-day line without a baseline. The five-day
+  overlay keeps its sequential payload and does not show the comparison.
+- The volume band scales to the larger of today's bars and the baseline, so a
+  heavy prior day cannot clip the reference line.
+- Tests: the pure baseline fold (prior days averaged per minute-of-day) and the
+  client request/overlay/report. 74 tests total.

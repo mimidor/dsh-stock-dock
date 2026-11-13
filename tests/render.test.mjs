@@ -230,7 +230,17 @@ function makeFetch(calls, overrides = {}) {
     if (path.startsWith('/kline')) return respond({ ok: true, symbol: 'sh600519', period: 'day', adjust: 'qfq', rows: candles(40), source: 'tencent' })
     if (path.startsWith('/trend')) {
       const days = /days=(\d+)/.exec(path)?.[1]
-      return respond({ ok: true, symbol: 'sh600519', market: 'cn', days: [`2026111${days}`], prevClose: 1402.3, points: points(Number(days ?? 1)) })
+      const baseline = Array.isArray(overrides.trendBaseline) ? overrides.trendBaseline : []
+      return respond({
+        ok: true,
+        symbol: 'sh600519',
+        market: 'cn',
+        days: [`2026111${days}`],
+        prevClose: 1402.3,
+        points: points(Number(days ?? 1)),
+        baseline,
+        baselineDays: baseline.length > 0 ? 4 : 0,
+      })
     }
     if (path.startsWith('/search')) {
       return respond({
@@ -724,4 +734,21 @@ test('a changed quote remounts the price block so its flash replays', async () =
   const after = quoteKeys(tree)
   assert.notEqual(after[0], before[0], 'the changed price gets a fresh key and replays the flash')
   assert.equal(after[1], before[1], 'an unchanged price keeps its key, so it does not blink')
+})
+
+test('the one-day intraday chart overlays the same-time volume baseline', async () => {
+  const baseline = points(1).map((point, index) => ({ time: point.time, volume: 1000 + index }))
+  const { harness, component, t, calls } = boot({ trendBaseline: baseline })
+  harness.mount(component, { t })
+  let tree = await harness.settle()
+  click(findAll(tree, (element) => hasClass(element, 'dshst-card') && textOf(element).includes('贵州茅台'))[0])
+  tree = await harness.settle()
+
+  assert.ok(calls.some((call) => call.path.includes('days=1') && call.path.includes('baseline=4')), 'the chart asks for the comparison')
+  const text = textOf(tree)
+  assert.match(text, /同期量比/)
+  assert.match(text, /前4日均量/)
+  const dashed = findAll(tree, (element) =>
+    element.tag === 'path' && element.props.style?.strokeDasharray === '2 3')
+  assert.ok(dashed.length > 0, 'the dashed same-time average is drawn')
 })
