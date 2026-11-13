@@ -989,7 +989,7 @@ test('dragging a card over another previews the gap before drop', async () => {
   tree = await harness.settle()
 
   const shifted = findAll(tree, (element) => hasClass(element, 'dshst-card'))
-  assert.equal(shifted[0].props.style?.opacity, 0, 'the source becomes a placeholder')
+  assert.equal(shifted[0].props.style?.opacity, 0.28, 'the source becomes a placeholder')
   assert.match(shifted[1].props.style?.transform ?? '', /translateX\(-/, 'the target slides into the source slot')
   assert.equal(calls.filter((call) => call.method === 'POST' && call.path === '/config').length, 0, 'nothing is saved yet')
 })

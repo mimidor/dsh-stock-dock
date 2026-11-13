@@ -553,3 +553,13 @@ Settings discoverability and the options the strip was missing.
   restores the original layout.
 - Test: dragging over the second card shifts it into the source slot and saves
   nothing until drop. 84 tests.
+
+## 1.10.2 — 2026-11-13
+
+- Fixed the drag regression introduced by 1.10.1: the drag source was given
+  `pointer-events: none` and zero opacity, which can end the browser's HTML5
+  drag session before any drop. The source now stays hit-testable and only fades
+  to 0.28; the neighbours still slide with the 160 ms preview.
+- The strip itself now accepts `dragover`/`drop` and chooses the nearest card,
+  so releasing in the gap between cards also commits, not only on a card.
+- Test updated for the visible placeholder. 84 tests.

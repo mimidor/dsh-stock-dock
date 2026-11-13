@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.10.1'
+    const BUILD = 'v1.10.2'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -1945,6 +1945,7 @@ window.__ModuleLoader__.load({
         },
         onDragOver: (event) => {
           event.preventDefault?.()
+          event.stopPropagation?.()
           if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
           props.onDragOver?.(index)
         },
@@ -2014,9 +2015,10 @@ window.__ModuleLoader__.load({
           style: props.dragShift
             ? { transform: `translateX(${props.dragShift}px)`, willChange: 'transform' }
             : props.dragSource
-              ? { opacity: 0, pointerEvents: 'none' }
+              ? { opacity: 0.28 }
               : undefined,
           'data-dragging': props.dragSource ? 'true' : 'false',
+          'data-symbol': quote.symbol,
           ...dragProps,
         },
         h(
@@ -3971,6 +3973,45 @@ window.__ModuleLoader__.load({
               {
                 className: 'dshst-strip',
                 ref: bindStrip,
+                onDragOver: (event) => {
+                  const preview = dragPreviewRef.current
+                  if (!preview) return
+                  event.preventDefault?.()
+                  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
+                  const strip = stripRef.current
+                  const cards = strip && typeof strip.querySelectorAll === 'function' ? [...strip.querySelectorAll('[data-symbol]')] : []
+                  if (cards.length === 0) return
+                  const x = event.clientX
+                  let next = cards.length - 1
+                  for (let index = 0; index < cards.length; index += 1) {
+                    const rect = cards[index].getBoundingClientRect()
+                    if (x < rect.left + rect.width / 2) {
+                      next = index
+                      break
+                    }
+                  }
+                  overCard(next)
+                },
+                onDrop: (event) => {
+                  if (!dragPreviewRef.current) return
+                  event.preventDefault?.()
+                  const strip = stripRef.current
+                  const cards = strip && typeof strip.querySelectorAll === 'function' ? [...strip.querySelectorAll('[data-symbol]')] : []
+                  if (cards.length === 0) {
+                    endCardDrag()
+                    return
+                  }
+                  const x = event.clientX
+                  let next = cards.length - 1
+                  for (let index = 0; index < cards.length; index += 1) {
+                    const rect = cards[index].getBoundingClientRect()
+                    if (x < rect.left + rect.width / 2) {
+                      next = index
+                      break
+                    }
+                  }
+                  dropCard(next)
+                },
                 onPointerDown: (event) => {
                   const element = stripRef.current
                   dragState.current = {
