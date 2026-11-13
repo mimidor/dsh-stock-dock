@@ -2,7 +2,7 @@
 
 **中文** · [English](README.en.md)
 
-![version](https://img.shields.io/badge/version-1.7.0-blue)
+![version](https://img.shields.io/badge/version-1.7.1-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![dsh](https://img.shields.io/badge/DSH-0.2.x-6f5bd6)
 ![data](https://img.shields.io/badge/data-Tencent%20%7C%20Sina%20%7C%20Eastmoney-orange)
@@ -21,7 +21,7 @@
 
 - **行情条**：常驻输入框下方，滚轮或触摸板左右滑动转横向、按住可拖动、悬停浮出进度条；涨红跌绿（可切国际配色），A 股打 `涨停`/`跌停`，每张卡带数据源点
 - **设置面板**：头部齿轮直接打开（不依赖 DSH 设置页）；可切数据源（自动/腾讯/新浪/东财）、默认图表、复权、刷新节奏，以及逐项显示开关（迷你图、均线、成交量、五档盘口、指标行、数据源标记、预警提示、美股盘前/盘后）
-- **迷你图类型**：每张卡右侧的小图可切 `分时线 / 日K / 周K / 月K`；分时线随行情刷新，A 股/港股优先，美股分时源不可用时自动退回日K
+- **迷你图类型**：每张卡右侧的小图可在顶部栏或设置里切 `分时线 / 日K / 周K / 月K`；分时线随行情刷新，A 股/港股优先，美股分时源不可用时自动退回日K
 - **卡片管理**：悬停出现 `×` 单只移除，拖拽卡片调整顺序，末尾 `＋` 直接打开搜索
 - **搜索添加**：按代码、中文名或拼音搜（东财 suggest + 腾讯 smartbox 双源合并）
 - **分组自选**：多个自选表，头部胶囊切换；新装有「大盘」预置组（上证/深证/创业板/科创50/恒生/纳斯达克）

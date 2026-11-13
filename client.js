@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.7.0'
+    const BUILD = 'v1.7.1'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -742,6 +742,39 @@ window.__ModuleLoader__.load({
 .dshst-textarea:focus {
   outline: none;
   border-color: var(--dsw-alias-brand-primary);
+}
+.dshst-miniTypes {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.dshst-miniTypes button {
+  border: 0;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 10px;
+  line-height: 18px;
+  padding: 0 5px;
+  cursor: pointer;
+}
+.dshst-miniTypes button + button {
+  border-left: 1px solid var(--dsw-alias-border-l1);
+}
+.dshst-miniTypes button:hover {
+  color: var(--dsw-alias-label-primary);
+}
+.dshst-miniTypes button[data-active="true"] {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+  font-weight: 600;
+}
+.dshst-miniTypes button:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: -2px;
 }
 .dshst-icon:focus-visible,
 .dshst-card:focus-visible,
@@ -3518,6 +3551,33 @@ window.__ModuleLoader__.load({
                 ),
               )
             : null,
+          prefs.showMiniChart === false
+            ? null
+            : h(
+                'span',
+                { className: 'dshst-miniTypes', role: 'group', 'aria-label': t('miniChartType') },
+                ...(
+                  [
+                    ['intraday', t('miniIntraday')],
+                    ['day', t('miniDay')],
+                    ['week', t('miniWeek')],
+                    ['month', t('miniMonth')],
+                  ]
+                ).map(([value, label]) =>
+                  h(
+                    'button',
+                    {
+                      key: value,
+                      type: 'button',
+                      title: label,
+                      'aria-pressed': (prefs.miniChartType ?? 'day') === value ? 'true' : 'false',
+                      'data-active': (prefs.miniChartType ?? 'day') === value ? 'true' : 'false',
+                      onClick: () => savePrefs({ miniChartType: value }),
+                    },
+                    label,
+                  ),
+                ),
+              ),
           h(
             'button',
             {

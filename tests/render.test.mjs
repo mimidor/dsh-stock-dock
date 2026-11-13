@@ -359,7 +359,7 @@ test('period tabs, adjust selection and the MA toggle reach the host', async () 
   click(findAll(tree, (element) => hasClass(element, 'dshst-card') && textOf(element).includes('贵州茅台'))[0])
   tree = await harness.settle()
 
-  const dayTab = findAll(tree, (element) => element.tag === 'button' && textOf(element) === '日K')[0]
+  const dayTab = findAll(tree, (element) => element.tag === 'button' && hasClass(element, 'dshst-tab') && textOf(element) === '日K')[0]
   assert.ok(dayTab, 'the daily tab exists')
   click(dayTab)
   tree = await harness.settle()
@@ -842,4 +842,19 @@ test('the mini chart follows the configured type', async () => {
     2,
     'both cards draw the intraday line',
   )
+})
+
+test('the header switches the card mini chart type', async () => {
+  const { harness, component, t, calls } = boot()
+  harness.mount(component, { t })
+  let tree = await harness.settle()
+  const button = () => findAll(tree, (element) => element.tag === 'button' && textOf(element) === '分时线')[0]
+  assert.ok(button(), 'the header exposes the intraday switch')
+  assert.equal(button().props['data-active'], 'false', 'daily is the default')
+  click(button())
+  tree = await harness.settle()
+  const prefCall = calls.filter((call) => call.method === 'POST' && call.path === '/prefs').at(-1)
+  assert.deepEqual(prefCall.body.patch, { miniChartType: 'intraday' })
+  assert.ok(calls.some((call) => call.path.includes('/sparklines') && call.path.includes('type=intraday')))
+  assert.equal(button().props['data-active'], 'true')
 })

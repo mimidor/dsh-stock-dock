@@ -350,3 +350,13 @@ Settings discoverability and the options the strip was missing.
   fill; the settings row is `迷你图类型` / `Mini chart type`.
 - Tests: the settings select sends the preference, the intraday route fixture
   renders line charts, and the daily route still renders candles. 78 tests.
+
+## 1.7.1 — 2026-11-13
+
+- The mini-chart type switch is now a segmented control in the strip header
+  (`分时线 / 日K / 周K / 月K`), next to the group pills, so it does not require
+  opening the settings panel. It hides itself when the mini chart is turned off,
+  marks the active type, and saves through the same `miniChartType` preference;
+  the settings row remains for discoverability.
+- Tests: clicking the header switch posts the preference and refetches the cards
+  with `type=intraday`. 79 tests.
