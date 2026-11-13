@@ -460,3 +460,12 @@ Settings discoverability and the options the strip was missing.
   - a manual refresh also supersedes an in-flight poll instead of being skipped.
 - Test: clicking the second group activates it, requests `group=<id>` and marks
   the pill active. 81 tests.
+
+## 1.8.5 — 2026-11-13
+
+- The strip header is now two rows: the quote title, source, session, build and
+  update time stay on top; the watchlist groups and the action bar share the
+  second row. Groups sit on the left and scroll inside their own lane, the
+  mini-chart pills and header icons are pinned to the right, so switching to a
+  group with a longer name/count no longer shifts the action buttons.
+- No behaviour changes; screenshots refreshed. 81 tests.

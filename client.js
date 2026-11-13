@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.8.4'
+    const BUILD = 'v1.8.5'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -378,11 +378,24 @@ window.__ModuleLoader__.load({
 }
 .dshst-head {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
   min-height: 20px;
   color: var(--dsw-alias-label-secondary);
+}
+.dshst-headTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   flex-wrap: wrap;
+  min-height: 18px;
+}
+.dshst-headBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 .dshst-title {
   font-size: 11px;
@@ -909,7 +922,18 @@ window.__ModuleLoader__.load({
 .dshst-result:hover { background: var(--dsw-alias-interactive-bg-hover); }
 .dshst-resultCode { font-size: 10px; color: var(--dsw-alias-label-secondary); font-variant-numeric: tabular-nums; }
 .dshst-resultType { margin-left: auto; font-size: 10px; color: var(--dsw-alias-label-secondary); }
-.dshst-groups { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+.dshst-groups {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.dshst-groups::-webkit-scrollbar {
+  display: none;
+}
 .dshst-pill {
   padding: 0 7px;
   border: 1px solid var(--dsw-alias-border-l1);
@@ -3664,7 +3688,10 @@ window.__ModuleLoader__.load({
         h(
           'div',
           { className: 'dshst-head' },
-          h('span', { className: 'dshst-title' }, t('title')),
+          h(
+            'div',
+            { className: 'dshst-headTop' },
+            h('span', { className: 'dshst-title' }, t('title')),
           data?.source
             ? h(
                 'span',
@@ -3683,9 +3710,12 @@ window.__ModuleLoader__.load({
                 h('button', { type: 'button', className: 'dshst-link', onClick: load }, t('retry')),
               )
             : null,
-          notice ? h('span', { className: 'dshst-meta dshst-notice' }, notice) : null,
-          h('span', { className: 'dshst-spacer' }),
-          groups.length > 1
+            notice ? h('span', { className: 'dshst-meta dshst-notice' }, notice) : null,
+          ),
+          h(
+            'div',
+            { className: 'dshst-headBar' },
+            groups.length > 1
             ? h(
                 'span',
                 { className: 'dshst-groups' },
@@ -3705,6 +3735,7 @@ window.__ModuleLoader__.load({
                 ),
               )
             : null,
+            h('span', { className: 'dshst-spacer' }),
           prefs.showMiniChart === false
             ? null
             : h(
@@ -3860,6 +3891,7 @@ window.__ModuleLoader__.load({
                 ),
               )
             : null,
+          ),
         ),
         toast.length > 0
           ? h(
