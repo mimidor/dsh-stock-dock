@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-stock-ticker",
-  "version": "1.8.1",
+  "version": "1.8.2",
   "private": true,
   "type": "module",
   "description": "DeepSeek Harness (DSH) plugin: a configurable A-share / Hong Kong / US quote strip under the composer, with watchlist groups, search, price alerts, holdings with a cost line, mini K-line, intraday (1/3/5 days), minute/daily/weekly/monthly charts, five-level order book and a stock_quote agent tool. 股票行情、自选股、盯盘、K线、预警插件。",

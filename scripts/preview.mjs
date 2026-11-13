@@ -144,8 +144,11 @@ function page(body, { dark = false, width = 880, extraCss = '' } = {}) {
   }
   .preview { width: ${width}px; margin: 0 auto; padding: 14px 16px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 14px; background: var(--dsw-alias-bg-base); }
 ${CSS}
-/* A screenshot is the steady state; the price-change flash is transient. */
+/* A screenshot is the steady state; flashes and entrance animations are transient. */
 .dshst-quote::before { animation: none !important; opacity: 0 !important; }
+.dshst-chart, .dshst-miniLine, .dshst-readout, .dshst-detail, .dshst-toast, .dshst-form, .dshst-settings {
+  animation: none !important;
+}
 ${extraCss}
 </style></head>
 <body${dark ? ' data-ds-dark-theme' : ''}><main class="preview">${body}</main></body></html>`

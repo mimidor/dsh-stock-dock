@@ -421,3 +421,19 @@ Settings discoverability and the options the strip was missing.
   they have no previous-session baseline.
 - Test: hovering the detail chart exposes `放量` and the previous volume. 80
   tests.
+
+## 1.8.2 — 2026-11-13
+
+- Interaction polish, all motion opt-out aware:
+  - a shared 160 ms ease drives card, icon, pill, tab, toggle, button, input and
+    link transitions; cards lift with a soft elevation on hover and the selected
+    card gets a faint brand tint; pills get a subtle active fill;
+  - the detail panel, symbol form, settings card, toast and hover readout fade
+    in; charts fade in when a new chart mounts; the scroll thumb glides;
+  - inputs/selects show a brand focus ring, the add-card and close buttons get
+    their own hover states;
+  - `prefers-reduced-motion` disables the entrance animations and spinner, while
+    the opacity-only price flash stays.
+- Preview pages skip transient animations so README screenshots capture the
+  settled state.
+- No behaviour changes. 80 tests.
