@@ -506,3 +506,11 @@ Settings discoverability and the options the strip was missing.
   The status block shrinks and wraps internally on narrow widths while the
   action buttons stay right-pinned and the dock stays full width.
 - Screenshots refreshed. 81 tests.
+
+## 1.8.10 — 2026-11-13
+
+- The settings gear and the add/symbol-form `+` now show an unmistakable active
+  state while their panel is open: brand border, brand icon and a 14% brand
+  fill, matching the selected pills. The collapse arrow keeps its neutral state
+  because `data-toggle` scopes the fill to panel-owning buttons.
+- No behaviour changes. 81 tests.

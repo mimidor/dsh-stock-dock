@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.8.9'
+    const BUILD = 'v1.8.10'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -436,6 +436,14 @@ window.__ModuleLoader__.load({
 .dshst-icon[aria-expanded="true"] {
   border-color: var(--dsw-alias-border-l2);
   color: var(--dsw-alias-label-primary);
+}
+.dshst-icon[data-toggle="true"][aria-expanded="true"] {
+  border-color: var(--dsw-alias-brand-primary);
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary) 14%, transparent);
+  color: var(--dsw-alias-brand-primary);
+}
+.dshst-icon[data-toggle="true"]:active {
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary) 20%, transparent);
 }
 /* A quote app's refresh affordance: the icon turns while a fetch is in flight,
    for both the manual button and the poll, so "is it live?" is visible. */
@@ -3791,6 +3799,7 @@ window.__ModuleLoader__.load({
           {
             type: 'button',
             className: 'dshst-icon',
+            'data-toggle': 'true',
             title: t('settingsTitle'),
             'aria-label': t('settingsTitle'),
             'aria-expanded': settingsOpen ? 'true' : 'false',
@@ -3859,6 +3868,7 @@ window.__ModuleLoader__.load({
           {
             type: 'button',
             className: 'dshst-icon',
+            'data-toggle': 'true',
             title: t('settings'),
             'aria-label': t('settings'),
             'aria-expanded': formOpen && !collapsed ? 'true' : 'false',
