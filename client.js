@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.10.4'
+    const BUILD = 'v1.10.5'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -629,14 +629,25 @@ window.__ModuleLoader__.load({
 .dshst-volumeSignal[data-trend="down"],
 .dshst-volumeSignal[data-trend="flat"] { color: var(--dsw-alias-label-secondary); }
 .dshst-volumeLegend {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-  padding: 0 2px;
+  position: absolute;
+  top: 3px;
+  right: 54px;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  grid-template-rows: repeat(4, auto);
+  grid-auto-flow: column;
+  gap: 1px 8px;
+  padding: 3px 6px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 82%, transparent);
+  backdrop-filter: blur(3px);
   color: var(--dsw-alias-label-secondary);
   font-size: 9px;
+  line-height: 11px;
   font-variant-numeric: tabular-nums;
+  pointer-events: none;
 }
 .dshst-volumeLegendTitle {
   color: var(--dsw-alias-label-secondary);

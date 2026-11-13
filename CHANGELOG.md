@@ -586,3 +586,11 @@ Settings discoverability and the options the strip was missing.
   still shows how much yesterday traded, not just a colour. Hovering keeps the
   numeric `昨 ...` reading.
 - Applies to the intraday band and 5/15/30/60-minute K. 84 tests.
+
+## 1.10.5 — 2026-11-13
+
+- Moved the volume legend from a row under the chart to a compact overlay in
+  the chart's empty top-right corner (two columns, four rows, translucent
+  surface). It no longer costs vertical space; the signal/ratio line stays below
+  the chart. Applies to the intraday and minute-K charts.
+- Screenshots refreshed. 84 tests.
