@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.5.5'
+    const BUILD = 'v1.5.6'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -390,6 +390,34 @@ window.__ModuleLoader__.load({
 .dshst-icon[aria-expanded="true"] {
   border-color: var(--dsw-alias-border-l2);
   color: var(--dsw-alias-label-primary);
+}
+/* A quote app's refresh affordance: the icon turns while a fetch is in flight,
+   for both the manual button and the poll, so "is it live?" is visible. */
+.dshst-refresh svg {
+  transform-origin: center;
+}
+.dshst-refresh[data-busy="true"] {
+  color: var(--dsw-alias-brand-primary);
+}
+.dshst-refresh[data-busy="true"] svg {
+  animation: dshst-spin 700ms linear infinite;
+}
+/* The clock flashes once per successful poll; the key change replays it. */
+.dshst-flash {
+  animation: dshst-flash 700ms ease-out;
+}
+@keyframes dshst-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes dshst-flash {
+  from { color: var(--dsw-alias-brand-primary); }
+  to { color: var(--dsw-alias-label-secondary); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dshst-refresh[data-busy="true"] svg,
+  .dshst-flash {
+    animation: none;
+  }
 }
 .dshst-strip {
   display: flex;
@@ -2780,6 +2808,9 @@ window.__ModuleLoader__.load({
       const dragState = useRef({ active: false, startX: 0, startLeft: 0, moved: false })
       const alive = useRef(true)
       const refreshing = useRef({ busy: false, startedAt: 0 })
+      const [busy, setBusy] = useState(false)
+      const spinTimer = useRef(0)
+      const loadSeq = useRef(0)
       const noticeTimer = useRef(0)
 
       // React replays effects in development, so the flag must be raised on every
@@ -2789,6 +2820,7 @@ window.__ModuleLoader__.load({
         return () => {
           alive.current = false
           window.clearTimeout(noticeTimer.current)
+          window.clearTimeout(spinTimer.current)
           if (typeof restoreStripRow.current === 'function') {
             restoreStripRow.current()
             restoreStripRow.current = undefined
@@ -2807,8 +2839,13 @@ window.__ModuleLoader__.load({
         if (typeof document !== 'undefined' && document.hidden) return
         // A request that never settles must not freeze every later tick.
         if (refreshing.current.busy && Date.now() - refreshing.current.startedAt < 20_000) return
+        const seq = (loadSeq.current += 1)
+        window.clearTimeout(spinTimer.current)
+        spinTimer.current = 0
         refreshing.current.busy = true
         refreshing.current.startedAt = Date.now()
+        const startedAt = refreshing.current.startedAt
+        setBusy(true)
         try {
           const forced = prefsRef.current.source && prefsRef.current.source !== 'auto' ? `&source=${prefsRef.current.source}` : ''
           const payload = await api(`/quotes?sparklines=0${forced}`, { timeout: 9000 })
@@ -2827,6 +2864,20 @@ window.__ModuleLoader__.load({
         } finally {
           refreshing.current.busy = false
           if (alive.current) setLoading(false)
+          if (alive.current && seq === loadSeq.current) {
+            // A local poll answers in tens of milliseconds; without a floor the
+            // indicator would blink once and the user would miss it. The floor
+            // also gives auto-refresh the same visible rhythm as a manual click.
+            const hold = Math.max(0, 650 - (Date.now() - startedAt))
+            if (hold > 0) {
+              spinTimer.current = window.setTimeout(() => {
+                spinTimer.current = 0
+                if (alive.current && seq === loadSeq.current) setBusy(false)
+              }, hold)
+            } else {
+              setBusy(false)
+            }
+          }
         }
       }, [t, active])
 
@@ -3158,7 +3209,9 @@ window.__ModuleLoader__.load({
             : null,
           data?.session ? h('span', { className: 'dshst-chip' }, sessionLabel(t, data.session)) : null,
           h('span', { className: 'dshst-chip', title: 'stock-ticker build' }, BUILD),
-          data?.updatedAt ? h('span', { className: 'dshst-meta' }, formatClock(data.updatedAt)) : null,
+          data?.updatedAt
+            ? h('span', { key: data.updatedAt, className: 'dshst-meta dshst-flash' }, formatClock(data.updatedAt))
+            : null,
           error && data
             ? h(
                 'span',
@@ -3229,9 +3282,11 @@ window.__ModuleLoader__.load({
             'button',
             {
               type: 'button',
-              className: 'dshst-icon',
+              className: 'dshst-icon dshst-refresh',
               title: t('refresh'),
               'aria-label': t('refresh'),
+              'aria-busy': busy ? 'true' : 'false',
+              'data-busy': busy ? 'true' : 'false',
               onClick: load,
             },
             h(

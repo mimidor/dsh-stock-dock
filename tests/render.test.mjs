@@ -684,3 +684,17 @@ test('the row claim skips nested display:contents outlet layers', async () => {
   assert.equal(root.__wrappers[0].style.order, '', 'the wrapper stays layout-neutral')
   assert.equal(root.__pill.style.order, '', 'the sibling pill stays put')
 })
+
+test('the refresh button reports an in-flight poll', async () => {
+  const { harness, component, t } = boot()
+  harness.mount(component, { t })
+  let tree = await harness.settle()
+  const refreshButton = (rendered) => findAll(rendered, (element) =>
+    element.tag === 'button' && String(element.props?.className ?? '').split(/\s+/).includes('dshst-refresh'))[0]
+  const button = refreshButton(tree)
+  assert.ok(button, 'the refresh button is rendered')
+  assert.equal(button.props['data-busy'], 'true', 'the indicator starts with the fetch')
+  await harness.flushTimers(1000)
+  tree = harness.getTree()
+  assert.equal(refreshButton(tree).props['data-busy'], 'false', 'the indicator clears after the hold')
+})

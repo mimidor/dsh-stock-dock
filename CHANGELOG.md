@@ -244,3 +244,16 @@ Settings discoverability and the options the strip was missing.
   Tencent failure cannot bring back the off-scale y-axis.
 - Tests: per-minute deltas for the Tencent stock/CN index/HK index fixtures and
   the Eastmoney index average. 70 tests total.
+
+## 1.5.6 — 2026-11-13
+
+- The strip now shows that it is refreshing, for the manual button and for the
+  auto poll: the refresh icon spins (and takes the brand color) while a `/quotes`
+  request is in flight, held for at least 650 ms so a fast local answer is still
+  visible, and the update clock flashes once per successful poll. Both effects
+  respect `prefers-reduced-motion` (the color cue remains).
+- The busy state is scoped to the newest request (`loadSeq`), so a slow earlier
+  answer cannot clear the indicator of a newer one; the hold timer is cleared on
+  unmount.
+- Test: the refresh button reports `data-busy="true"` during the fetch and
+  `"false"` once the hold expires. 71 tests total.
