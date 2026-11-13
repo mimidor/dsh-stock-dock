@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.7.4'
+    const BUILD = 'v1.7.5'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -72,6 +72,9 @@ window.__ModuleLoader__.load({
       turnover: '换手',
       volumeRatio: '量比',
       volumeCompare: '同期量比',
+      volumeExpand: '放量',
+      volumeShrink: '缩量',
+      volumeFlat: '平量',
       volumeBaseline: '前{n}日均量',
       amplitude: '振幅',
       marketCap: '市值',
@@ -228,6 +231,9 @@ window.__ModuleLoader__.load({
       turnover: 'Turn',
       volumeRatio: 'Vol ratio',
       volumeCompare: 'Same-time ratio',
+      volumeExpand: 'Expanding',
+      volumeShrink: 'Shrinking',
+      volumeFlat: 'Steady',
       volumeBaseline: 'prior {n}-day avg',
       amplitude: 'Range',
       marketCap: 'Cap',
@@ -544,6 +550,10 @@ window.__ModuleLoader__.load({
   font-variant-numeric: tabular-nums;
 }
 .dshst-chartNote b { color: var(--dsw-alias-label-primary); font-weight: 600; }
+.dshst-volumeSignal { font-weight: 600; }
+.dshst-volumeSignal[data-trend="up"] { color: var(--dsw-alias-brand-primary); }
+.dshst-volumeSignal[data-trend="down"],
+.dshst-volumeSignal[data-trend="flat"] { color: var(--dsw-alias-label-secondary); }
 .dshst-baselineSwatch {
   width: 14px;
   height: 0;
@@ -1800,6 +1810,11 @@ window.__ModuleLoader__.load({
             if (typeof point.volume !== 'number') return
             const barHeight = Math.max(0.5, (point.volume / maxVolume) * (volumeBand - 4))
             const rising = index === 0 ? true : point.price >= points[index - 1].price
+            // Brighten bars that beat their same-time baseline and fade the ones
+            // below it; the colour still means price direction, not volume.
+            const reference = baselineAt.get(point.time)
+            const relative = typeof reference === 'number' && reference > 0 ? point.volume / reference : null
+            const fillOpacity = relative === null ? 0.5 : relative >= 1.15 ? 0.85 : relative <= 0.85 ? 0.28 : 0.5
             children.push(
               h('rect', {
                 key: `v${index}`,
@@ -1807,7 +1822,7 @@ window.__ModuleLoader__.load({
                 y: height - barHeight,
                 width: barWidth,
                 height: barHeight,
-                style: { fill: rising ? up : 'var(--dshst-down)', fillOpacity: 0.5 },
+                style: { fill: rising ? up : 'var(--dshst-down)', fillOpacity },
               }),
             )
           })
@@ -1889,9 +1904,13 @@ window.__ModuleLoader__.load({
           const baselineCum = points.reduce((sum, point) => sum + (baselineAt.get(point.time) ?? 0), 0)
           const ratio = baselineCum > 0 ? todayCum / baselineCum : null
           if (ratio === null) return null
+          const signal = ratio >= 1.05 ? 'up' : ratio <= 0.95 ? 'down' : 'flat'
+          const label = signal === 'up' ? t('volumeExpand') : signal === 'down' ? t('volumeShrink') : t('volumeFlat')
+          const arrow = signal === 'up' ? '↑' : signal === 'down' ? '↓' : '→'
           return h(
             'div',
             { className: 'dshst-chartNote' },
+            h('span', { className: 'dshst-volumeSignal', 'data-trend': signal }, `${label} ${arrow}`),
             h('span', null, `${t('volumeCompare')} `, h('b', null, ratio.toFixed(2))),
             h('span', { className: 'dshst-baselineSwatch', 'aria-hidden': true }),
             h('span', null, t('volumeBaseline').replace('{n}', String(baselineDays))),

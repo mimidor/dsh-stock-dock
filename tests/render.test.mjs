@@ -781,7 +781,7 @@ test('a manual refresh pulses every price block even when values do not change',
 })
 
 test('the one-day intraday chart overlays the same-time volume baseline', async () => {
-  const baseline = points(1).map((point, index) => ({ time: point.time, volume: 1000 + index }))
+  const baseline = points(1).map((point, index) => ({ time: point.time, volume: (1000 + index) / 2 }))
   const { harness, component, t, calls } = boot({ trendBaseline: baseline })
   harness.mount(component, { t })
   let tree = await harness.settle()
@@ -792,6 +792,7 @@ test('the one-day intraday chart overlays the same-time volume baseline', async 
   const text = textOf(tree)
   assert.match(text, /同期量比/)
   assert.match(text, /前4日均量/)
+  assert.match(text, /放量 ↑/, 'a ratio above one is labelled as expanding volume')
   const dashed = findAll(tree, (element) =>
     element.tag === 'path' && element.props.style?.strokeDasharray === '2 3')
   assert.ok(dashed.length > 0, 'the dashed same-time average is drawn')

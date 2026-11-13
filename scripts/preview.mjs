@@ -306,7 +306,11 @@ function makeFetch() {
     if (path.startsWith('/quotes')) return respond(quotesPayload())
     if (path.startsWith('/settings')) return respond(settingsPayload())
     if (path.startsWith('/kline')) return respond({ ok: true, rows: candles(40), source: 'tencent' })
-    if (path.startsWith('/trend')) return respond({ ok: true, prevClose: 1402.3, days: ['20261112'], points: points(1) })
+    if (path.startsWith('/trend')) {
+      const trendPoints = points(1)
+      const baseline = trendPoints.map((point) => ({ time: point.time, volume: (point.volume ?? 0) * 0.8 }))
+      return respond({ ok: true, prevClose: 1402.3, days: ['20261112'], points: trendPoints, baseline, baselineDays: 4 })
+    }
     if (path.startsWith('/trades')) {
       return respond({
         ok: true,

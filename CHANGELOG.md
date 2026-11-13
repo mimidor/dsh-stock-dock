@@ -388,3 +388,13 @@ Settings discoverability and the options the strip was missing.
   indicator. The strip reserves 6 px of bottom padding, keeping the track below
   the cards instead of on top of them.
 - Screenshots refreshed.
+
+## 1.7.5 — 2026-11-13
+
+- The intraday volume band now says, in one line, whether volume is expanding:
+  `放量 ↑` / `缩量 ↓` / `平量 →` plus the same-time ratio and the prior-days
+  baseline. Bars that beat their same-time baseline are drawn brighter and bars
+  below it fade, so the minute-by-minute picture matches the summary without
+  changing the price-direction colour.
+- The preview fixture now carries the baseline, so the README detail shot shows
+  the signal. 79 tests.
