@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.10.0'
+    const BUILD = 'v1.10.1'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -521,7 +521,7 @@ window.__ModuleLoader__.load({
   text-align: left;
   cursor: pointer;
   transition: background-color var(--dshst-dur) var(--dshst-ease), border-color var(--dshst-dur) var(--dshst-ease),
-    box-shadow var(--dshst-dur) var(--dshst-ease);
+    box-shadow var(--dshst-dur) var(--dshst-ease), transform 160ms var(--dshst-ease), opacity 120ms var(--dshst-ease);
 }
 .dshst-card:hover {
   border-color: color-mix(in srgb, var(--dsw-alias-brand-primary) 45%, var(--dsw-alias-border-l2));
@@ -1941,18 +1941,19 @@ window.__ModuleLoader__.load({
           } catch {
             /* some browsers refuse custom drag data; the drop handler falls back */
           }
+          props.onDragStart?.(index, event)
         },
         onDragOver: (event) => {
           event.preventDefault?.()
           if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
+          props.onDragOver?.(index)
         },
         onDrop: (event) => {
           event.preventDefault?.()
           event.stopPropagation?.()
-          const raw = event.dataTransfer?.getData('text/plain') ?? ''
-          const from = Number.parseInt(raw, 10)
-          if (Number.isInteger(from)) props.onMove?.(from, index)
+          props.onDrop?.(index)
         },
+        onDragEnd: () => props.onDragEnd?.(),
       }
 
       if (quote.error) {
@@ -2010,6 +2011,12 @@ window.__ModuleLoader__.load({
           },
           title: `${quote.name ?? quote.symbol} ${quote.code ?? ''}`.trim(),
           'aria-pressed': props.selected ? 'true' : 'false',
+          style: props.dragShift
+            ? { transform: `translateX(${props.dragShift}px)`, willChange: 'transform' }
+            : props.dragSource
+              ? { opacity: 0, pointerEvents: 'none' }
+              : undefined,
+          'data-dragging': props.dragSource ? 'true' : 'false',
           ...dragProps,
         },
         h(
@@ -3870,8 +3877,35 @@ window.__ModuleLoader__.load({
         const [item] = next.splice(from, 1)
         if (!item) return
         next.splice(to, 0, item)
+        // Put the new order on screen before the round trip; the drag preview is
+        // already showing the same gap, so the drop lands where the user aimed.
+        const bySymbol = new Map(quotes.map((quote) => [quote.symbol, quote]))
+        const reordered = next.map((symbol) => bySymbol.get(symbol)).filter(Boolean)
+        setData((current) => (current ? { ...current, symbols: next, quotes: reordered } : current))
         saveSymbols(next)
       }
+
+      const [dragPreview, setDragPreview] = useState(null)
+      const dragPreviewRef = useRef(null)
+      const updateDragPreview = (next) => {
+        dragPreviewRef.current = next
+        setDragPreview(next)
+      }
+      const startCardDrag = (from, event) => {
+        const width = event?.currentTarget?.getBoundingClientRect?.().width || 132
+        updateDragPreview({ from, over: from, width })
+      }
+      const overCard = (index) => {
+        const current = dragPreviewRef.current
+        if (!current || current.over === index) return
+        updateDragPreview({ ...current, over: index })
+      }
+      const dropCard = (index) => {
+        const current = dragPreviewRef.current
+        updateDragPreview(null)
+        if (current) moveSymbol(current.from, index)
+      }
+      const endCardDrag = () => updateDragPreview(null)
 
       const onCardSelect = (symbol) => {
         // A drag that scrolled the strip must not also open a card.
@@ -3961,12 +3995,31 @@ window.__ModuleLoader__.load({
                   dragState.current.active = false
                 },
               },
-              ...quotes.map((quote, index) =>
-                h(QuoteCard, {
+              ...quotes.map((quote, index) => {
+                const preview = dragPreview
+                const from = preview?.from ?? -1
+                const over = preview?.over ?? -1
+                const headingRight = from < over
+                const headingLeft = from > over
+                const shift =
+                  preview && from !== over
+                    ? headingRight && index > from && index <= over
+                      ? -(preview.width + 6)
+                      : headingLeft && index >= over && index < from
+                        ? preview.width + 6
+                        : 0
+                    : 0
+                return h(QuoteCard, {
                   key: quote.symbol,
                   quote,
                   index,
                   t,
+                  dragShift: shift,
+                  dragSource: preview ? index === from : false,
+                  onDragStart: startCardDrag,
+                  onDragOver: overCard,
+                  onDrop: dropCard,
+                  onDragEnd: endCardDrag,
                   previewDays: prefs.klineDays,
                   sourceDot: prefs.sourceDot !== false,
                   selected: selected === quote.symbol,
@@ -3976,9 +4029,8 @@ window.__ModuleLoader__.load({
                   showExtended: prefs.showExtended === true,
                   onSelect: () => onCardSelect(quote.symbol),
                   onRemove: () => removeSymbol(quote.symbol),
-                  onMove: moveSymbol,
-                }),
-              ),
+                })
+              }),
               h(
                 'button',
                 {

@@ -542,3 +542,14 @@ Settings discoverability and the options the strip was missing.
   the prior-session dashed line).
 - Test: drag selection produces the summary with change, amplitude and clear.
   83 tests.
+
+## 1.10.1 — 2026-11-13
+
+- Card reordering now previews the destination while dragging instead of only
+  moving after the drop: the source card becomes an invisible placeholder and
+  the cards between source and target slide 160 ms into/out of the gap as the
+  pointer crosses them, then the drop commits in place (the local order is
+  updated optimistically before the `/config` round trip). Drag cancellation
+  restores the original layout.
+- Test: dragging over the second card shifts it into the source slot and saves
+  nothing until drop. 84 tests.

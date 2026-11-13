@@ -975,3 +975,21 @@ test('dragging on a K-line chart marks a range with summary stats', async () => 
   assert.match(text, /振幅/)
   assert.match(text, /清除/)
 })
+
+test('dragging a card over another previews the gap before drop', async () => {
+  const { harness, component, t, calls } = boot()
+  harness.mount(component, { t })
+  let tree = await harness.settle()
+  const cards = findAll(tree, (element) => hasClass(element, 'dshst-card'))
+  const transfer = { data: {}, setData() {}, getData: () => '', effectAllowed: '', dropEffect: '' }
+  cards[0].props.onDragStart({ dataTransfer: transfer, currentTarget: cards[0] })
+  tree = await harness.settle()
+  const target = findAll(tree, (element) => hasClass(element, 'dshst-card'))[1]
+  target.props.onDragOver({ dataTransfer: transfer, preventDefault() {} })
+  tree = await harness.settle()
+
+  const shifted = findAll(tree, (element) => hasClass(element, 'dshst-card'))
+  assert.equal(shifted[0].props.style?.opacity, 0, 'the source becomes a placeholder')
+  assert.match(shifted[1].props.style?.transform ?? '', /translateX\(-/, 'the target slides into the source slot')
+  assert.equal(calls.filter((call) => call.method === 'POST' && call.path === '/config').length, 0, 'nothing is saved yet')
+})
