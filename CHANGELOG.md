@@ -446,3 +446,17 @@ Settings discoverability and the options the strip was missing.
   move to the tooltip, so the card stops growing just because pre-market is on.
   The detail header keeps the full label because it has the room.
 - Test updated for the compact chip and its tooltip. 80 tests.
+
+## 1.8.4 — 2026-11-13
+
+- Switching a watchlist group no longer appears stuck when a quote poll is
+  already in flight:
+  - the clicked pill highlights immediately instead of waiting for the round
+    trip;
+  - the switch forces a fresh `/quotes` request and names the group explicitly,
+    so the answer cannot belong to the previous selection;
+  - the newest request owns the loading/error state and older answers are
+    dropped by a sequence guard, so a stale poll cannot repaint the old group;
+  - a manual refresh also supersedes an in-flight poll instead of being skipped.
+- Test: clicking the second group activates it, requests `group=<id>` and marks
+  the pill active. 81 tests.

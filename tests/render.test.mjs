@@ -246,7 +246,9 @@ function makeFetch(calls, overrides = {}) {
         quotesCalls += 1
         return respond(overrides.quotesSequence[index])
       }
-      return respond(overrides.quotes ?? quotesPayload())
+      const payload = overrides.quotes ?? quotesPayload()
+      const group = /[?&]group=([^&]+)/.exec(path)?.[1]
+      return respond(group ? { ...payload, activeGroup: decodeURIComponent(group) } : payload)
     }
     if (path.startsWith('/settings')) return respond(settingsPayload())
     if (path.startsWith('/kline')) return respond({ ok: true, symbol: 'sh600519', period: 'day', adjust: 'qfq', rows: candles(40), source: 'tencent' })
@@ -884,4 +886,30 @@ test('hovering an intraday point reports its volume versus yesterday', async () 
   const text = textOf(readout)
   assert.match(text, /放量/)
   assert.match(text, /昨/)
+})
+
+test('switching a group highlights it and loads that group immediately', async () => {
+  const payload = quotesPayload()
+  payload.activeGroup = 'default'
+  payload.groups = [
+    { id: 'default', name: '自选', count: 2 },
+    { id: 'market', name: '大盘', count: 1 },
+  ]
+  const { harness, component, t, calls } = boot({ quotes: payload })
+  harness.mount(component, { t })
+  let tree = await harness.settle()
+  const market = () => findAll(
+    tree,
+    (element) => element.tag === 'button' && hasClass(element, 'dshst-pill') && textOf(element) === '大盘 1',
+  )[0]
+  assert.ok(market(), 'the second group pill is rendered')
+  click(market())
+  tree = await harness.settle()
+  const activate = calls.find((call) => call.method === 'POST' && call.path === '/groups' && call.body?.action === 'activate')
+  assert.equal(activate.body.id, 'market')
+  assert.ok(
+    calls.some((call) => call.path.includes('/quotes') && call.path.includes('group=market')),
+    'the quote request names the selected group',
+  )
+  assert.equal(market().props['data-active'], 'true')
 })

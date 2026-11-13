@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.8.3'
+    const BUILD = 'v1.8.4'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -3249,11 +3249,15 @@ window.__ModuleLoader__.load({
         noticeTimer.current = window.setTimeout(() => setNotice(''), 6000)
       }, [])
 
-      const load = useCallback(async () => {
+      const load = useCallback(async (options = {}) => {
+        const force = options?.force === true
+        const group = typeof options?.group === 'string' && options.group !== '' ? options.group : ''
         if (!active) return
         if (typeof document !== 'undefined' && document.hidden) return
-        // A request that never settles must not freeze every later tick.
-        if (refreshing.current.busy && Date.now() - refreshing.current.startedAt < 20_000) return
+        // A request that never settles must not freeze every later tick. A group
+        // switch or a manual refresh is allowed to supersede it; the sequence
+        // guard below drops the older answer instead of overwriting the new one.
+        if (!force && refreshing.current.busy && Date.now() - refreshing.current.startedAt < 20_000) return
         const seq = (loadSeq.current += 1)
         window.clearTimeout(spinTimer.current)
         spinTimer.current = 0
@@ -3263,8 +3267,9 @@ window.__ModuleLoader__.load({
         setBusy(true)
         try {
           const forced = prefsRef.current.source && prefsRef.current.source !== 'auto' ? `&source=${prefsRef.current.source}` : ''
-          const payload = await api(`/quotes?sparklines=0${forced}`, { timeout: 9000 })
-          if (!alive.current) return
+          const groupParam = group ? `&group=${encodeURIComponent(group)}` : ''
+          const payload = await api(`/quotes?sparklines=0${forced}${groupParam}`, { timeout: 9000 })
+          if (!alive.current || seq !== loadSeq.current) return
           if (payload.ok !== true) throw new Error(payload.error || 'quotes-failed')
           setData(payload)
           setError('')
@@ -3273,31 +3278,35 @@ window.__ModuleLoader__.load({
             setToast(payload.fired)
           }
         } catch (failure) {
-          if (!alive.current) return
+          if (!alive.current || seq !== loadSeq.current) return
           setError(describeLoadError(failure, t))
           setFailures((count) => count + 1)
         } finally {
-          refreshing.current.busy = false
-          if (alive.current) setLoading(false)
-          if (alive.current && seq === loadSeq.current) {
-            // A local poll answers in tens of milliseconds; without a floor the
-            // indicator would blink once and the user would miss it. The floor
-            // also gives auto-refresh the same visible rhythm as a manual click.
-            const hold = Math.max(0, 650 - (Date.now() - startedAt))
-            if (hold > 0) {
-              spinTimer.current = window.setTimeout(() => {
-                spinTimer.current = 0
-                if (alive.current && seq === loadSeq.current) setBusy(false)
-              }, hold)
-            } else {
-              setBusy(false)
+          // Only the newest request owns the busy/loading state; a stale answer
+          // must not clear the indicator of the request that replaced it.
+          if (seq === loadSeq.current) {
+            refreshing.current.busy = false
+            if (alive.current) setLoading(false)
+            if (alive.current) {
+              // A local poll answers in tens of milliseconds; without a floor the
+              // indicator would blink once and the user would miss it. The floor
+              // also gives auto-refresh the same visible rhythm as a manual click.
+              const hold = Math.max(0, 650 - (Date.now() - startedAt))
+              if (hold > 0) {
+                spinTimer.current = window.setTimeout(() => {
+                  spinTimer.current = 0
+                  if (alive.current && seq === loadSeq.current) setBusy(false)
+                }, hold)
+              } else {
+                setBusy(false)
+              }
             }
           }
         }
       }, [t, active])
 
       const manualRefresh = useCallback(async () => {
-        await load()
+        await load({ force: true })
         if (alive.current) setManualPulse((count) => count + 1)
       }, [load])
 
@@ -3438,11 +3447,19 @@ window.__ModuleLoader__.load({
       }
 
       const switchGroup = async (id) => {
+        const previousGroup = data?.activeGroup
+        // Highlight the pill before the round trip; otherwise a poll in flight
+        // can make the click look ignored for up to five seconds.
+        setData((current) => (current ? { ...current, activeGroup: id } : current))
+        setSelected(null)
         try {
-          await api('/groups', { method: 'POST', body: { action: 'activate', id } })
-          setSelected(null)
-          load()
+          const payload = await api('/groups', { method: 'POST', body: { action: 'activate', id } })
+          if (payload.ok !== true) throw new Error(payload.error || 'group-switch-failed')
+          // Force a fresh page even if an auto poll is still running, and name
+          // the group so the answer cannot belong to the previous selection.
+          await load({ force: true, group: id })
         } catch (failure) {
+          setData((current) => (current && current.activeGroup === id ? { ...current, activeGroup: previousGroup } : current))
           flashNotice(String(failure?.message ?? failure))
         }
       }
