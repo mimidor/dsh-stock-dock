@@ -300,3 +300,20 @@ Settings discoverability and the options the strip was missing.
   back/forward gesture while the strip can move.
 - Test: a horizontal trackpad event scrolls the strip and is consumed. 74 tests
   total (the former "not hijacked" assertion now covers the intended behavior).
+
+## 1.6.2 — 2026-11-13
+
+- The strip now tells the truth about scrolling: the custom scroll track mounts
+  only when `scrollWidth - clientWidth` shows a real overflow. With four cards
+  that fit, the track disappears and there is nothing for a two-finger gesture
+  to move; previously the track appeared on hover even when the strip fit, which
+  made a dead gesture look broken.
+- Wheel handling is bound both on the strip and its scroll wrapper (the absolute
+  track is a sibling of the strip) and marks a consumed event so the window
+  capture listener cannot scroll it a second time. The window listener also
+  accepts a pointer inside the strip's rectangle, covering overlay targets.
+- `localStorage['dsh-stock-ticker:debug'] = '1'` now logs
+  `[stock-ticker] strip overflow {clientWidth, scrollWidth, overflowing}` and
+  each consumed `[stock-ticker] strip wheel {deltaX, deltaY, max, scrollLeft}`.
+- Tests: the scroll track is absent when the cards fit, and the strip's own
+  listener scrolls once (the window listener does not double it). 76 tests.

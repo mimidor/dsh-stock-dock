@@ -752,3 +752,36 @@ test('the one-day intraday chart overlays the same-time volume baseline', async 
     element.tag === 'path' && element.props.style?.strokeDasharray === '2 3')
   assert.ok(dashed.length > 0, 'the dashed same-time average is drawn')
 })
+
+test('the custom scroll track appears only while the strip overflows', async () => {
+  const wide = boot()
+  wide.harness.mount(wide.component, { t: wide.t })
+  let tree = await wide.harness.settle()
+  assert.ok(
+    findAll(tree, (element) => hasClass(element, 'dshst-scrollTrack')).length > 0,
+    'an overflowing strip shows the scroll affordance',
+  )
+
+  const fits = boot({ metrics: { scrollWidth: 600, clientWidth: 600 } })
+  fits.harness.mount(fits.component, { t: fits.t })
+  tree = await fits.harness.settle()
+  assert.equal(
+    findAll(tree, (element) => hasClass(element, 'dshst-scrollTrack')).length,
+    0,
+    'a strip that fits stays free of a dead scrollbar',
+  )
+})
+
+test('the strip node itself handles a wheel event, not only the window', async () => {
+  const { harness, component, t } = boot()
+  harness.mount(component, { t })
+  await harness.settle()
+  const strip = stripElement(harness)
+  const event = wheel(strip, { deltaX: 90 })
+  strip.dispatch('wheel', event)
+  assert.equal(strip.scrollLeft, 90)
+  assert.equal(event.defaultPrevented, true)
+  // The same event must not be scrolled again by the window capture listener.
+  harness.dispatchWindow('wheel', event)
+  assert.equal(strip.scrollLeft, 90)
+})

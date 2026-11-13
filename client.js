@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.6.1'
+    const BUILD = 'v1.6.2'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -418,6 +418,7 @@ window.__ModuleLoader__.load({
   display: flex;
   gap: 6px;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   padding-bottom: 2px;
   scrollbar-width: thin;
 }
@@ -876,7 +877,7 @@ window.__ModuleLoader__.load({
   height: 3px;
   border-radius: 2px;
   background: transparent;
-  opacity: 0;
+  opacity: 0.8;
   transition: opacity 0.15s;
   pointer-events: none;
 }
@@ -2721,6 +2722,10 @@ window.__ModuleLoader__.load({
       if (delta === 0) return false
       const scale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? element.clientWidth : 1
       event.preventDefault?.()
+      event.__dshstStripWheel = true
+      if (debugEnabled()) {
+        console.debug('[stock-ticker] strip wheel', { deltaX, deltaY, max, scrollLeft: element.scrollLeft })
+      }
       const next = element.scrollLeft + delta * scale
       element.scrollLeft = Math.max(0, Math.min(max, next))
       return true
@@ -2893,6 +2898,8 @@ window.__ModuleLoader__.load({
       const [sparks, setSparks] = useState({})
       const sparkMeta = useRef({ key: '', at: 0, etag: '' })
       const stripRef = useRef(null)
+      const stripCleanup = useRef(null)
+      const [overflowing, setOverflowing] = useState(false)
       const restoreStripRow = useRef(undefined)
       // The row claim must start from the component root: the dock, the
       // display:contents [data-slot] outlet and our root are three different
@@ -2905,6 +2912,55 @@ window.__ModuleLoader__.load({
         if (node) restoreStripRow.current = claimOwnRow(node)
       }, [])
       const [scrollRatio, setScrollRatio] = useState(0)
+      // The custom scroll track is also the affordance: showing it when the
+      // cards fit made a dead gesture look broken. Measure the real overflow.
+      const measureStrip = useCallback((node = stripRef.current) => {
+        if (!node || typeof node.scrollWidth !== 'number' || typeof node.clientWidth !== 'number') {
+          setOverflowing((current) => (current ? false : current))
+          return
+        }
+        const next = node.scrollWidth - node.clientWidth > 2
+        if (debugEnabled()) {
+          console.debug('[stock-ticker] strip overflow', {
+            clientWidth: node.clientWidth,
+            scrollWidth: node.scrollWidth,
+            overflowing: next,
+          })
+        }
+        setOverflowing((current) => (current === next ? current : next))
+      }, [])
+      const bindStrip = useCallback((node) => {
+        if (typeof stripCleanup.current === 'function') {
+          stripCleanup.current()
+          stripCleanup.current = null
+        }
+        stripRef.current = node
+        measureStrip(node)
+        if (!node) return
+        // A direct listener survives a composer that stops propagation before
+        // the window capture handler; the handled flag keeps one gesture from
+        // scrolling twice.
+        // Both the strip and its wrapper are listened to: the wrapper also sees
+        // the absolute scroll-track overlay, which is a sibling of the strip.
+        const listenerNodes = node.parentElement && node.parentElement !== node ? [node, node.parentElement] : [node]
+        const onWheel = (event) => {
+          if (event.__dshstStripWheel === true) return
+          scrollStripByWheel(node, event)
+        }
+        for (const listenerNode of listenerNodes) listenerNode.addEventListener('wheel', onWheel, { passive: false })
+        let observer
+        if (typeof ResizeObserver === 'function') {
+          observer = new ResizeObserver(() => measureStrip(node))
+          observer.observe(node)
+        }
+        const onResize = () => measureStrip(node)
+        window.addEventListener('resize', onResize)
+        stripCleanup.current = () => {
+          for (const listenerNode of listenerNodes) listenerNode.removeEventListener('wheel', onWheel)
+          if (observer) observer.disconnect()
+          window.removeEventListener('resize', onResize)
+        }
+      }, [measureStrip])
       const dragState = useRef({ active: false, startX: 0, startLeft: 0, moved: false })
       const alive = useRef(true)
       const refreshing = useRef({ busy: false, startedAt: 0 })
@@ -2921,6 +2977,10 @@ window.__ModuleLoader__.load({
           alive.current = false
           window.clearTimeout(noticeTimer.current)
           window.clearTimeout(spinTimer.current)
+          if (typeof stripCleanup.current === 'function') {
+            stripCleanup.current()
+            stripCleanup.current = null
+          }
           if (typeof restoreStripRow.current === 'function') {
             restoreStripRow.current()
             restoreStripRow.current = undefined
@@ -3049,6 +3109,10 @@ window.__ModuleLoader__.load({
       const prefs = data?.settings ?? {}
       prefsRef.current = prefs
 
+      useEffect(() => {
+        measureStrip()
+      }, [symbols.join(','), collapsed, settingsOpen, formOpen, measureStrip])
+
       // Wheel-to-horizontal: a strip of thirty cards is much wider than the
       // composer and the 6 px scrollbar is a poor target. The listener lives on
       // the window in the capture phase, because the strip element is replaced
@@ -3057,10 +3121,18 @@ window.__ModuleLoader__.load({
       // stop wheel propagation before it reaches the strip.
       useEffect(() => {
         const onWheel = (event) => {
+          if (event.__dshstStripWheel === true) return
           const element = stripRef.current
           if (!element || typeof element.contains !== 'function') return
           const target = event.target
-          if (target && !(target === element || element.contains(target))) return
+          let inside = Boolean(target) && (target === element || element.contains(target))
+          if (!inside && typeof element.getBoundingClientRect === 'function' && typeof event.clientX === 'number') {
+            const rect = element.getBoundingClientRect()
+            inside =
+              event.clientX >= rect.left && event.clientX <= rect.right &&
+              event.clientY >= rect.top && event.clientY <= rect.bottom
+          }
+          if (!inside) return
           scrollStripByWheel(element, event)
         }
         const onScroll = (event) => {
@@ -3201,12 +3273,12 @@ window.__ModuleLoader__.load({
           null,
           h(
             'div',
-            { className: 'dshst-scrollWrap' },
+            { className: 'dshst-scrollWrap', 'data-overflow': overflowing ? 'true' : 'false' },
             h(
               'div',
               {
                 className: 'dshst-strip',
-                ref: stripRef,
+                ref: bindStrip,
                 onPointerDown: (event) => {
                   const element = stripRef.current
                   dragState.current = {
@@ -3260,11 +3332,13 @@ window.__ModuleLoader__.load({
                 '+',
               ),
             ),
-            h(
-              'div',
-              { className: 'dshst-scrollTrack', 'aria-hidden': true },
-              h('div', { className: 'dshst-scrollThumb', style: { left: `${scrollRatio * 84}%` } }),
-            ),
+            overflowing
+              ? h(
+                  'div',
+                  { className: 'dshst-scrollTrack', 'aria-hidden': true },
+                  h('div', { className: 'dshst-scrollThumb', style: { left: `${scrollRatio * 84}%` } }),
+                )
+              : null,
           ),
           activeQuote
             ? h(Detail, {
