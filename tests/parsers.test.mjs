@@ -263,11 +263,18 @@ test('eastmoney index trends ignore the amount/volume average', async () => {
         '2026-11-13 09:30,2525.39,2525.39,2525.39,2525.39,100,252539000,25.0',
         '2026-11-13 09:31,2517.28,2517.28,2517.28,2517.28,200,503456000,25.2',
         '2026-11-13 09:32,2505.86,2505.86,2505.86,2505.86,300,751758000,25.4',
+        '2026-11-14 09:30,2400,2400,2400,2400,400,96000000,24.0',
+        '2026-11-14 09:31,2410,2410,2410,2410,500,120500000,24.1',
       ],
     },
   }
   const trend = await withFetchText(payload, () => eastmoney.fetchTrend('sz399006'))
-  assert.deepEqual(trend.points.map((point) => point.avg), [2525.39, 2521.335, 2516.177])
-  assert.deepEqual(trend.points.map((point) => point.volume), [100, 200, 300])
+  assert.deepEqual(
+    trend.points.map((point) => point.avg),
+    [2525.39, 2521.335, 2516.177, 2400, 2405],
+    'the average restarts at each day boundary',
+  )
+  assert.deepEqual(trend.points.map((point) => point.volume), [100, 200, 300, 400, 500])
+  assert.deepEqual(trend.days, ['20261113', '20261114'])
   assert.equal(trend.prevClose, 2509.43)
 })

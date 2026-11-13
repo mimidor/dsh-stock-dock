@@ -240,6 +240,7 @@ Settings discoverability and the options the strip was missing.
   Eastmoney already serves per-minute volume, so both sources now agree on the
   field's meaning.
 - The Eastmoney intraday fallback also derives an index's average from the
-  quoted values, so a Tencent failure cannot bring back the off-scale y-axis.
+  quoted values (restarting at each day boundary for a multi-day answer), so a
+  Tencent failure cannot bring back the off-scale y-axis.
 - Tests: per-minute deltas for the Tencent stock/CN index/HK index fixtures and
   the Eastmoney index average. 70 tests total.
