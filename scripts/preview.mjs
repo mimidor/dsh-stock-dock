@@ -308,8 +308,8 @@ function makeFetch() {
     if (path.startsWith('/kline')) return respond({ ok: true, rows: candles(40), source: 'tencent' })
     if (path.startsWith('/trend')) {
       const trendPoints = points(1)
-      const baseline = trendPoints.map((point) => ({ time: point.time, volume: (point.volume ?? 0) * 0.8 }))
-      return respond({ ok: true, prevClose: 1402.3, days: ['20261112'], points: trendPoints, baseline, baselineDays: 4 })
+      const baseline = trendPoints.map((point, index) => ({ time: point.time, volume: (point.volume ?? 0) * Math.max(0.1, 0.75 + 0.5 * Math.sin(index / 11)) }))
+      return respond({ ok: true, prevClose: 1402.3, days: ['20261112'], points: trendPoints, baseline, baselineDays: 1 })
     }
     if (path.startsWith('/trades')) {
       return respond({

@@ -2,7 +2,7 @@
 
 [中文](README.md) · **English**
 
-![version](https://img.shields.io/badge/version-1.7.5-blue)
+![version](https://img.shields.io/badge/version-1.8.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![dsh](https://img.shields.io/badge/DSH-0.2.x-6f5bd6)
 ![data](https://img.shields.io/badge/data-Tencent%20%7C%20Sina%20%7C%20Eastmoney-orange)
@@ -25,7 +25,7 @@ A quote strip pinned under the DeepSeek Harness composer for A-shares, Hong Kong
 - **Card management**: a hover `×` removes one symbol, cards can be dragged into a new order, the trailing `＋` opens search
 - **Search**: code, Chinese name or pinyin, merged from Eastmoney suggest and Tencent smartbox
 - **Watchlist groups**: several lists switched by the header pills; a "market" group is seeded on first install (SSE, SZSE, ChiNext, STAR 50, Hang Seng, Nasdaq)
-- **Charts**: `intraday / 5m / 15m / 30m / 60m / daily / weekly / monthly`; intraday overlays 1/3/5 days with day separators, volume and a percentage axis, and the one-day view adds the prior four sessions' same-time average volume plus the same-time ratio; K-lines switch forward/backward/raw adjust, MA and volume toggles, hover crosshair with a readout
+- **Charts**: `intraday / 5m / 15m / 30m / 60m / daily / weekly / monthly`; intraday overlays 1/3/5 days with day separators, volume and a percentage axis, and the one-day view adds the previous session's same-time volume plus the same-time ratio, with orange bars for expansion and grey for contraction; K-lines switch forward/backward/raw adjust, MA and volume toggles, hover crosshair with a readout
 - **Order book**: five bids and asks plus the bid/ask ratio
 - **A-share fields**: turnover, turnover rate, volume ratio, amplitude, P/E, P/B, float and total market cap
 - **US pre/post market**: opt-in; cards and the detail header show the extended-hours price, percent and timestamp (from Sina's `gb_` rows)
@@ -96,7 +96,7 @@ Runtime preferences written by the settings page live in the plugin's data file 
 | Quote fallback 2 | Eastmoney `push2.eastmoney.com/api/qt/ulist.np/get` | 3s |
 | Daily/weekly/monthly K, three adjust modes | Tencent `proxy.finance.qq.com/.../newfqkline/get` | 5 min |
 | 5/15/30/60-minute K | Tencent `.../kline/mkline` | 60s |
-| Intraday, 1 day / same-time ratio | Tencent `.../minute/query` normally; `day/query` for the five-session baseline | 20s |
+| Intraday, 1 day / same-time ratio | Tencent `.../minute/query` normally; `day/query` for the previous-session baseline | 20s |
 | Intraday, 3/5 days (A-share, Hong Kong) | Tencent `web.ifzq.gtimg.cn/appstock/app/day/query` | 20s |
 | Search | Eastmoney suggest + Tencent smartbox | not cached |
 | Announcements | Eastmoney `np-anotice-pc.eastmoney.com/api/security/ann` | on call |
@@ -155,7 +155,7 @@ npm run preview        # render docs/preview/*.html and the screenshots from the
 
 - Public, unofficial endpoints: they can rate-limit, change fields or disappear. No SLA.
 - **US intraday is unavailable** (Tencent returns a single point and Eastmoney's `trends2` is refused on some networks); Hong Kong 3/5-day intraday works. Pre/post market exposes a price snapshot only, no intraday line.
-- **The same-time ratio is not archived**: it uses Tencent's five-session minute data and therefore covers A-shares and Hong Kong only; comparing beyond five sessions needs the future minute-bar archive.
+- **The same-time ratio is not archived**: it compares with Tencent's previous session and covers A-shares and Hong Kong only; longer history needs the future minute-bar archive.
 - **US mini intraday is unavailable**: free sources have no reliable US intraday, so US cards fall back to daily candles when the mini chart is set to the intraday line.
 - Indices have no order book, Hong Kong depth comes back as zeroes, and minute K-lines exist for A-shares only.
 - Eastmoney's history host is a fallback only; a refused host cools down for five minutes.

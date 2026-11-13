@@ -261,7 +261,7 @@ function makeFetch(calls, overrides = {}) {
         prevClose: 1402.3,
         points: points(Number(days ?? 1)),
         baseline,
-        baselineDays: baseline.length > 0 ? 4 : 0,
+        baselineDays: baseline.length > 0 ? 1 : 0,
       })
     }
     if (path.startsWith('/search')) {
@@ -780,7 +780,7 @@ test('a manual refresh pulses every price block even when values do not change',
   assert.ok(after.every((key, index) => key !== before[index]), 'every card acknowledges the manual refresh')
 })
 
-test('the one-day intraday chart overlays the same-time volume baseline', async () => {
+test('the one-day intraday chart overlays the previous session volume baseline', async () => {
   const baseline = points(1).map((point, index) => ({ time: point.time, volume: (1000 + index) / 2 }))
   const { harness, component, t, calls } = boot({ trendBaseline: baseline })
   harness.mount(component, { t })
@@ -788,14 +788,14 @@ test('the one-day intraday chart overlays the same-time volume baseline', async 
   click(findAll(tree, (element) => hasClass(element, 'dshst-card') && textOf(element).includes('贵州茅台'))[0])
   tree = await harness.settle()
 
-  assert.ok(calls.some((call) => call.path.includes('days=1') && call.path.includes('baseline=4')), 'the chart asks for the comparison')
+  assert.ok(calls.some((call) => call.path.includes('days=1') && call.path.includes('baseline=1')), 'the chart asks for the comparison')
   const text = textOf(tree)
   assert.match(text, /同期量比/)
-  assert.match(text, /前4日均量/)
+  assert.match(text, /昨日同期量/)
   assert.match(text, /放量 ↑/, 'a ratio above one is labelled as expanding volume')
   const dashed = findAll(tree, (element) =>
     element.tag === 'path' && element.props.style?.strokeDasharray === '2 3')
-  assert.ok(dashed.length > 0, 'the dashed same-time average is drawn')
+  assert.ok(dashed.length > 0, 'the dashed previous-session baseline is drawn')
 })
 
 test('the custom scroll track appears only while the strip overflows', async () => {

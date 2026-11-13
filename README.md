@@ -2,7 +2,7 @@
 
 **中文** · [English](README.en.md)
 
-![version](https://img.shields.io/badge/version-1.7.5-blue)
+![version](https://img.shields.io/badge/version-1.8.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![dsh](https://img.shields.io/badge/DSH-0.2.x-6f5bd6)
 ![data](https://img.shields.io/badge/data-Tencent%20%7C%20Sina%20%7C%20Eastmoney-orange)
@@ -25,7 +25,7 @@
 - **卡片管理**：悬停出现 `×` 单只移除，拖拽卡片调整顺序，末尾 `＋` 直接打开搜索
 - **搜索添加**：按代码、中文名或拼音搜（东财 suggest + 腾讯 smartbox 双源合并）
 - **分组自选**：多个自选表，头部胶囊切换；新装有「大盘」预置组（上证/深证/创业板/科创50/恒生/纳斯达克）
-- **详情图表**：`分时 / 5分 / 15分 / 30分 / 60分 / 日K / 周K / 月K`；分时 1/3/5 日叠加（按交易日分隔、带成交量柱与百分比轴），单日分时叠加前 4 个交易日同期均量虚线并显示同期量比（判断放量/缩量）；K 线可切前/后/不复权，MA 与成交量副图可开关，鼠标划过有十字光标与读数
+- **详情图表**：`分时 / 5分 / 15分 / 30分 / 60分 / 日K / 周K / 月K`；分时 1/3/5 日叠加（按交易日分隔、带成交量柱与百分比轴），单日分时叠加上一交易日同期量虚线，柱色橙=放量/灰=缩量，并显示同期量比；K 线可切前/后/不复权，MA 与成交量副图可开关，鼠标划过有十字光标与读数
 - **五档盘口**：买卖各五档（价 + 量）和委比
 - **A 股指标**：成交额、换手率、量比、振幅、市盈率、市净率、流通市值 / 总市值
 - **美股盘前 / 盘后**：可选开关，打开后卡片与详情会显示盘前/盘后价格、涨跌幅和时间（数据来自新浪 `gb_` 行）
@@ -96,7 +96,7 @@ plugin_manager  action: install_bundle  target: /path/to/dsh-stock-dock
 | 行情备源 2 | 东财 `push2.eastmoney.com/api/qt/ulist.np/get` | 3s |
 | 日/周/月 K（三种复权） | 腾讯 `proxy.finance.qq.com/.../newfqkline/get` | 5 min |
 | 5/15/30/60 分钟 K | 腾讯 `.../kline/mkline` | 60s |
-| 分时 1 日 / 同期量比 | 腾讯 `.../minute/query`（普通）；`day/query` 取 5 日算前 4 日同期均量 | 20s |
+| 分时 1 日 / 同期量比 | 腾讯 `.../minute/query`（普通）；`day/query` 取 2 日算昨日同期量 | 20s |
 | 分时 3/5 日（A股/港股） | 腾讯 `web.ifzq.gtimg.cn/appstock/app/day/query` | 20s |
 | 搜索 | 东财 suggest + 腾讯 smartbox | 不缓存 |
 | 公告 | 东财 `np-anotice-pc.eastmoney.com/api/security/ann` | 调用时取 |
@@ -155,7 +155,7 @@ npm run preview        # 用真实组件生成 docs/preview/*.html 与截图
 
 - 数据源是公开非官方接口，可能限流、改字段或不可用；没有 SLA。
 - **美股分时不可用**（腾讯只回 1 个点，东财 trends2 在本机被断开）；港股 3/5 日分时可用。盘前/盘后只有价格快照，没有分时。
-- **同期量比不落盘**：用腾讯最近 5 个交易日的分钟量算前 4 日同期均量，只覆盖 A 股/港股；超过 5 个交易日的对比需要后续的分钟量归档。
+- **同期量比不落盘**：用腾讯最近 2 个交易日的分钟量算昨日同期量，只覆盖 A 股/港股；更长的历史对比需要后续的分钟量归档。
 - **美股迷你分时不可用**：免费源没有可靠美股分时，迷你图选「分时线」时美股卡片会退回日K。
 - 指数没有五档，港股五档腾讯返回 0，这两类卡片不显示盘口；分钟 K 只有 A 股有。
 - 东财历史接口（`push2his`）在部分网络被服务端直接断开，只作备源并冷却 5 分钟。

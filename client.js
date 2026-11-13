@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.7.5'
+    const BUILD = 'v1.8.0'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -76,6 +76,8 @@ window.__ModuleLoader__.load({
       volumeShrink: '缩量',
       volumeFlat: '平量',
       volumeBaseline: '前{n}日均量',
+      volumeBaselinePrev: '昨日同期量',
+      volumePrev: '昨',
       amplitude: '振幅',
       marketCap: '市值',
       limitUp: '涨停',
@@ -235,6 +237,8 @@ window.__ModuleLoader__.load({
       volumeShrink: 'Shrinking',
       volumeFlat: 'Steady',
       volumeBaseline: 'prior {n}-day avg',
+      volumeBaselinePrev: 'prev session',
+      volumePrev: 'prev',
       amplitude: 'Range',
       marketCap: 'Cap',
       limitUp: 'Limit up',
@@ -551,7 +555,7 @@ window.__ModuleLoader__.load({
 }
 .dshst-chartNote b { color: var(--dsw-alias-label-primary); font-weight: 600; }
 .dshst-volumeSignal { font-weight: 600; }
-.dshst-volumeSignal[data-trend="up"] { color: var(--dsw-alias-brand-primary); }
+.dshst-volumeSignal[data-trend="up"] { color: var(--dsw-alias-state-warn-primary); }
 .dshst-volumeSignal[data-trend="down"],
 .dshst-volumeSignal[data-trend="flat"] { color: var(--dsw-alias-label-secondary); }
 .dshst-baselineSwatch {
@@ -1813,8 +1817,19 @@ window.__ModuleLoader__.load({
             // Brighten bars that beat their same-time baseline and fade the ones
             // below it; the colour still means price direction, not volume.
             const reference = baselineAt.get(point.time)
-            const relative = typeof reference === 'number' && reference > 0 ? point.volume / reference : null
-            const fillOpacity = relative === null ? 0.5 : relative >= 1.15 ? 0.85 : relative <= 0.85 ? 0.28 : 0.5
+            // Binary against yesterday at this minute: orange = more, grey =
+            // less or equal. No third colour, so the volume story stays simple;
+            // the price line above already carries direction.
+            const above = typeof reference === 'number' && reference > 0 ? point.volume > reference : null
+            const fill =
+              above === null
+                ? rising
+                  ? up
+                  : 'var(--dshst-down)'
+                : above
+                  ? 'var(--dsw-alias-state-warn-primary)'
+                  : 'var(--dsw-alias-label-secondary)'
+            const fillOpacity = above === null ? 0.5 : above ? 0.9 : 0.3
             children.push(
               h('rect', {
                 key: `v${index}`,
@@ -1822,7 +1837,7 @@ window.__ModuleLoader__.load({
                 y: height - barHeight,
                 width: barWidth,
                 height: barHeight,
-                style: { fill: rising ? up : 'var(--dshst-down)', fillOpacity },
+                style: { fill, fillOpacity },
               }),
             )
           })
@@ -1913,7 +1928,13 @@ window.__ModuleLoader__.load({
             h('span', { className: 'dshst-volumeSignal', 'data-trend': signal }, `${label} ${arrow}`),
             h('span', null, `${t('volumeCompare')} `, h('b', null, ratio.toFixed(2))),
             h('span', { className: 'dshst-baselineSwatch', 'aria-hidden': true }),
-            h('span', null, t('volumeBaseline').replace('{n}', String(baselineDays))),
+            h(
+              'span',
+              null,
+              baselineDays === 1
+                ? t('volumeBaselinePrev')
+                : t('volumeBaseline').replace('{n}', String(baselineDays)),
+            ),
           )
         })(),
         active
@@ -1922,7 +1943,13 @@ window.__ModuleLoader__.load({
               { className: 'dshst-readout' },
               `${active.day ? `${active.day} ` : ''}${active.time} ${formatPrice(active.price)}${
                 typeof active.avg === 'number' ? ` ${t('ma')} ${formatPrice(active.avg)}` : ''
-              }${typeof active.volume === 'number' ? ` ${t('volume')} ${shortNumber(active.volume)}` : ''}`,
+              }${typeof active.volume === 'number' ? ` ${t('volume')} ${shortNumber(active.volume)}` : ''}${
+                (() => {
+                  const previous = baselineAt.get(active.time)
+                  if (typeof previous !== 'number' || previous <= 0 || typeof active.volume !== 'number') return ''
+                  return ` · ${t('volumePrev')} ${shortNumber(previous)} (${(active.volume / previous).toFixed(2)}×)`
+                })()
+              }`,
             )
           : null,
       )
@@ -2087,7 +2114,7 @@ window.__ModuleLoader__.load({
         // Five sessions of minute data already ship with the intraday endpoint,
         // so the same-time volume baseline needs no archive; the five-day view
         // keeps its sequential payload and omits the comparison.
-        const baselineParam = isTrend && trendDays === 1 && quote.market !== 'us' ? '&baseline=4' : ''
+        const baselineParam = isTrend && trendDays === 1 && quote.market !== 'us' ? '&baseline=1' : ''
         ;(async () => {
           try {
             const payload = isTrend

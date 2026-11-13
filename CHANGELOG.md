@@ -398,3 +398,16 @@ Settings discoverability and the options the strip was missing.
   changing the price-direction colour.
 - The preview fixture now carries the baseline, so the README detail shot shows
   the signal. 79 tests.
+
+## 1.8.0 — 2026-11-13
+
+- The intraday volume comparison is now against the **previous trading session**
+  (the immediate prior day), not a four-day average: the dashed line is
+  yesterday's volume at the same minute, and each bar is coloured directly:
+  orange when it beats yesterday at that minute, grey when it is at or below.
+  No third colour, so the volume story stays binary. The note reads
+  `放量 ↑ 同期量比 1.25 · 昨日同期量`, and the hover readout adds
+  `昨 <volume> (<x>x)`.
+- The client asks `/trend?baseline=1`; the Host already supports the count, so
+  the route and cache shape are unchanged.
+- Tests: the previous-session baseline and the `放量` signal. 79 tests.
