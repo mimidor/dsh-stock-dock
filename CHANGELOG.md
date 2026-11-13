@@ -485,3 +485,15 @@ Settings discoverability and the options the strip was missing.
   strip now opens with the quote cards; the status row sits under them and above
   the groups/actions footer, so everything except the quotes is in the fixed
   control area at the bottom. Screenshots refreshed. 81 tests.
+
+## 1.8.8 — 2026-11-13
+
+- Fixed the real cause of the moving footer buttons: DSH's composer dock is a
+  fit-content flex item in a centered column, so its width tracked the number
+  of cards in the active group. A nine-card group made the dock wide and a
+  four-card group made it narrow, which moved the whole control strip even
+  though the footer itself was right-pinned.
+- While claiming its row, the strip now sets the dock to `width: 100%` and
+  restores the previous width on unmount, so the cards and the footer always
+  span the composer. The two-row/footer layout is unchanged.
+- Test: the dock is asserted to be full width. 81 tests.

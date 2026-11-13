@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.8.7'
+    const BUILD = 'v1.8.8'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -3093,13 +3093,16 @@ window.__ModuleLoader__.load({
         const priority = typeof style.getPropertyPriority === 'function' ? style.getPropertyPriority(property) : ''
         snapshot.push({ target, property, value: value ?? '', priority })
       }
-      for (const property of ['flex-wrap']) remember(container, property)
+      for (const property of ['flex-wrap', 'width']) remember(container, property)
       for (const property of ['order', 'flex', 'width', 'min-width']) remember(item, property)
 
       // `wrap` is written with priority so a future stylesheet `!important`
       // cannot keep the dock on one line; the item styles stay normal because
-      // the root's own `flex: 1 1 auto` rule is not important.
+      // the root's own `flex: 1 1 auto` rule is not important. The dock is a
+      // fit-content flex item in a centered column, so without this its width
+      // tracks the number of cards and the footer buttons move between groups.
       container.style.setProperty('flex-wrap', 'wrap', 'important')
+      container.style.setProperty('width', '100%')
       item.style.setProperty('order', '99')
       item.style.setProperty('flex', '0 0 100%')
       item.style.setProperty('width', '100%')

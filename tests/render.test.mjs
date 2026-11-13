@@ -714,6 +714,7 @@ test('the strip claims its own dock row through the shared display:contents outl
   const outlet = root.__outlet
   assert.equal(outlet.__computed.display, 'contents', 'DSH inserts a display:contents outlet')
   assert.equal(dock.style.flexWrap, 'wrap', 'the dock row is allowed to wrap')
+  assert.equal(dock.style.width, '100%', 'the dock spans the composer instead of shrinking to the cards')
   assert.equal(root.style.order, '99')
   assert.equal(root.style.flex, '0 0 100%')
   // The outlet is shared by every list entry (DSH's stats pills register
