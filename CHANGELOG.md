@@ -713,3 +713,20 @@ Local commit only; not pushed.
 - Test count unchanged (91); no chunk rebuild needed.
 
 Local commit only; not pushed.
+
+## 1.16.0 — 2026-11-14
+
+- **K-line history**: 1/3/5-year buttons for daily/weekly/monthly; Host limit
+  raised to 1300 with Tencent 640-bar backward pagination and Eastmoney fallback.
+- **ECharts K-line**: left-drag range selection without a toolbar button,
+  full-height crosshair through price and volume, thicker volume band and wider
+  bars, distinct red/orange/gold/medium-grey/light-grey tiers, and separate
+  start/end change vs high-low spread.
+- **Intraday**: large and mini charts now map to the full trading session and
+  leave the unplayed part blank; the ECharts range summary stays on one line.
+- **Volume alert**: optional 5-minute alert compares the latest bar with the
+  same slot on the previous trading day, with a configurable threshold and a red
+  `放量` bubble on mini intraday cards.
+- **UI**: group pills support drag reordering; the detail close button is `×`;
+  active tabs/toggles/selects use a dark border; volume legend colours separated.
+- 92 tests.

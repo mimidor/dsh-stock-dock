@@ -235,6 +235,9 @@ function quotesPayload() {
       alertToast: true,
       sourceDot: true,
       showMiniChart: true,
+      miniChartType: 'intraday',
+      volumeAlert: true,
+      volumeAlertPct: 100,
       showOrderBook: true,
       showStats: true,
       showExtended: true,
@@ -309,6 +312,12 @@ function makeFetch() {
     if (path.startsWith('/quotes')) return respond(quotesPayload())
     if (path.startsWith('/settings')) return respond(settingsPayload())
     if (path.startsWith('/cache')) return respond({ ok: true, bytes: 1234567, entries: { klines: 3, trends: 2 } })
+    if (path.startsWith('/volume-alerts')) {
+      return respond({
+        ok: true,
+        alerts: { sh600519: { time: '202611131400', volume: 820000, baseline: 390000, ratio: 2.1, pct: 110 } },
+      })
+    }
     if (path.startsWith('/kline')) return respond({ ok: true, rows: candles(40), source: 'tencent' })
     if (path.startsWith('/trend')) {
       const trendPoints = points(1)
@@ -434,6 +443,15 @@ mkdirSync(outDir, { recursive: true })
   const detailTree = harness.getTree()
   writePage('detail', serialize(detailTree), { width: 1040 })
   screenshot('detail', 780)
+
+  const dayTab = findAll(detailTree, (element) => element.tag === 'button' && textOf(element) === '日K')[0]
+  if (dayTab) {
+    click(dayTab)
+    await harness.settle()
+    const klineTree = harness.getTree()
+    writePage('detail-kline', serialize(klineTree), { width: 1040 })
+    screenshot('detail-kline', 780)
+  }
 }
 
 // 3. The plugin settings card, dark theme.

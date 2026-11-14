@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.15.1'
+    const BUILD = 'v1.16.0'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -82,11 +82,14 @@ window.__ModuleLoader__.load({
       range: '区间',
       rangeBars: '根',
       rangeMinutes: '分钟',
+      rangeSpread: '高低价差',
+      rangeSpanChange: '起止涨跌',
       rangeChange: '涨跌幅',
       rangeAmplitude: '振幅',
       rangeClear: '清除',
       chartZoomHint: '滚轮缩放 · Shift+拖动平移 · 双击复位',
-      echartsHint: '滚轮缩放 · 拖动平移 · 工具栏框选区间 · 双击复位',
+      echartsHint: '滚轮缩放 · 拖动框选区间 · 双击复位',
+      echartsFallback: 'ECharts 不可用，已回退 SVG',
       volumePrev: '昨',
       amplitude: '振幅',
       marketCap: '市值',
@@ -136,6 +139,8 @@ window.__ModuleLoader__.load({
       refreshSeconds: '刷新间隔（秒）',
       klineDays: '迷你K线根数',
       miniChartType: '迷你图类型',
+      years: '年',
+      historyYears: '拉取更多历史',
       miniIntraday: '分时线',
       miniDay: '日K',
       miniWeek: '周K',
@@ -148,6 +153,9 @@ window.__ModuleLoader__.load({
       showMA: '显示均线',
       showVolume: '显示成交量',
       alertToast: '预警弹提示',
+      volumeAlert: '放量提醒（5分钟）',
+      volumeAlertPct: '放量阈值（%）',
+      volumeAlertBubble: '放量',
       sourceDot: '标记每张卡的数据源',
       prefsSaved: '已保存',
       adjust: '复权',
@@ -247,11 +255,14 @@ window.__ModuleLoader__.load({
       range: 'Range',
       rangeBars: 'bars',
       rangeMinutes: 'min',
+      rangeSpread: 'High-low',
+      rangeSpanChange: 'Start/end',
       rangeChange: 'Change',
       rangeAmplitude: 'Amplitude',
       rangeClear: 'Clear',
       chartZoomHint: 'Wheel to zoom · Shift-drag to pan · double-click to reset',
-      echartsHint: 'Wheel to zoom · drag to pan · toolbar to select a range · double-click to reset',
+      echartsHint: 'Wheel to zoom · drag to select a range · double-click to reset',
+      echartsFallback: 'ECharts unavailable; fell back to SVG',
       volumePrev: 'prev',
       amplitude: 'Range',
       marketCap: 'Cap',
@@ -301,6 +312,8 @@ window.__ModuleLoader__.load({
       refreshSeconds: 'Refresh seconds',
       klineDays: 'Mini chart bars',
       miniChartType: 'Mini chart type',
+      years: 'y',
+      historyYears: 'Load more history',
       miniIntraday: 'Intraday line',
       miniDay: 'Daily',
       miniWeek: 'Weekly',
@@ -313,6 +326,9 @@ window.__ModuleLoader__.load({
       showMA: 'Show moving averages',
       showVolume: 'Show volume',
       alertToast: 'Toast on alert',
+      volumeAlert: 'Volume alert (5m)',
+      volumeAlertPct: 'Volume alert threshold (%)',
+      volumeAlertBubble: 'Volume',
       sourceDot: 'Mark each card’s source',
       prefsSaved: 'Saved',
       adjust: 'Adjust',
@@ -369,6 +385,11 @@ window.__ModuleLoader__.load({
   font-size: 12px;
   line-height: 1.35;
   color: var(--dsw-alias-label-primary);
+}
+.dshst[data-variant="dock"] {
+  width: 100%;
+  max-width: var(--dsh-composer-card-max-width, 952px);
+  margin: 0 auto;
 }
 .dshst[data-scheme="intl"] {
   --dshst-up: color-mix(in srgb, var(--dsw-alias-state-success-primary) 68%, var(--dsw-alias-label-primary));
@@ -674,12 +695,16 @@ window.__ModuleLoader__.load({
   animation: dshst-fade-in 120ms var(--dshst-ease);
 }
 .dshst-range {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 6px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
   margin-top: 2px;
-  padding: 3px 7px;
+  padding: 3px 64px 3px 7px;
+  font-size: 9px;
   border: 1px solid var(--dsw-alias-border-l1);
   border-radius: 6px;
   background: color-mix(in srgb, var(--dsw-alias-brand-primary) 6%, var(--dsw-alias-bg-layer-1));
@@ -689,7 +714,15 @@ window.__ModuleLoader__.load({
   animation: dshst-fade-in 140ms var(--dshst-ease);
 }
 .dshst-rangeTitle { color: var(--dsw-alias-label-primary); font-weight: 600; }
-.dshst-range button { margin-left: auto; }
+.dshst-range::-webkit-scrollbar { display: none; }
+.dshst-range > span { flex: 0 0 auto; white-space: nowrap; }
+.dshst-range button {
+  position: absolute;
+  top: 50%;
+  right: 7px;
+  margin: 0;
+  transform: translateY(-50%);
+}
 .dshst-echartWrap {
   position: relative;
   width: 100%;
@@ -697,9 +730,24 @@ window.__ModuleLoader__.load({
   margin: 0 auto;
   align-self: stretch;
 }
-.dshst-echart {
+.dshst-echartStage {
+  position: relative;
   width: 100%;
   height: 320px;
+}
+.dshst-echart {
+  position: absolute;
+  inset: 0;
+}
+.dshst-echartCrosshair {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  border-left: 1px dashed var(--dsw-alias-label-secondary);
+  opacity: 0.8;
+  pointer-events: none;
+  z-index: 3;
 }
 .dshst-chartEmpty {
   display: block;
@@ -758,7 +806,7 @@ window.__ModuleLoader__.load({
 }
 .dshst-tab[data-active="true"] {
   color: var(--dsw-alias-label-primary);
-  border-color: var(--dsw-alias-border-l2);
+  border-color: var(--dsw-alias-label-primary);
   background: var(--dsw-alias-bg-layer-2);
 }
 .dshst-select {
@@ -785,9 +833,10 @@ window.__ModuleLoader__.load({
     border-color var(--dshst-dur) var(--dshst-ease);
 }
 .dshst-toggle[data-active="true"] {
-  border-color: var(--dsw-alias-border-l2);
+  border-color: var(--dsw-alias-label-primary);
   color: var(--dsw-alias-label-primary);
 }
+.dshst-toolbar .dshst-select { border-color: var(--dsw-alias-label-primary); }
 .dshst-seg { display: inline-flex; gap: 1px; }
 .dshst-limitMark {
   margin-left: 4px;
@@ -833,10 +882,16 @@ window.__ModuleLoader__.load({
 .dshst-chip[data-tone="warn"] { color: var(--dsw-alias-state-warn-primary); border-color: currentColor; }
 .dshst-chip[data-tone="alert"] { color: var(--dsw-alias-state-error-primary); border-color: currentColor; }
 .dshst-detailClose {
+  display: inline-grid;
+  place-items: center;
   margin-left: auto;
-  padding: 1px 6px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
   border: 1px solid var(--dsw-alias-border-l1);
   border-radius: 6px;
+  font-size: 15px;
+  line-height: 1;
   background: transparent;
   color: var(--dsw-alias-label-secondary);
   font: inherit;
@@ -1034,6 +1089,12 @@ window.__ModuleLoader__.load({
   border-color: var(--dsw-alias-border-l2);
   color: var(--dsw-alias-label-primary);
 }
+.dshst-pill[draggable="true"] { cursor: grab; }
+.dshst-pill[data-dragging="true"] { opacity: 0.45; }
+.dshst-pill[data-drop="true"] {
+  border-color: var(--dsw-alias-label-primary);
+  box-shadow: inset 0 0 0 1px var(--dsw-alias-label-primary);
+}
 .dshst-pill[data-active="true"] {
   border-color: var(--dsw-alias-brand-primary);
   background: color-mix(in srgb, var(--dsw-alias-brand-primary) 9%, transparent);
@@ -1154,6 +1215,22 @@ window.__ModuleLoader__.load({
 .dshst-card:focus-within .dshst-cardRemove { opacity: 1; }
 .dshst-cardRemove:hover { color: var(--dsw-alias-state-error-primary); border-color: currentColor; }
 .dshst-card[draggable="true"] { cursor: grab; }
+.dshst-miniWrap { position: relative; display: inline-flex; flex: 0 0 auto; }
+.dshst-volumeBubble {
+  position: absolute;
+  top: -6px;
+  right: -4px;
+  z-index: 2;
+  padding: 0 3px;
+  border-radius: 4px;
+  background: var(--dsw-alias-state-error-primary);
+  color: #fff;
+  font-size: 8px;
+  line-height: 12px;
+  font-weight: 600;
+  pointer-events: none;
+  white-space: nowrap;
+}
 .dshst-axisY {
   position: absolute;
   top: 0;
@@ -1273,6 +1350,29 @@ window.__ModuleLoader__.load({
       return `${sign}${value.toFixed(2)}%`
     }
 
+    const SESSION_RANGES = {
+      cn: [[570, 690], [780, 900]],
+      hk: [[570, 720], [780, 960]],
+    }
+
+    /** Position in the full trading day, 0 at the open and 1 at the close. */
+    function sessionFraction(time, market) {
+      const text = String(time ?? '').replace(':', '')
+      const hour = Number(text.slice(0, 2))
+      const minute = Number(text.slice(2, 4))
+      if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null
+      const at = hour * 60 + minute
+      const ranges = SESSION_RANGES[market] ?? SESSION_RANGES.cn
+      const total = ranges.reduce((sum, [start, end]) => sum + end - start, 0)
+      let elapsed = 0
+      for (const [start, end] of ranges) {
+        if (at >= start && at <= end) return (elapsed + at - start) / total
+        if (at < start) return elapsed / total
+        elapsed += end - start
+      }
+      return 1
+    }
+
     function trendClass(value) {
       if (typeof value !== 'number' || !Number.isFinite(value) || value === 0) return 'dshst-flat'
       return value > 0 ? 'dshst-up' : 'dshst-down'
@@ -1389,14 +1489,15 @@ window.__ModuleLoader__.load({
      * one, pale orange for a slight one, and progressively lighter greys for
      * shrinking volume. Colours are theme tokens; opacity is the intensity.
      */
+    const VOLUME_GOLD = '#e2b43c'
+
     function volumeBarTone(ratio) {
       if (typeof ratio !== 'number' || !Number.isFinite(ratio)) return null
-      if (ratio >= 1.5) return { fill: 'var(--dsw-alias-state-error-primary)', fillOpacity: 0.95 }
-      if (ratio >= 1.15) return { fill: 'var(--dsw-alias-state-warn-primary)', fillOpacity: 0.9 }
-      if (ratio >= 1) return { fill: 'var(--dsw-alias-state-warn-primary)', fillOpacity: 0.55 }
-      if (ratio >= 0.85) return { fill: 'var(--dsw-alias-label-secondary)', fillOpacity: 0.45 }
-      if (ratio >= 0.6) return { fill: 'var(--dsw-alias-label-secondary)', fillOpacity: 0.3 }
-      return { fill: 'var(--dsw-alias-border-l2)', fillOpacity: 0.8 }
+      if (ratio >= 1.5) return { fill: 'var(--dsw-alias-state-error-primary)', fillOpacity: 1 }
+      if (ratio >= 1.15) return { fill: 'var(--dsw-alias-state-warn-primary)', fillOpacity: 0.95 }
+      if (ratio >= 1) return { fill: VOLUME_GOLD, fillOpacity: 0.9 }
+      if (ratio >= 0.85) return { fill: 'var(--dsw-alias-label-secondary)', fillOpacity: 0.55 }
+      return { fill: 'var(--dsw-alias-border-l2)', fillOpacity: 0.9 }
     }
 
     /** A compact swatch legend for the volume tiers and the previous-session ghost. */
@@ -1413,11 +1514,11 @@ window.__ModuleLoader__.load({
         'div',
         { className: 'dshst-volumeLegend' },
         h('span', { className: 'dshst-volumeLegendTitle' }, t('volumeLegendTitle')),
-        item('var(--dsw-alias-state-error-primary)', 0.95, t('volumeLegendHeavy')),
-        item('var(--dsw-alias-state-warn-primary)', 0.9, t('volumeExpand')),
-        item('var(--dsw-alias-state-warn-primary)', 0.55, t('volumeLegendSlight')),
-        item('var(--dsw-alias-label-secondary)', 0.35, t('volumeShrink')),
-        item('var(--dsw-alias-border-l2)', 0.8, t('volumeLegendDeepShrink')),
+        item('var(--dsw-alias-state-error-primary)', 1, t('volumeLegendHeavy')),
+        item('var(--dsw-alias-state-warn-primary)', 0.95, t('volumeExpand')),
+        item(VOLUME_GOLD, 0.9, t('volumeLegendSlight')),
+        item('var(--dsw-alias-label-secondary)', 0.55, t('volumeShrink')),
+        item('var(--dsw-alias-border-l2)', 0.9, t('volumeLegendDeepShrink')),
         h(
           'span',
           { className: 'dshst-volumeLegendItem', key: 'previous' },
@@ -1428,37 +1529,57 @@ window.__ModuleLoader__.load({
     }
 
     /** Lines, dots and labels shared by the intraday and K-line range overlays. */
-    function rangeMarks({ x1, x2, top, bottom, textBottom = bottom, highY, lowY, highX, lowX, highText, lowText }) {
+    function rangeMarks({ x1, x2, top, bottom, textBottom = bottom, highY, lowY, highX, lowX, highText, lowText, highColor, lowColor, spreadText }) {
       const brand = 'var(--dsw-alias-brand-primary)'
+      const high = highColor ?? brand
+      const low = lowColor ?? brand
       const boundary = { stroke: brand, strokeDasharray: '2 3', strokeOpacity: 0.8 }
-      const guide = { stroke: brand, strokeDasharray: '2 3', strokeOpacity: 0.7 }
-      const label = { fill: brand, fontSize: '8px' }
+      const highGuide = { stroke: high, strokeDasharray: '2 3', strokeOpacity: 0.8 }
+      const lowGuide = { stroke: low, strokeDasharray: '2 3', strokeOpacity: 0.8 }
       return [
         ['rangeStart', x1, top, x1, bottom, boundary],
         ['rangeEnd', x2, top, x2, bottom, boundary],
-        ['rangeHigh', x1, highY, x2, highY, guide],
-        ['rangeLow', x1, lowY, x2, lowY, guide],
+        ['rangeHigh', x1, highY, x2, highY, highGuide],
+        ['rangeLow', x1, lowY, x2, lowY, lowGuide],
       ].map(([key, left, y1, right, y2, style]) =>
         h('line', { key, x1: left, x2: right, y1, y2, style, strokeWidth: 1, vectorEffect: 'non-scaling-stroke' }),
       ).concat([
-        h('circle', { key: 'rangeHighDot', cx: highX, cy: highY, r: 2, style: { fill: brand }, pointerEvents: 'none' }),
-        h('circle', { key: 'rangeLowDot', cx: lowX, cy: lowY, r: 2, style: { fill: brand }, pointerEvents: 'none' }),
-        h('text', { key: 'rangeHighText', x: x1 + 3, y: Math.max(9, highY - 3), style: label, pointerEvents: 'none' }, highText),
-        h('text', { key: 'rangeLowText', x: x1 + 3, y: Math.min(textBottom - 2, lowY + 9), style: label, pointerEvents: 'none' }, lowText),
+        h('circle', { key: 'rangeHighDot', cx: highX, cy: highY, r: 2, style: { fill: high }, pointerEvents: 'none' }),
+        h('circle', { key: 'rangeLowDot', cx: lowX, cy: lowY, r: 2, style: { fill: low }, pointerEvents: 'none' }),
+        h('text', { key: 'rangeHighText', x: x1 + 3, y: Math.max(9, highY - 3), style: { fill: high, fontSize: '8px' }, pointerEvents: 'none' }, highText),
+        h('text', { key: 'rangeLowText', x: x1 + 3, y: Math.min(textBottom - 2, lowY + 9), style: { fill: low, fontSize: '8px' }, pointerEvents: 'none' }, lowText),
+        spreadText
+          ? h(
+              'text',
+              {
+                key: 'rangeSpreadText',
+                x: x2 - 3,
+                y: (highY + lowY) / 2,
+                textAnchor: 'end',
+                style: { fill: 'var(--dsw-alias-label-secondary)', fontSize: '8px' },
+                pointerEvents: 'none',
+              },
+              spreadText,
+            )
+          : null,
       ])
     }
 
     function RangeSummary(props) {
-      const { t, title, changePct, highText, lowText, amplitude, volume, onClear } = props
+      const { t, title, change, changePct, highText, lowText, spread, spreadPct, amplitude, volume, onClear } = props
+      const signed = (value) => `${value > 0 ? '+' : ''}${formatPrice(value)}`
       return h(
         'div',
         { className: 'dshst-range' },
         h('span', { className: 'dshst-rangeTitle' }, title),
-        changePct === null
+        change === null || changePct === null
           ? null
-          : h('span', { className: trendClass(changePct) }, `${t('rangeChange')} ${formatPct(changePct)}`),
-        h('span', null, `${t('high')} ${highText}`),
-        h('span', null, `${t('low')} ${lowText}`),
+          : h('span', { className: trendClass(changePct) }, `${t('rangeSpanChange')} ${signed(change)} (${formatPct(changePct)})`),
+        h('span', { className: 'dshst-up' }, `${t('high')} ${highText}`),
+        h('span', { className: 'dshst-down' }, `${t('low')} ${lowText}`),
+        spread === null || spreadPct === null
+          ? null
+          : h('span', null, `${t('rangeSpread')} ${signed(spread)} (${formatPct(spreadPct)})`),
         amplitude === null ? null : h('span', null, `${t('rangeAmplitude')} ${formatPct(amplitude)}`),
         h('span', null, `${t('volume')} ${shortNumber(volume)}`),
         h('button', { type: 'button', className: 'dshst-link', onClick: onClear }, t('rangeClear')),
@@ -1629,6 +1750,7 @@ window.__ModuleLoader__.load({
       }
 
       let selectedRange = null
+      let rangeLabel = (row) => shortDate(row?.date)
       if (range) {
         const start = Math.max(0, Math.min(range.start, range.end))
         const end = Math.min(rows.length - 1, Math.max(range.start, range.end))
@@ -1640,9 +1762,17 @@ window.__ModuleLoader__.load({
           const last = rows[end]
           const entry = first.open ?? first.close
           const exit = last.close
+          const change = Number.isFinite(entry) && Number.isFinite(exit) ? exit - entry : null
           const changePct = Number.isFinite(entry) && entry !== 0 && Number.isFinite(exit) ? ((exit - entry) / entry) * 100 : null
-          const amplitude = Number.isFinite(entry) && entry !== 0 ? ((highRow.high - lowRow.low) / entry) * 100 : null
+          const spread = highRow.high - lowRow.low
+          const spreadPct = lowRow.low > 0 ? (spread / lowRow.low) * 100 : null
+          const amplitude = Number.isFinite(entry) && entry !== 0 ? (spread / entry) * 100 : null
           const volume = list.reduce((sum, row) => sum + (typeof row.volume === 'number' ? row.volume : 0), 0)
+          const sameDay = rows.slice(start, end + 1).every((row) => dayKeyOf(row.date) === dayKeyOf(rows[start]?.date))
+          rangeLabel = (row) =>
+            sameDay && /^\d{12}$/.test(String(row?.date))
+              ? `${String(row.date).slice(8, 10)}:${String(row.date).slice(10, 12)}`
+              : shortDate(row?.date)
           selectedRange = {
             start,
             end,
@@ -1650,7 +1780,10 @@ window.__ModuleLoader__.load({
             x2: step * (end + 1),
             highRow,
             lowRow,
+            change,
             changePct,
+            spread,
+            spreadPct,
             amplitude,
             volume,
           }
@@ -1800,6 +1933,9 @@ window.__ModuleLoader__.load({
             lowX: step * (rows.indexOf(selectedRange.lowRow) + 0.5),
             highText: t('high') + ' ' + formatPrice(selectedRange.highRow.high),
             lowText: t('low') + ' ' + formatPrice(selectedRange.lowRow.low),
+            highColor: 'var(--dshst-up)',
+            lowColor: 'var(--dshst-down)',
+            spreadText: `${t('rangeSpread')} ${formatPrice(selectedRange.spread)} (${formatPct(selectedRange.spreadPct)})`,
           }),
         )
       }
@@ -2007,12 +2143,15 @@ window.__ModuleLoader__.load({
         selectedRange
           ? h(RangeSummary, {
               t,
-              title: `${t('range')} ${shortDate(rows[selectedRange.start]?.date)} → ${shortDate(
-                rows[selectedRange.end]?.date,
+              title: `${t('range')} ${rangeLabel(rows[selectedRange.start])} → ${rangeLabel(
+                rows[selectedRange.end],
               )} · ${selectedRange.end - selectedRange.start + 1}${t('rangeBars')}`,
+              change: selectedRange.change,
               changePct: selectedRange.changePct,
-              highText: `${formatPrice(selectedRange.highRow.high)} (${shortDate(selectedRange.highRow.date)})`,
-              lowText: `${formatPrice(selectedRange.lowRow.low)} (${shortDate(selectedRange.lowRow.date)})`,
+              highText: `${formatPrice(selectedRange.highRow.high)} (${rangeLabel(selectedRange.highRow)})`,
+              lowText: `${formatPrice(selectedRange.lowRow.low)} (${rangeLabel(selectedRange.lowRow)})`,
+              spread: selectedRange.spread,
+              spreadPct: selectedRange.spreadPct,
               amplitude: selectedRange.amplitude,
               volume: selectedRange.volume,
               onClear: () => setRange(null),
@@ -2058,20 +2197,20 @@ window.__ModuleLoader__.load({
         warn: read('--dsw-alias-state-warn-primary', '#d9822b'),
         error: read('--dsw-alias-state-error-primary', '#e5484d'),
         success: read('--dsw-alias-state-success-primary', '#2f9e63'),
+        gold: VOLUME_GOLD,
       }
     }
 
     function echartsVolumeTone(ratio, theme) {
       if (typeof ratio !== 'number' || !Number.isFinite(ratio)) return null
-      if (ratio >= 1.5) return { color: theme.error, opacity: 0.95 }
-      if (ratio >= 1.15) return { color: theme.warn, opacity: 0.9 }
-      if (ratio >= 1) return { color: theme.warn, opacity: 0.55 }
-      if (ratio >= 0.85) return { color: theme.muted, opacity: 0.45 }
-      if (ratio >= 0.6) return { color: theme.muted, opacity: 0.3 }
-      return { color: theme.muted, opacity: 0.18 }
+      if (ratio >= 1.5) return { color: theme.error, opacity: 1 }
+      if (ratio >= 1.15) return { color: theme.warn, opacity: 0.95 }
+      if (ratio >= 1) return { color: theme.gold, opacity: 0.9 }
+      if (ratio >= 0.85) return { color: theme.muted, opacity: 0.55 }
+      return { color: theme.border, opacity: 0.9 }
     }
 
-    function echartsRangeMarks(rows, range, theme, t, holdingCost) {
+    function echartsRangeMarks(rows, range, theme, t, holdingCost, up, down) {
       const dates = rows.map((row) => shortDate(row.date))
       const marks = {
         markArea: { silent: true, itemStyle: { color: theme.brand, opacity: 0.08 }, data: [] },
@@ -2097,10 +2236,35 @@ window.__ModuleLoader__.load({
         const high = list.reduce((best, row) => (row.high > best.high ? row : best), list[0])
         const low = list.reduce((best, row) => (row.low < best.low ? row : best), list[0])
         marks.markArea.data = [[{ xAxis: dates[start] }, { xAxis: dates[end] }]]
-        marks.markLine.data = [{ yAxis: high.high }, { yAxis: low.low }]
+        marks.markLine.data = [
+          { yAxis: high.high, lineStyle: { color: up, type: 'dashed', width: 1, opacity: 0.85 } },
+          { yAxis: low.low, lineStyle: { color: down, type: 'dashed', width: 1, opacity: 0.85 } },
+        ]
+        const spread = high.high - low.low
+        const spreadPct = low.low > 0 ? (spread / low.low) * 100 : null
         marks.markPoint.data = [
-          { coord: [shortDate(high.date), high.high], value: `${t('high')} ${formatPrice(high.high)}` },
-          { coord: [shortDate(low.date), low.low], value: `${t('low')} ${formatPrice(low.low)}` },
+          {
+            coord: [shortDate(high.date), high.high],
+            value: `${t('high')} ${formatPrice(high.high)}`,
+            itemStyle: { color: up },
+            label: { color: up },
+          },
+          {
+            coord: [shortDate(low.date), low.low],
+            value: `${t('low')} ${formatPrice(low.low)}`,
+            itemStyle: { color: down },
+            label: { color: down },
+          },
+          {
+            coord: [dates[end], (high.high + low.low) / 2],
+            value:
+              spreadPct === null
+                ? `${t('rangeSpread')} ${formatPrice(spread)}`
+                : `${t('rangeSpread')} ${formatPrice(spread)} (${formatPct(spreadPct)})`,
+            symbolSize: 0,
+            itemStyle: { color: 'transparent' },
+            label: { show: true, position: 'left', color: theme.muted, fontSize: 9, distance: 4 },
+          },
         ]
       }
       if (typeof holdingCost === 'number' && holdingCost > 0) {
@@ -2121,7 +2285,7 @@ window.__ModuleLoader__.load({
       const hasVolume = showVolume !== false
       const axisIndexes = hasVolume ? [0, 1] : [0]
       const priceGrid = hasVolume
-        ? [{ left: 6, right: 58, top: 8, height: '58%' }, { left: 6, right: 58, top: '73%', height: '17%' }]
+        ? [{ left: 6, right: 58, top: 8, height: '54%' }, { left: 6, right: 58, top: '68%', height: '24%' }]
         : [{ left: 6, right: 58, top: 8, bottom: 24 }]
       const axes = [
         {
@@ -2199,9 +2363,9 @@ window.__ModuleLoader__.load({
           type: 'candlestick',
           name: t('tabDay'),
           data: rows.map((row) => [row.open, row.close, row.low, row.high]),
-          barWidth: '60%',
+          barWidth: '68%',
           itemStyle: { color: up, color0: down, borderColor: up, borderColor0: down },
-          ...echartsRangeMarks(rows, null, theme, t, holdingCost),
+          ...echartsRangeMarks(rows, null, theme, t, holdingCost, up, down),
           z: 2,
         },
         ...maSeries,
@@ -2214,10 +2378,10 @@ window.__ModuleLoader__.load({
             xAxisIndex: 1,
             yAxisIndex: 1,
             data: ghostData,
-            barWidth: '58%',
+            barWidth: '40%',
             barGap: '-100%',
             silent: true,
-            itemStyle: { color: theme.muted, opacity: 0.12, borderColor: theme.muted, borderWidth: 0.5 },
+            itemStyle: { color: theme.muted, opacity: 0.1, borderColor: theme.muted, borderWidth: 0.5 },
             z: 1,
           },
           {
@@ -2226,7 +2390,7 @@ window.__ModuleLoader__.load({
             xAxisIndex: 1,
             yAxisIndex: 1,
             data: volumeData,
-            barWidth: '58%',
+            barWidth: '68%',
             barGap: '-100%',
             z: 2,
           },
@@ -2246,7 +2410,8 @@ window.__ModuleLoader__.load({
           })
         }
       }
-      const zoomStart = typeof zoom?.start === 'number' ? zoom.start : 0
+      const initialStart = rows.length > 250 ? 100 - (250 / rows.length) * 100 : 0
+      const zoomStart = typeof zoom?.start === 'number' ? zoom.start : initialStart
       const zoomEnd = typeof zoom?.end === 'number' ? zoom.end : 100
       return {
         animation: false,
@@ -2261,33 +2426,25 @@ window.__ModuleLoader__.load({
             start: zoomStart,
             end: zoomEnd,
             zoomOnMouseWheel: true,
-            moveOnMouseMove: true,
+            moveOnMouseMove: false,
             moveOnMouseWheel: false,
             preventDefaultMouseMove: true,
           },
-        ],
-        toolbox: {
-          show: true,
-          right: 4,
-          top: 4,
-          itemSize: 12,
-          iconStyle: { color: theme.muted, borderColor: theme.muted },
-          feature: {
-            brush: {
-              type: ['lineX', 'clear'],
-              title: { lineX: t('range'), clear: t('rangeClear') },
-            },
+          {
+            type: 'slider',
+            xAxisIndex: axisIndexes,
+            start: zoomStart,
+            end: zoomEnd,
+            height: 14,
+            bottom: 2,
+            borderColor: theme.border,
+            fillerColor: theme.border,
+            handleStyle: { color: theme.brand, borderColor: theme.brand },
+            textStyle: { color: theme.muted, fontSize: 9 },
+            showDetail: false,
+            brushSelect: false,
           },
-        },
-        brush: {
-          xAxisIndex: axisIndexes,
-          brushType: 'lineX',
-          brushMode: 'single',
-          transformable: false,
-          removeOnClick: true,
-          throttleType: 'debounce',
-          throttleDelay: 80,
-        },
+        ],
         tooltip: {
           trigger: 'axis',
           axisPointer: { type: 'cross', label: { backgroundColor: theme.muted } },
@@ -2319,10 +2476,21 @@ window.__ModuleLoader__.load({
       const [lib, setLib] = useState(null)
       const [failed, setFailed] = useState(false)
       const [range, setRange] = useState(null)
+      const [themeTick, setThemeTick] = useState(0)
+      const [crosshairX, setCrosshairX] = useState(null)
       const hostRef = useRef(null)
       const chartRef = useRef(null)
       const rangeRef = useRef(range)
       rangeRef.current = range
+
+      useEffect(() => {
+        if (typeof MutationObserver !== 'function') return undefined
+        const bump = () => setThemeTick((value) => value + 1)
+        const observer = new MutationObserver(bump)
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style', 'data-ds-dark-theme'] })
+        if (document.body) observer.observe(document.body, { attributes: true, attributeFilter: ['class', 'style', 'data-ds-dark-theme'] })
+        return () => observer.disconnect()
+      }, [])
 
       useEffect(() => {
         let alive = true
@@ -2331,7 +2499,9 @@ window.__ModuleLoader__.load({
           .catch((error) => {
             if (!alive) return
             setFailed(true)
-            console.warn('[stock-ticker] ECharts chunk unavailable; using SVG chart', error?.message ?? error)
+            if (typeof require.async === 'function') {
+              console.warn('[stock-ticker] ECharts chunk unavailable; using SVG chart', error?.message ?? error)
+            }
           })
         return () => {
           alive = false
@@ -2355,17 +2525,54 @@ window.__ModuleLoader__.load({
             : null
         observer?.observe(hostRef.current)
         requestAnimationFrame(() => chart.resize())
-        chart.on('brushSelected', (event) => {
-          const selected = event?.batch?.[0]?.selected?.[0]
-          const indices = Array.isArray(selected?.dataIndex) ? selected.dataIndex : []
-          if (indices.length === 0) {
-            setRange(null)
-            return
-          }
-          setRange({ start: Math.min(...indices), end: Math.max(...indices) })
-        })
+        const rect = () => hostRef.current?.getBoundingClientRect()
+        const indexAt = (event) => {
+          const box = rect()
+          if (!box || box.width <= 0) return null
+          const [value] = chart.convertFromPixel(
+            { xAxisIndex: 0, yAxisIndex: 0 },
+            [event.clientX - box.left, event.clientY - box.top],
+          )
+          if (typeof value !== 'number' || !Number.isFinite(value)) return null
+          return Math.max(0, Math.min(rows.length - 1, Math.round(value)))
+        }
+        let selecting = null
+        const down = (event) => {
+          if (event.button !== 0 || event.shiftKey) return
+          const index = indexAt(event)
+          if (index === null) return
+          event.preventDefault()
+          selecting = { start: index }
+          setRange(null)
+        }
+        const move = (event) => {
+          const box = rect()
+          if (box) setCrosshairX(event.clientX - box.left)
+          if (!selecting) return
+          const index = indexAt(event)
+          if (index === null) return
+          setRange(index === selecting.start ? null : { start: Math.min(selecting.start, index), end: Math.max(selecting.start, index) })
+        }
+        const leave = () => setCrosshairX(null)
+        const up = (event) => {
+          if (!selecting) return
+          const index = indexAt(event)
+          const start = selecting.start
+          selecting = null
+          if (index === null) return
+          setRange(index === start ? null : { start: Math.min(start, index), end: Math.max(start, index) })
+        }
+        // ECharts' zrender handlers can stop bubbling; capture before them.
+        hostRef.current.addEventListener('mousedown', down, true)
+        hostRef.current.addEventListener('mousemove', move, true)
+        hostRef.current.addEventListener('mouseup', up, true)
+        hostRef.current.addEventListener('mouseleave', leave)
         return () => {
           observer?.disconnect()
+          hostRef.current?.removeEventListener('mousedown', down, true)
+          hostRef.current?.removeEventListener('mousemove', move, true)
+          hostRef.current?.removeEventListener('mouseup', up, true)
+          hostRef.current?.removeEventListener('mouseleave', leave)
           chart.dispose()
           chartRef.current = null
         }
@@ -2390,17 +2597,29 @@ window.__ModuleLoader__.load({
           }),
           { notMerge: true },
         )
-      }, [lib, rows, props.colorMode, props.showMA, props.showVolume, props.period, props.holdingCost, t])
+      }, [lib, rows, props.colorMode, props.showMA, props.showVolume, props.period, props.holdingCost, t, themeTick])
 
       useEffect(() => {
         const chart = chartRef.current
         if (!chart) return
+        const theme = chartTheme(hostRef.current)
+        const up = props.colorMode === 'intl' ? theme.success : theme.error
+        const down = props.colorMode === 'intl' ? theme.error : theme.success
         chart.setOption({
-          series: [{ id: 'kline', ...echartsRangeMarks(rows, range, chartTheme(hostRef.current), t, props.holdingCost) }],
+          series: [{ id: 'kline', ...echartsRangeMarks(rows, range, theme, t, props.holdingCost, up, down) }],
         })
       }, [range, rows, t, props.holdingCost])
 
-      if (!lib || failed) return h(Candles, props)
+      if (!lib || failed) {
+        return h(
+          'div',
+          { className: 'dshst-echartWrap' },
+          failed && typeof require.async === 'function'
+            ? h('div', { className: 'dshst-chartHint' }, t('echartsFallback'))
+            : null,
+          h(Candles, props),
+        )
+      }
 
       const selected = range && range.end > range.start ? rows.slice(range.start, range.end + 1) : null
       const high = selected ? selected.reduce((best, row) => (row.high > best.high ? row : best), selected[0]) : null
@@ -2411,9 +2630,12 @@ window.__ModuleLoader__.load({
         first && last && Number.isFinite(first.open) && first.open !== 0
           ? ((last.close - first.open) / first.open) * 100
           : null
+      const change = first && last ? last.close - first.open : null
+      const spread = high && low ? high.high - low.low : null
+      const spreadPct = spread !== null && low?.low > 0 ? (spread / low.low) * 100 : null
       const amplitude =
         high && low && first && Number.isFinite(first.open) && first.open !== 0
-          ? ((high.high - low.low) / first.open) * 100
+          ? (spread / first.open) * 100
           : null
       const volume = selected ? selected.reduce((sum, row) => sum + (typeof row.volume === 'number' ? row.volume : 0), 0) : 0
       const minute = props.period === 'm5' || props.period === 'm15' || props.period === 'm30' || props.period === 'm60'
@@ -2425,16 +2647,22 @@ window.__ModuleLoader__.load({
           className: 'dshst-echartWrap',
           onDoubleClick: () => {
             chartRef.current?.dispatchAction({ type: 'dataZoom', start: 0, end: 100 })
-            chartRef.current?.dispatchAction({ type: 'brush', areas: [] })
             setRange(null)
           },
         },
-        h('div', {
-          className: 'dshst-echart',
-          ref: hostRef,
-          role: 'img',
-          'aria-label': props.label ?? '',
-        }),
+        h(
+          'div',
+          { className: 'dshst-echartStage' },
+          h('div', {
+            className: 'dshst-echart',
+            ref: hostRef,
+            role: 'img',
+            'aria-label': props.label ?? '',
+          }),
+          crosshairX === null
+            ? null
+            : h('div', { className: 'dshst-echartCrosshair', style: { left: `${crosshairX}px` } }),
+        ),
         minute && baseline.size > 0 ? h(VolumeLegend, { t }) : null,
         h('div', { className: 'dshst-chartHint' }, `${t('echartsHint')} · ${rows.length}`),
         selected && high && low
@@ -2443,13 +2671,15 @@ window.__ModuleLoader__.load({
               title: `${t('range')} ${shortDate(rows[range.start]?.date)} → ${shortDate(
                 rows[range.end]?.date,
               )} · ${range.end - range.start + 1}${t('rangeBars')}`,
+              change,
               changePct,
               highText: `${formatPrice(high.high)} (${shortDate(high.date)})`,
               lowText: `${formatPrice(low.low)} (${shortDate(low.date)})`,
+              spread,
+              spreadPct,
               amplitude,
               volume,
               onClear: () => {
-                chartRef.current?.dispatchAction({ type: 'brush', areas: [] })
                 setRange(null)
               },
             })
@@ -2477,7 +2707,17 @@ window.__ModuleLoader__.load({
         max += pad
       }
       const inset = 2
-      const scaleX = (index) => (index / (points.length - 1)) * width
+      const dayList = [...new Set(points.map((point) => point.day).filter(Boolean))]
+      const totalDays = Math.max(1, dayList.length)
+      const dayIndex = new Map(dayList.map((day, index) => [day, index]))
+      const scaleX = (index) => {
+        if (dayList.length === 0) return (index / (points.length - 1)) * width
+        const point = points[index]
+        const fraction = sessionFraction(point?.time, props.market)
+        if (!point || fraction === null) return (index / (points.length - 1)) * width
+        const day = dayList.length > 1 ? dayIndex.get(point.day) ?? 0 : 0
+        return ((day + fraction) / totalDays) * width
+      }
       const scaleY = (value) => height - inset - ((value - min) / (max - min)) * (height - inset * 2)
       const line = points
         .map((point, index) =>
@@ -2500,7 +2740,7 @@ window.__ModuleLoader__.load({
           'aria-label': props.label ?? '',
         },
         h('path', {
-          d: `M0,${height} L${line.join(' L')} L${width},${height} Z`,
+          d: `M0,${height} L${line.join(' L')} L${scaleX(points.length - 1)},${height} Z`,
           fill: color,
           fillOpacity: 0.12,
           stroke: 'none',
@@ -2581,6 +2821,27 @@ window.__ModuleLoader__.load({
           : trend === 'dshst-down'
             ? 'var(--dshst-down)'
             : 'var(--dsw-alias-label-secondary)'
+      const mini =
+        props.showMiniChart === false
+          ? null
+          : chart?.kind === 'line'
+            ? h(MiniTrend, {
+                points: chart.points,
+                up: miniUp,
+                market: quote.market,
+                width: 54,
+                height: 24,
+                label: `${quote.name ?? quote.symbol} ${t('title')}`,
+                emptyLabel: t('noKline'),
+              })
+            : h(Candles, {
+                rows: rows.slice(-Math.min(props.previewDays ?? 20, 20)),
+                width: 54,
+                height: 24,
+                label: `${quote.name ?? quote.symbol} ${t('title')}`,
+                emptyLabel: t('noKline'),
+              })
+      const volumeAlert = props.volumeAlert
       return h(
         'div',
         {
@@ -2653,24 +2914,23 @@ window.__ModuleLoader__.load({
           h('span', { className: `dshst-price ${trend}` }, formatPrice(quote.price)),
           h('span', { className: `dshst-chg ${trend}` }, formatPct(quote.changePct)),
         ),
-        props.showMiniChart === false
-          ? null
-          : chart?.kind === 'line'
-            ? h(MiniTrend, {
-                points: chart.points,
-                up: miniUp,
-                width: 54,
-                height: 24,
-                label: `${quote.name ?? quote.symbol} ${t('title')}`,
-                emptyLabel: t('noKline'),
-              })
-            : h(Candles, {
-                rows: rows.slice(-Math.min(props.previewDays ?? 20, 20)),
-                width: 54,
-                height: 24,
-                label: `${quote.name ?? quote.symbol} ${t('title')}`,
-                emptyLabel: t('noKline'),
-              }),
+        mini
+          ? h(
+              'span',
+              { className: 'dshst-miniWrap' },
+              mini,
+              volumeAlert
+                ? h(
+                    'span',
+                    {
+                      className: 'dshst-volumeBubble',
+                      title: `${t('volumeAlert')} ${formatPct(volumeAlert.pct)} · ${shortDate(volumeAlert.time)}`,
+                    },
+                    t('volumeAlertBubble'),
+                  )
+                : null,
+            )
+          : null,
         h(
           'button',
           {
@@ -2740,8 +3000,17 @@ window.__ModuleLoader__.load({
       const indexAt = (event) => {
         const rect = event.currentTarget.getBoundingClientRect()
         if (!rect || rect.width <= 0) return null
-        const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width))
-        return Math.min(points.length - 1, Math.max(0, Math.round(ratio * (points.length - 1))))
+        const x = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width)) * width
+        let best = 0
+        let distance = Number.POSITIVE_INFINITY
+        points.forEach((point, index) => {
+          const current = Math.abs(scaleX(index) - x)
+          if (current < distance) {
+            distance = current
+            best = index
+          }
+        })
+        return best
       }
 
       if (points.length < 2) {
@@ -2797,13 +3066,26 @@ window.__ModuleLoader__.load({
       const priceHeight = height - volumeBand
       const inset = 6
       const scaleY = (value) => priceHeight - inset - ((value - min) / (max - min)) * (priceHeight - inset * 2)
-      const scaleX = (index) => (index / (points.length - 1)) * width
+      const dayList = [...new Set(points.map((point) => point.day).filter(Boolean))]
+      const totalDays = Math.max(1, dayList.length)
+      const dayIndex = new Map(dayList.map((day, index) => [day, index]))
+      const timeAxis = dayList.length > 0
+      const scaleX = (index) => {
+        if (!timeAxis) return (index / (points.length - 1)) * width
+        const point = points[index]
+        if (!point) return 0
+        const fraction = sessionFraction(point.time, props.market)
+        if (fraction === null) return (index / (points.length - 1)) * width
+        const day = dayList.length > 1 ? dayIndex.get(point.day) ?? 0 : 0
+        return ((day + fraction) / totalDays) * width
+      }
       const priceLine = points.map((point, index) => `${scaleX(index).toFixed(1)},${scaleY(point.price).toFixed(1)}`).join(' ')
       const avgLine = points
         .map((point, index) => (typeof point.avg === 'number' ? `${scaleX(index).toFixed(1)},${scaleY(point.avg).toFixed(1)}` : null))
         .filter(Boolean)
         .join(' ')
-      const area = `M0,${priceHeight} L${priceLine.split(' ').join(' L')} L${width},${priceHeight} Z`
+      const areaRight = scaleX(points.length - 1)
+      const area = `M0,${priceHeight} L${priceLine.split(' ').join(' L')} L${areaRight},${priceHeight} Z`
       const up = props.up
 
       let selectedRange = null
@@ -2817,8 +3099,11 @@ window.__ModuleLoader__.load({
           const first = points[start]
           const last = points[end]
           const entry = first.price
+          const change = Number.isFinite(last.price) && Number.isFinite(entry) ? last.price - entry : null
           const changePct = Number.isFinite(entry) && entry !== 0 ? ((last.price - entry) / entry) * 100 : null
-          const amplitude = Number.isFinite(entry) && entry !== 0 ? ((highPoint.price - lowPoint.price) / entry) * 100 : null
+          const spread = highPoint.price - lowPoint.price
+          const spreadPct = lowPoint.price > 0 ? (spread / lowPoint.price) * 100 : null
+          const amplitude = Number.isFinite(entry) && entry !== 0 ? (spread / entry) * 100 : null
           const volume = list.reduce((sum, point) => sum + (typeof point.volume === 'number' ? point.volume : 0), 0)
           selectedRange = {
             start,
@@ -2827,13 +3112,22 @@ window.__ModuleLoader__.load({
             x2: scaleX(end),
             highPoint,
             lowPoint,
+            change,
             changePct,
+            spread,
+            spreadPct,
             amplitude,
             volume,
           }
         }
       }
       const pointLabel = (point) => `${point.day ? `${shortDate(point.day)} ` : ''}${point.time}`
+      const rangeSameDay = (() => {
+        if (!selectedRange) return false
+        const day = points[selectedRange.start]?.day
+        return Boolean(day) && points.slice(selectedRange.start, selectedRange.end + 1).every((point) => point.day === day)
+      })()
+      const rangeLabel = (point) => (rangeSameDay ? point.time : pointLabel(point))
 
       const separators = []
       for (let index = 1; index < points.length; index += 1) {
@@ -2920,8 +3214,11 @@ window.__ModuleLoader__.load({
             lowY: scaleY(selectedRange.lowPoint.price),
             highX: scaleX(points.indexOf(selectedRange.highPoint)),
             lowX: scaleX(points.indexOf(selectedRange.lowPoint)),
-            highText: `${t('high')} ${formatPrice(selectedRange.highPoint.price)} ${pointLabel(selectedRange.highPoint)}`,
-            lowText: `${t('low')} ${formatPrice(selectedRange.lowPoint.price)} ${pointLabel(selectedRange.lowPoint)}`,
+            highText: `${t('high')} ${formatPrice(selectedRange.highPoint.price)} ${rangeLabel(selectedRange.highPoint)}`,
+            lowText: `${t('low')} ${formatPrice(selectedRange.lowPoint.price)} ${rangeLabel(selectedRange.lowPoint)}`,
+            highColor: 'var(--dshst-up)',
+            lowColor: 'var(--dshst-down)',
+            spreadText: `${t('rangeSpread')} ${formatPrice(selectedRange.spread)} (${formatPct(selectedRange.spreadPct)})`,
           }),
         )
       }
@@ -2968,7 +3265,8 @@ window.__ModuleLoader__.load({
           if (volume > maxVolume) maxVolume = volume
         }
         if (maxVolume > 0) {
-          const barWidth = Math.max(1, width / points.length - 0.4)
+          const sessionSlots = (props.market === 'hk' ? 330 : 240)
+          const barWidth = Math.max(1, width / (totalDays * sessionSlots) - 0.4)
           points.forEach((point, index) => {
             if (typeof point.volume !== 'number') return
             const barHeight = Math.max(0.5, (point.volume / maxVolume) * (volumeBand - 4))
@@ -2986,7 +3284,7 @@ window.__ModuleLoader__.load({
               children.push(
                 h('rect', {
                   key: `gv${index}`,
-                  x: (index / (points.length - 1)) * width,
+                  x: scaleX(index),
                   y: height - ghostHeight,
                   width: barWidth,
                   height: ghostHeight,
@@ -3004,7 +3302,7 @@ window.__ModuleLoader__.load({
             children.push(
               h('rect', {
                 key: `v${index}`,
-                x: (index / (points.length - 1)) * width,
+                x: scaleX(index),
                 y: height - barHeight,
                 width: barWidth,
                 height: barHeight,
@@ -3024,7 +3322,7 @@ window.__ModuleLoader__.load({
               drawing = false
               return
             }
-            const x = (index / (points.length - 1)) * width
+            const x = scaleX(index)
             const barHeight = Math.max(0.5, (volume / maxVolume) * (volumeBand - 4))
             path += `${drawing ? 'L' : 'M'}${x.toFixed(1)},${(height - barHeight).toFixed(1)} `
             drawing = true
@@ -3051,7 +3349,12 @@ window.__ModuleLoader__.load({
             : formatPrice(tick.value),
         top: (scaleY(tick.value) / height) * 100,
       }))
-      const xLabels = [points[0]?.time, points[Math.floor(points.length / 2)]?.time, points[points.length - 1]?.time]
+      const xLabels =
+        timeAxis && totalDays === 1
+          ? props.market === 'hk'
+            ? ['09:30', '12:00/13:00', '16:00']
+            : ['09:30', '11:30/13:00', '15:00']
+          : [points[0]?.time, points[Math.floor(points.length / 2)]?.time, points[points.length - 1]?.time]
 
       const active = hover !== null ? points[hover] : null
       const activeReference = active ? baselineAt.get(active.time) : undefined
@@ -3148,12 +3451,15 @@ window.__ModuleLoader__.load({
         selectedRange
           ? h(RangeSummary, {
               t,
-              title: `${t('range')} ${pointLabel(points[selectedRange.start])} → ${pointLabel(
+              title: `${t('range')} ${rangeLabel(points[selectedRange.start])} → ${rangeLabel(
                 points[selectedRange.end],
               )} · ${selectedRange.end - selectedRange.start + 1}${t('rangeMinutes')}`,
+              change: selectedRange.change,
               changePct: selectedRange.changePct,
-              highText: `${formatPrice(selectedRange.highPoint.price)} (${pointLabel(selectedRange.highPoint)})`,
-              lowText: `${formatPrice(selectedRange.lowPoint.price)} (${pointLabel(selectedRange.lowPoint)})`,
+              highText: `${formatPrice(selectedRange.highPoint.price)} (${rangeLabel(selectedRange.highPoint)})`,
+              lowText: `${formatPrice(selectedRange.lowPoint.price)} (${rangeLabel(selectedRange.lowPoint)})`,
+              spread: selectedRange.spread,
+              spreadPct: selectedRange.spreadPct,
               amplitude: selectedRange.amplitude,
               volume: selectedRange.volume,
               onClear: () => setRange(null),
@@ -3287,6 +3593,7 @@ window.__ModuleLoader__.load({
       const initialTab = tabs.some((tab) => tab.id === prefs.defaultPeriod) ? prefs.defaultPeriod : tabs[0]?.id ?? 'day'
       const [tab, setTab] = useState(initialTab)
       const [adjust, setAdjust] = useState(prefs.adjust)
+      const [historyYears, setHistoryYears] = useState(0)
       const [trendDays, setTrendDays] = useState(prefs.defaultTrendDays)
       const [showMA, setShowMA] = useState(prefs.showMA)
       const [showVolume, setShowVolume] = useState(prefs.showVolume)
@@ -3309,6 +3616,18 @@ window.__ModuleLoader__.load({
       const seriesRef = useRef(series)
       seriesRef.current = series
       const isTrend = tab === 'trend'
+      const historyBars = tab === 'day' ? 250 : tab === 'week' ? 52 : 12
+      const klineLimit = isTrend
+        ? 0
+        : tab === 'm5' || tab === 'm15' || tab === 'm30' || tab === 'm60'
+          ? 96
+          : tab === 'day'
+            ? historyYears
+              ? historyYears * historyBars
+              : Math.max(10, Math.min(klineDays ?? 60, 120))
+            : historyYears
+              ? historyYears * historyBars
+              : 60
       const retry = () => {
         setSeries((currentSeries) => {
           const next = { ...currentSeries }
@@ -3324,7 +3643,7 @@ window.__ModuleLoader__.load({
       // failed one (retried on demand) or an intraday line older than 30 s, since
       // a frozen 分时 line beside a live price is worse than a reload.
       useEffect(() => {
-        const key = `${tab}:${adjust}:${isTrend ? trendDays : ''}`
+        const key = `${tab}:${adjust}:${isTrend ? trendDays : klineLimit}`
         const entry = seriesRef.current[key]
         // Consumed once: a retry must refresh one fetch, not turn every later
         // poll into a cache-bypassing request.
@@ -3349,13 +3668,9 @@ window.__ModuleLoader__.load({
             const payload = isTrend
               ? await api(`/trend?symbol=${encodeURIComponent(quote.symbol)}&days=${trendDays}${baselineParam}${force || entry ? '&refresh=1' : ''}`)
               : await api(
-                  `/kline?symbol=${encodeURIComponent(quote.symbol)}&period=${tab}&adjust=${adjust}&limit=${
-                    tab === 'm5' || tab === 'm15' || tab === 'm30' || tab === 'm60'
-                      ? 96
-                      : tab === 'day'
-                        ? Math.max(10, Math.min(klineDays ?? 60, 120))
-                        : 60
-                  }${force || entry ? '&refresh=1' : ''}`,
+                  `/kline?symbol=${encodeURIComponent(quote.symbol)}&period=${tab}&adjust=${adjust}&limit=${klineLimit}${
+                    force || entry ? '&refresh=1' : ''
+                  }`,
                 )
             // HTTP 200 still carries `ok:false` for an upstream failure; treat it
             // as an error so the panel offers a retry instead of an empty chart.
@@ -3373,7 +3688,7 @@ window.__ModuleLoader__.load({
         return () => {
           cancelled = true
         }
-      }, [quote.symbol, tab, adjust, trendDays, cycle, retryToken, klineDays, isTrend])
+      }, [quote.symbol, tab, adjust, historyYears, trendDays, cycle, retryToken, klineDays, isTrend])
 
       useEffect(() => {
         if (!tradesOpen) return undefined
@@ -3456,7 +3771,7 @@ window.__ModuleLoader__.load({
         }
       }
 
-      const seriesKey = `${tab}:${adjust}:${isTrend ? trendDays : ''}`
+      const seriesKey = `${tab}:${adjust}:${isTrend ? trendDays : klineLimit}`
       const entry = series[seriesKey]
 
       const chart = (() => {
@@ -3475,6 +3790,8 @@ window.__ModuleLoader__.load({
             prevClose: entry.payload.prevClose,
             baseline: entry.payload.baseline,
             baselineDays: entry.payload.baselineDays,
+            days: trendDays,
+            market: quote.market,
             up: quote.changePct >= 0 ? 'var(--dshst-up)' : 'var(--dshst-down)',
             holdingCost: holding?.cost,
             showVolume,
@@ -3613,7 +3930,17 @@ window.__ModuleLoader__.load({
               )
             : null,
           holdingLine,
-          h('button', { type: 'button', className: 'dshst-detailClose', onClick: onClose }, t('close')),
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'dshst-detailClose',
+              onClick: onClose,
+              title: t('close'),
+              'aria-label': t('close'),
+            },
+            '×',
+          ),
         ),
         h(
           'div',
@@ -3677,6 +4004,25 @@ window.__ModuleLoader__.load({
                 h('option', { value: 'qfq' }, t('adjustQfq')),
                 h('option', { value: 'hfq' }, t('adjustHfq')),
                 h('option', { value: 'none' }, t('adjustNone')),
+              )
+            : null,
+          ADJUST_TABS.has(tab)
+            ? h(
+                'span',
+                { className: 'dshst-seg', title: t('historyYears') },
+                ...[1, 3, 5].map((years) =>
+                  h(
+                    'button',
+                    {
+                      key: years,
+                      type: 'button',
+                      className: 'dshst-toggle',
+                      'data-active': historyYears === years ? 'true' : 'false',
+                      onClick: () => setHistoryYears(historyYears === years ? 0 : years),
+                    },
+                    `${years}${t('years')}`,
+                  ),
+                ),
               )
             : null,
           !isTrend
@@ -4189,7 +4535,7 @@ window.__ModuleLoader__.load({
         const priority = typeof style.getPropertyPriority === 'function' ? style.getPropertyPriority(property) : ''
         snapshot.push({ target, property, value: value ?? '', priority })
       }
-      for (const property of ['flex-wrap', 'width']) remember(container, property)
+      for (const property of ['flex-wrap', 'width', 'row-gap']) remember(container, property)
       for (const property of ['order', 'flex', 'width', 'min-width']) remember(item, property)
 
       // `wrap` is written with priority so a future stylesheet `!important`
@@ -4199,10 +4545,29 @@ window.__ModuleLoader__.load({
       // tracks the number of cards and the footer buttons move between groups.
       container.style.setProperty('flex-wrap', 'wrap', 'important')
       container.style.setProperty('width', '100%')
-      item.style.setProperty('order', '99')
+      // The zero-height break still sits in a flex line; keep the column gap
+      // but shrink the two row gaps it creates, otherwise the native pills and
+      // the strip look like two unrelated blocks.
+      container.style.setProperty('row-gap', '0px')
+      // DSH's own token/context pills also participate in this dock. Keep them
+      // in the row above and force our strip to the final row. A zero-height
+      // full-width spacer is the reliable line break: max-width on our item
+      // otherwise makes it fit beside the pills without wrapping.
+      item.style.setProperty('order', '1000000')
       item.style.setProperty('flex', '0 0 100%')
       item.style.setProperty('width', '100%')
       item.style.setProperty('min-width', '0')
+      let spacer
+      if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
+        const candidate = document.createElement('div')
+        if (candidate?.style) {
+          spacer = candidate
+          spacer.setAttribute('aria-hidden', 'true')
+          spacer.style.cssText =
+            'flex:0 0 100%;width:100%;height:0;min-height:0;margin:0;padding:0;pointer-events:none;order:999999'
+          container.appendChild(spacer)
+        }
+      }
 
       if (debugEnabled()) {
         console.debug('[stock-ticker] dock row claimed', {
@@ -4239,6 +4604,7 @@ window.__ModuleLoader__.load({
 
       return () => {
         if (frame && typeof window.cancelAnimationFrame === 'function') window.cancelAnimationFrame(frame)
+        if (spacer?.parentElement === container) container.removeChild(spacer)
         for (const { target, property, value, priority } of snapshot) {
           if (value) target.style.setProperty(property, value, priority)
           else target.style.removeProperty(property)
@@ -4271,6 +4637,7 @@ window.__ModuleLoader__.load({
       const prefsRef = useRef({})
       const active = props.active !== false
       const [sparks, setSparks] = useState({})
+      const [volumeAlerts, setVolumeAlerts] = useState({})
       const sparkMeta = useRef({ key: '', at: 0, etag: '' })
       const stripRef = useRef(null)
       const stripCleanup = useRef(null)
@@ -4482,6 +4849,33 @@ window.__ModuleLoader__.load({
         }
       }, [active, sparkKey, chartType, sparkDays, sparkTick])
 
+      const volumeAlertOn = data?.settings?.volumeAlert === true
+      const volumeAlertPct = data?.settings?.volumeAlertPct ?? 100
+      const tradingNow = data?.session?.mode === 'trading'
+      useEffect(() => {
+        if (!active || !volumeAlertOn || !tradingNow || symbolKey === '') {
+          setVolumeAlerts({})
+          return undefined
+        }
+        let cancelled = false
+        const loadAlerts = async () => {
+          try {
+            const payload = await api(
+              `/volume-alerts?symbols=${encodeURIComponent(symbolKey)}&pct=${encodeURIComponent(volumeAlertPct)}`,
+            )
+            if (!cancelled && payload?.ok === true) setVolumeAlerts(payload.alerts ?? {})
+          } catch {
+            /* the bubble is optional; never break the strip */
+          }
+        }
+        loadAlerts()
+        const timer = window.setInterval(loadAlerts, 30_000)
+        return () => {
+          cancelled = true
+          window.clearInterval(timer)
+        }
+      }, [active, volumeAlertOn, tradingNow, symbolKey, volumeAlertPct])
+
       const refreshSeconds = data?.settings?.refreshSeconds
       const serverInterval = data?.session?.intervalMs
       // The Host already widens the interval outside trading hours; consecutive
@@ -4587,6 +4981,51 @@ window.__ModuleLoader__.load({
         }
       }
 
+      const moveGroup = (from, to) => {
+        if (from === to || from < 0 || to < 0) return
+        const list = Array.isArray(data?.groups) ? data.groups.slice() : []
+        if (from >= list.length || to >= list.length) return
+        const [item] = list.splice(from, 1)
+        if (!item) return
+        list.splice(to, 0, item)
+        setData((current) => (current ? { ...current, groups: list } : current))
+        api('/groups', { method: 'POST', body: { action: 'reorder', order: list.map((group) => group.id) } })
+          .then((payload) => {
+            if (payload.ok !== true) throw new Error(payload.error || 'group-reorder-failed')
+          })
+          .catch((failure) => {
+            flashNotice(String(failure?.message ?? failure))
+            load()
+          })
+      }
+
+      const startGroupDrag = (index, event) => {
+        try {
+          event.dataTransfer?.setData('text/plain', String(index))
+          if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move'
+        } catch {
+          /* browsers may refuse drag data */
+        }
+        groupDragRef.current = true
+        setGroupDrag({ from: index, over: index })
+      }
+      const overGroup = (index) => {
+        if (!groupDragRef.current) return
+        setGroupDrag((current) => (current && current.over === index ? current : current ? { ...current, over: index } : current))
+      }
+      const dropGroup = (index) => {
+        const current = groupDrag
+        groupDragRef.current = false
+        groupDragEndedAt.current = Date.now()
+        setGroupDrag(null)
+        if (current) moveGroup(current.from, index)
+      }
+      const endGroupDrag = () => {
+        groupDragRef.current = false
+        groupDragEndedAt.current = Date.now()
+        setGroupDrag(null)
+      }
+
       const acknowledge = async (entries) => {
         setToast([])
         for (const entry of entries) {
@@ -4635,6 +5074,9 @@ window.__ModuleLoader__.load({
 
       const [dragPreview, setDragPreview] = useState(null)
       const dragPreviewRef = useRef(null)
+      const [groupDrag, setGroupDrag] = useState(null)
+      const groupDragRef = useRef(false)
+      const groupDragEndedAt = useRef(0)
       const updateDragPreview = (next) => {
         dragPreviewRef.current = next
         setDragPreview(next)
@@ -4814,6 +5256,7 @@ window.__ModuleLoader__.load({
                   pulse: manualPulse,
                   showMiniChart: prefs.showMiniChart !== false,
                   showExtended: prefs.showExtended === true,
+                  volumeAlert: chartType === 'intraday' ? volumeAlerts[quote.symbol] ?? null : null,
                   onSelect: () => onCardSelect(quote.symbol),
                   onRemove: () => removeSymbol(quote.symbol),
                 })
@@ -4922,16 +5365,34 @@ window.__ModuleLoader__.load({
           ? h(
               'span',
               { className: 'dshst-groups' },
-              ...groups.map((group) =>
+              ...groups.map((group, index) =>
                 h(
                   'button',
                   {
                     key: group.id,
                     type: 'button',
                     className: 'dshst-pill',
+                    draggable: true,
                     'data-active': data?.activeGroup === group.id ? 'true' : 'false',
+                    'data-dragging': groupDrag?.from === index ? 'true' : 'false',
+                    'data-drop': groupDrag && groupDrag.from !== groupDrag.over && groupDrag.over === index ? 'true' : 'false',
                     title: `${group.name} (${group.count})`,
-                    onClick: () => switchGroup(group.id),
+                    onClick: () => {
+                      if (Date.now() - groupDragEndedAt.current < 250) return
+                      switchGroup(group.id)
+                    },
+                    onDragStart: (event) => startGroupDrag(index, event),
+                    onDragOver: (event) => {
+                      event.preventDefault?.()
+                      if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
+                      overGroup(index)
+                    },
+                    onDrop: (event) => {
+                      event.preventDefault?.()
+                      event.stopPropagation?.()
+                      dropGroup(index)
+                    },
+                    onDragEnd: endGroupDrag,
                   },
                   `${group.name} ${group.count}`,
                 ),
@@ -5346,6 +5807,18 @@ window.__ModuleLoader__.load({
         row(t('showStats'), toggle('showStats', t('showStats'))),
         row(t('showExtended'), toggle('showExtended', t('showExtended'))),
         row(t('alertToast'), toggle('alertToast', t('alertToast'))),
+        row(t('volumeAlert'), toggle('volumeAlert', t('volumeAlert'))),
+        row(
+          t('volumeAlertPct'),
+          h('input', {
+            className: 'dshst-input dshst-inputSmall',
+            type: 'number',
+            min: 10,
+            max: 500,
+            value: prefs.volumeAlertPct ?? 100,
+            onChange: (event) => save({ volumeAlertPct: Number(event.target.value) }),
+          }),
+        ),
         row(t('sourceDot'), toggle('sourceDot', t('sourceDot'))),
         row(
           t('chartCache'),

@@ -2,7 +2,7 @@
 
 [中文](README.md) · **English**
 
-![version](https://img.shields.io/badge/version-1.15.1-blue)
+![version](https://img.shields.io/badge/version-1.16.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![dsh](https://img.shields.io/badge/DSH-0.2.x-6f5bd6)
 ![data](https://img.shields.io/badge/data-Tencent%20%7C%20Sina%20%7C%20Eastmoney-orange)
@@ -13,6 +13,8 @@ A quote strip pinned under the DeepSeek Harness composer for A-shares, Hong Kong
 
 ![Detail panel](docs/screenshots/detail.png)
 
+![K-line detail](docs/screenshots/detail-kline.png)
+
 > Quotes come from public endpoints as snapshots. Display only — **not investment advice**, not for trading decisions.
 
 > **Package id**: the repo and the marketplace entry are called `dsh-stock-dock`; the npm id is still `@local/dsh-stock-ticker` so existing `link:` installs keep working. Both `/dsh-stock-ticker` and `/dsh-stock-dock` route prefixes are served.
@@ -22,10 +24,10 @@ A quote strip pinned under the DeepSeek Harness composer for A-shares, Hong Kong
 - **Strip**: always under the composer; wheel or trackpad horizontal swipe, drag to scroll, hover progress bar; red-up/green-down (switchable), A-share limit marks, a source dot per card
 - **Settings panel**: a gear in the header opens it right inside the strip (no dependence on the DSH settings page); switch the data source (auto/Tencent/Sina/Eastmoney), default chart, adjust mode and cadence, and toggle each display element (mini chart, MAs, volume, order book, metrics row, source dot, alert toast, US pre/post market)
 - **Mini chart type**: the small chart on each card switches between `intraday line / daily / weekly / monthly` from the header or settings; the line follows the poll for A-shares and Hong Kong, and US cards fall back to daily candles because free intraday is unavailable
-- **Card management**: a hover `×` removes one symbol, cards reorder with a live gap while dragging, the trailing `＋` opens search
+- **Card management**: a hover `×` removes one symbol, cards and group pills reorder while dragging, the trailing `＋` opens search
 - **Search**: code, Chinese name or pinyin, merged from Eastmoney suggest and Tencent smartbox
 - **Watchlist groups**: several lists switched by the header pills; a "market" group is seeded on first install (SSE, SZSE, ChiNext, STAR 50, Hang Seng, Nasdaq)
-- **Charts**: `intraday / 5m / 15m / 30m / 60m / daily / weekly / monthly`; intraday overlays 1/3/5 days with day separators and volume; the one-day axis is symmetric around the previous close with five ticks (0, ±0.5, ±1% and up), and the one-day view adds the previous session's same-time volume plus the same-time ratio; drag horizontally on the intraday chart for range high/low/change/amplitude/volume, with red/orange bars for expansion, progressively paler greys for contraction, and hollow ghost bars plus a dashed line for the previous session's actual volume; 5/15/30/60-minute volume bars compare with the same slot on the previous session (red/orange expanding, paler greys shrinking; hollow ghost bars and a dashed line show the previous session's actual volume); the detail K-line is rendered by a lazily loaded ECharts chunk: wheel zoom, drag pan, toolbar range brush, with the volume tiers/ghost bars/range stats kept; intraday and mini charts remain SVG; switch forward/backward/raw adjust, MA and volume toggles, hover crosshair with a readout; drag horizontally on the intraday or a K-line chart to select a range and see its high, low, change, amplitude and volume
+- **Charts**: `intraday / 5m / 15m / 30m / 60m / daily / weekly / monthly`; intraday overlays 1/3/5 days with day separators and volume; the one-day axis is symmetric around the previous close with five ticks (0, ±0.5, ±1% and up), and the one-day view adds the previous session's same-time volume plus the same-time ratio; drag horizontally on the intraday chart for range high/low/change/amplitude/volume, with red/orange bars for expansion, progressively paler greys for contraction, and hollow ghost bars plus a dashed line for the previous session's actual volume; 5/15/30/60-minute volume bars compare with the same slot on the previous session (red/orange expanding, paler greys shrinking; hollow ghost bars and a dashed line show the previous session's actual volume); the detail K-line is rendered by a lazily loaded ECharts chunk: wheel zoom, direct drag-to-select, a full-height crosshair, 1/3/5-year history for daily/weekly/monthly, volume tiers/ghost bars and both start-end and high-low spreads; intraday and mini charts remain SVG and leave the unplayed session blank; switch forward/backward/raw adjust, MA and volume toggles, hover crosshair with a readout; drag horizontally on the intraday or a K-line chart to select a range and see its high, low, change, amplitude and volume
 - **Order book**: five bids and asks plus the bid/ask ratio
 - **A-share fields**: turnover, turnover rate, volume ratio, amplitude, P/E, P/B, float and total market cap
 - **US pre/post market**: opt-in; cards and the detail header show the extended-hours price, percent and timestamp (from Sina's `gb_` rows)
@@ -115,6 +117,7 @@ GET  /dsh-stock-ticker/search?q=<term>&limit=8
 GET  /dsh-stock-ticker/trades?symbol=...
 GET  /dsh-stock-ticker/settings
 GET  /dsh-stock-ticker/cache
+GET  /dsh-stock-ticker/volume-alerts?symbols=...&pct=100
 GET  /dsh-stock-ticker/health
 POST /dsh-stock-ticker/config
 POST /dsh-stock-ticker/prefs
