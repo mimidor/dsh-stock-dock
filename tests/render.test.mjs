@@ -1011,3 +1011,23 @@ test('the intraday axis is symmetric around the previous close', async () => {
   assert.match(text, /0\.00%/)
   assert.match(text, /-1\.00%/)
 })
+
+test('dragging on the intraday chart marks a range with summary stats', async () => {
+  const { harness, component, t } = boot()
+  harness.mount(component, { t })
+  let tree = await harness.settle()
+  click(findAll(tree, (element) => hasClass(element, 'dshst-card') && textOf(element).includes('贵州茅台'))[0])
+  tree = await harness.settle()
+  const detail = findAll(tree, (element) => hasClass(element, 'dshst-detail'))[0]
+  const chart = findAll(detail, (element) => element.tag === 'svg' && hasClass(element, 'dshst-chart'))[0]
+  assert.ok(chart, 'the intraday chart is mounted')
+  chart.props.onMouseDown({ clientX: 100, currentTarget: chart, preventDefault() {} })
+  chart.props.onMouseMove({ clientX: 300, currentTarget: chart })
+  chart.props.onMouseUp({ clientX: 300, currentTarget: chart })
+  tree = await harness.settle()
+  const text = textOf(tree)
+  assert.match(text, /区间/)
+  assert.match(text, /涨跌幅/)
+  assert.match(text, /振幅/)
+  assert.match(text, /清除/)
+})

@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.11.0'
+    const BUILD = 'v1.12.0'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -84,6 +84,7 @@ window.__ModuleLoader__.load({
       volumeLegendPrevious: '昨日量',
       range: '区间',
       rangeBars: '根',
+      rangeMinutes: '分钟',
       rangeChange: '涨跌幅',
       rangeAmplitude: '振幅',
       rangeClear: '清除',
@@ -257,6 +258,7 @@ window.__ModuleLoader__.load({
       volumeLegendPrevious: 'Previous',
       range: 'Range',
       rangeBars: 'bars',
+      rangeMinutes: 'min',
       rangeChange: 'Change',
       rangeAmplitude: 'Amplitude',
       rangeClear: 'Clear',
@@ -2252,6 +2254,18 @@ window.__ModuleLoader__.load({
       const t = props.t ?? ((key) => key)
       const showVolume = props.showVolume !== false
       const [hover, setHover] = useState(null)
+      const [range, setRange] = useState(null)
+      const drag = useRef(null)
+      useEffect(() => {
+        setRange(null)
+        drag.current = null
+      }, [points.length])
+      const indexAt = (event) => {
+        const rect = event.currentTarget.getBoundingClientRect()
+        if (!rect || rect.width <= 0) return null
+        const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width))
+        return Math.min(points.length - 1, Math.max(0, Math.round(ratio * (points.length - 1))))
+      }
 
       if (points.length < 2) {
         return h('div', { className: 'dshst-chartEmpty', style: { width: '100%', height: `${height}px` }, title: props.emptyLabel ?? '' })
@@ -2315,6 +2329,35 @@ window.__ModuleLoader__.load({
       const area = `M0,${priceHeight} L${priceLine.split(' ').join(' L')} L${width},${priceHeight} Z`
       const up = props.up
 
+      let selectedRange = null
+      if (range) {
+        const start = Math.max(0, Math.min(range.start, range.end))
+        const end = Math.min(points.length - 1, Math.max(range.start, range.end))
+        if (end > start) {
+          const list = points.slice(start, end + 1)
+          const highPoint = list.reduce((best, point) => (point.price > best.price ? point : best), list[0])
+          const lowPoint = list.reduce((best, point) => (point.price < best.price ? point : best), list[0])
+          const first = points[start]
+          const last = points[end]
+          const entry = first.price
+          const changePct = Number.isFinite(entry) && entry !== 0 ? ((last.price - entry) / entry) * 100 : null
+          const amplitude = Number.isFinite(entry) && entry !== 0 ? ((highPoint.price - lowPoint.price) / entry) * 100 : null
+          const volume = list.reduce((sum, point) => sum + (typeof point.volume === 'number' ? point.volume : 0), 0)
+          selectedRange = {
+            start,
+            end,
+            x1: scaleX(start),
+            x2: scaleX(end),
+            highPoint,
+            lowPoint,
+            changePct,
+            amplitude,
+            volume,
+          }
+        }
+      }
+      const pointLabel = (point) => `${point.day ? `${shortDate(point.day)} ` : ''}${point.time}`
+
       const separators = []
       for (let index = 1; index < points.length; index += 1) {
         if (points[index].day && points[index].day !== points[index - 1].day) {
@@ -2336,6 +2379,19 @@ window.__ModuleLoader__.load({
 
       const children = [
         h('path', { key: 'area', d: area, style: { fill: up, fillOpacity: 0.1 } }),
+        ...(selectedRange
+          ? [
+              h('rect', {
+                key: 'rangeShade',
+                x: selectedRange.x1,
+                y: 0,
+                width: Math.max(0, selectedRange.x2 - selectedRange.x1),
+                height: priceHeight,
+                style: { fill: 'var(--dsw-alias-brand-primary)', fillOpacity: 0.07 },
+                pointerEvents: 'none',
+              }),
+            ]
+          : []),
         ...yTicks
           .filter((tick) => tick.pct === null || tick.pct !== 0)
           .map((tick, index) =>
@@ -2375,6 +2431,91 @@ window.__ModuleLoader__.load({
             })
           : null,
       ]
+
+      if (selectedRange) {
+        const highY = scaleY(selectedRange.highPoint.price)
+        const lowY = scaleY(selectedRange.lowPoint.price)
+        children.push(
+          h('line', {
+            key: 'rangeStart',
+            x1: selectedRange.x1,
+            x2: selectedRange.x1,
+            y1: 0,
+            y2: priceHeight,
+            style: { stroke: 'var(--dsw-alias-brand-primary)', strokeDasharray: '2 3', strokeOpacity: 0.8 },
+            strokeWidth: 1,
+            vectorEffect: 'non-scaling-stroke',
+          }),
+          h('line', {
+            key: 'rangeEnd',
+            x1: selectedRange.x2,
+            x2: selectedRange.x2,
+            y1: 0,
+            y2: priceHeight,
+            style: { stroke: 'var(--dsw-alias-brand-primary)', strokeDasharray: '2 3', strokeOpacity: 0.8 },
+            strokeWidth: 1,
+            vectorEffect: 'non-scaling-stroke',
+          }),
+          h('line', {
+            key: 'rangeHigh',
+            x1: selectedRange.x1,
+            x2: selectedRange.x2,
+            y1: highY,
+            y2: highY,
+            style: { stroke: 'var(--dsw-alias-brand-primary)', strokeDasharray: '2 3', strokeOpacity: 0.7 },
+            strokeWidth: 1,
+            vectorEffect: 'non-scaling-stroke',
+          }),
+          h('line', {
+            key: 'rangeLow',
+            x1: selectedRange.x1,
+            x2: selectedRange.x2,
+            y1: lowY,
+            y2: lowY,
+            style: { stroke: 'var(--dsw-alias-brand-primary)', strokeDasharray: '2 3', strokeOpacity: 0.7 },
+            strokeWidth: 1,
+            vectorEffect: 'non-scaling-stroke',
+          }),
+          h('circle', {
+            key: 'rangeHighDot',
+            cx: scaleX(points.indexOf(selectedRange.highPoint)),
+            cy: highY,
+            r: 2,
+            style: { fill: 'var(--dsw-alias-brand-primary)' },
+            pointerEvents: 'none',
+          }),
+          h('circle', {
+            key: 'rangeLowDot',
+            cx: scaleX(points.indexOf(selectedRange.lowPoint)),
+            cy: lowY,
+            r: 2,
+            style: { fill: 'var(--dsw-alias-brand-primary)' },
+            pointerEvents: 'none',
+          }),
+          h(
+            'text',
+            {
+              key: 'rangeHighText',
+              x: selectedRange.x1 + 3,
+              y: Math.max(9, highY - 3),
+              style: { fill: 'var(--dsw-alias-brand-primary)', fontSize: '8px' },
+              pointerEvents: 'none',
+            },
+            `${t('high')} ${formatPrice(selectedRange.highPoint.price)} ${pointLabel(selectedRange.highPoint)}`,
+          ),
+          h(
+            'text',
+            {
+              key: 'rangeLowText',
+              x: selectedRange.x1 + 3,
+              y: Math.min(priceHeight - 2, lowY + 9),
+              style: { fill: 'var(--dsw-alias-brand-primary)', fontSize: '8px' },
+              pointerEvents: 'none',
+            },
+            `${t('low')} ${formatPrice(selectedRange.lowPoint.price)} ${pointLabel(selectedRange.lowPoint)}`,
+          ),
+        )
+      }
 
       if (typeof props.holdingCost === 'number' && props.holdingCost > 0) {
         children.push(
@@ -2522,16 +2663,40 @@ window.__ModuleLoader__.load({
             className: 'dshst-chart',
             viewBox: `0 0 ${width} ${height}`,
             preserveAspectRatio: 'none',
-            style: { width: '100%', height: `${height}px` },
             role: 'img',
             'aria-label': props.label ?? '',
-            onMouseMove: (event) => {
-              const rect = event.currentTarget.getBoundingClientRect()
-              if (!rect || rect.width <= 0) return
-              const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width))
-              setHover(Math.min(points.length - 1, Math.round(ratio * (points.length - 1))))
+            style: { width: '100%', height: `${height}px`, cursor: 'crosshair' },
+            onMouseDown: (event) => {
+              const index = indexAt(event)
+              if (index === null) return
+              event.preventDefault?.()
+              drag.current = { start: index, end: index }
+              setHover(index)
             },
-            onMouseLeave: () => setHover(null),
+            onMouseMove: (event) => {
+              const index = indexAt(event)
+              if (index === null) return
+              setHover(index)
+              if (drag.current) {
+                drag.current.end = index
+                setRange(
+                  index === drag.current.start
+                    ? null
+                    : { start: Math.min(drag.current.start, index), end: Math.max(drag.current.start, index) },
+                )
+              }
+            },
+            onMouseUp: (event) => {
+              if (!drag.current) return
+              const index = indexAt(event) ?? drag.current.end
+              const start = drag.current.start
+              drag.current = null
+              setRange(index === start ? null : { start: Math.min(start, index), end: Math.max(start, index) })
+            },
+            onMouseLeave: () => {
+              drag.current = null
+              setHover(null)
+            },
           },
           children,
         ),
@@ -2565,6 +2730,41 @@ window.__ModuleLoader__.load({
           )
         })(),
         baselineDays > 0 && baselineAt.size > 0 ? h(VolumeLegend, { t }) : null,
+        selectedRange
+          ? h(
+              'div',
+              { className: 'dshst-range' },
+              h(
+                'span',
+                { className: 'dshst-rangeTitle' },
+                `${t('range')} ${pointLabel(points[selectedRange.start])} → ${pointLabel(
+                  points[selectedRange.end],
+                )} · ${selectedRange.end - selectedRange.start + 1}${t('rangeMinutes')}`,
+              ),
+              selectedRange.changePct === null
+                ? null
+                : h(
+                    'span',
+                    { className: trendClass(selectedRange.changePct) },
+                    `${t('rangeChange')} ${formatPct(selectedRange.changePct)}`,
+                  ),
+              h(
+                'span',
+                null,
+                `${t('high')} ${formatPrice(selectedRange.highPoint.price)} (${pointLabel(selectedRange.highPoint)})`,
+              ),
+              h(
+                'span',
+                null,
+                `${t('low')} ${formatPrice(selectedRange.lowPoint.price)} (${pointLabel(selectedRange.lowPoint)})`,
+              ),
+              selectedRange.amplitude === null
+                ? null
+                : h('span', null, `${t('rangeAmplitude')} ${formatPct(selectedRange.amplitude)}`),
+              h('span', null, `${t('volume')} ${shortNumber(selectedRange.volume)}`),
+              h('button', { type: 'button', className: 'dshst-link', onClick: () => setRange(null) }, t('rangeClear')),
+            )
+          : null,
         active
           ? h(
               'span',

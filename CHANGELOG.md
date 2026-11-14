@@ -608,3 +608,13 @@ Settings discoverability and the options the strip was missing.
   previous close.
 - Subtle horizontal grid lines join the five ticks. Test: the axis labels are
   `+1.00% / +0.50% / 0.00% / -0.50% / -1.00%` on the fixture. 85 tests.
+
+## 1.12.0 — 2026-11-14
+
+- Range selection now works on the **intraday line** too, not only K-lines: drag
+  horizontally to shade an interval, mark its edges and high/low points, and get
+  a summary with the time span, interval change, high/low prices with times,
+  amplitude and summed minute volume. A plain click clears it.
+- The intraday range resets when the 1/3/5-day window changes; it shares the
+  same `.dshst-range` strip and clear action as the K-line range.
+- Test: dragging the intraday chart yields the summary. 86 tests.
