@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.13.0'
+    const BUILD = 'v1.13.1'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -38,7 +38,6 @@ window.__ModuleLoader__.load({
       saving: '保存中…',
       cancel: '取消',
       configNotWritable: '当前 profile 不允许保存该配置，已改存到插件数据文件。',
-      saved: '已保存，正在更新…',
       savedCount: '已保存 {n} 个标的',
       savedDropped: '（忽略 {n} 个）',
       unitWan: '万',
@@ -75,8 +74,6 @@ window.__ModuleLoader__.load({
       volumeExpand: '放量',
       volumeShrink: '缩量',
       volumeFlat: '平量',
-      volumeBaseline: '前{n}日均量',
-      volumeBaselinePrev: '昨日同期量',
       volumeLegendTitle: '量能',
       volumeLegendHeavy: '大幅放量',
       volumeLegendSlight: '微放量',
@@ -96,7 +93,6 @@ window.__ModuleLoader__.load({
       sourceTencent: '腾讯',
       sourceSina: '新浪',
       sourceEastmoney: '东财',
-      sourceCache: '缓存',
       sessionTrading: '盘中',
       sessionBreak: '休市',
       sessionClosed: '收盘',
@@ -123,7 +119,6 @@ window.__ModuleLoader__.load({
       holding: '持仓',
       shares: '股数',
       cost: '成本',
-      marketValue: '市值',
       pnl: '浮动盈亏',
       saveHolding: '保存持仓',
       removeHolding: '清除持仓',
@@ -152,9 +147,7 @@ window.__ModuleLoader__.load({
       showVolume: '显示成交量',
       alertToast: '预警弹提示',
       sourceDot: '标记每张卡的数据源',
-      savePrefs: '保存设置',
       prefsSaved: '已保存',
-      periodTrend: '分时',
       adjust: '复权',
       adjustQfq: '前复权',
       adjustHfq: '后复权',
@@ -162,12 +155,8 @@ window.__ModuleLoader__.load({
       days: '日',
       ma: '均线',
       volume: '量',
-      holidayNote: '非交易日',
       sidebarTitle: '行情',
-      groupDefault: '自选',
-      confirm: '确认',
       dismiss: '忽略',
-      openSettings: '打开设置',
       hostMissing: '行情服务未加载，刷新页面或重启 DSH 后再试',
       remove: '移除',
       quickAdd: '添加标的',
@@ -179,9 +168,7 @@ window.__ModuleLoader__.load({
       tradeDate: '日期',
       saveTrade: '记一笔',
       syncFromTrades: '按流水同步持仓',
-      tradesEmpty: '还没有流水',
       realized: '已实现',
-      fees: '手续费合计',
       tradeHint: '记买卖流水后，可按加权平均成本反推持仓',
       addMarketGroup: '添加大盘分组',
       preset: '预置',
@@ -214,7 +201,6 @@ window.__ModuleLoader__.load({
       saving: 'Saving…',
       cancel: 'Cancel',
       configNotWritable: 'This profile cannot save the profile config; the list was stored in the plugin data file instead.',
-      saved: 'Saved, updating…',
       savedCount: 'Saved {n} symbols',
       savedDropped: ' ({n} skipped)',
       unitWan: '10K',
@@ -251,8 +237,6 @@ window.__ModuleLoader__.load({
       volumeExpand: 'Expanding',
       volumeShrink: 'Shrinking',
       volumeFlat: 'Steady',
-      volumeBaseline: 'prior {n}-day avg',
-      volumeBaselinePrev: 'prev session',
       volumeLegendTitle: 'Volume',
       volumeLegendHeavy: 'Heavy',
       volumeLegendSlight: 'Slight',
@@ -272,7 +256,6 @@ window.__ModuleLoader__.load({
       sourceTencent: 'Tencent',
       sourceSina: 'Sina',
       sourceEastmoney: 'Eastmoney',
-      sourceCache: 'cache',
       sessionTrading: 'Live',
       sessionBreak: 'Break',
       sessionClosed: 'Closed',
@@ -299,7 +282,6 @@ window.__ModuleLoader__.load({
       holding: 'Position',
       shares: 'Shares',
       cost: 'Cost',
-      marketValue: 'Value',
       pnl: 'P/L',
       saveHolding: 'Save position',
       removeHolding: 'Clear position',
@@ -328,9 +310,7 @@ window.__ModuleLoader__.load({
       showVolume: 'Show volume',
       alertToast: 'Toast on alert',
       sourceDot: 'Mark each card’s source',
-      savePrefs: 'Save settings',
       prefsSaved: 'Saved',
-      periodTrend: 'Intraday',
       adjust: 'Adjust',
       adjustQfq: 'Forward',
       adjustHfq: 'Backward',
@@ -338,12 +318,8 @@ window.__ModuleLoader__.load({
       days: 'd',
       ma: 'MA',
       volume: 'Vol',
-      holidayNote: 'Market holiday',
       sidebarTitle: 'Quotes',
-      groupDefault: 'Watchlist',
-      confirm: 'Confirm',
       dismiss: 'Dismiss',
-      openSettings: 'Open settings',
       hostMissing: 'The quote service is not loaded; reload the page or restart DSH',
       remove: 'Remove',
       quickAdd: 'Add symbol',
@@ -355,9 +331,7 @@ window.__ModuleLoader__.load({
       tradeDate: 'Date',
       saveTrade: 'Record',
       syncFromTrades: 'Rebuild position from trades',
-      tradesEmpty: 'No trades yet',
       realized: 'Realised',
-      fees: 'Fees',
       tradeHint: 'Record buys and sells, then rebuild the position from the weighted-average cost',
       addMarketGroup: 'Add market group',
       preset: 'Preset',
@@ -1089,7 +1063,6 @@ window.__ModuleLoader__.load({
 .dshst-settingsRow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .dshst-settingsRow > label { min-width: 132px; color: var(--dsw-alias-label-secondary); }
 .dshst-settingsGroup { display: flex; flex-direction: column; gap: 4px; }
-.dshst-sidebarWrap { height: 100%; }
 .dshst-scrollWrap { position: relative; }
 .dshst-scrollTrack {
   position: absolute;
@@ -1433,6 +1406,44 @@ window.__ModuleLoader__.load({
       )
     }
 
+    /** Lines, dots and labels shared by the intraday and K-line range overlays. */
+    function rangeMarks({ x1, x2, top, bottom, textBottom = bottom, highY, lowY, highX, lowX, highText, lowText }) {
+      const brand = 'var(--dsw-alias-brand-primary)'
+      const boundary = { stroke: brand, strokeDasharray: '2 3', strokeOpacity: 0.8 }
+      const guide = { stroke: brand, strokeDasharray: '2 3', strokeOpacity: 0.7 }
+      const label = { fill: brand, fontSize: '8px' }
+      return [
+        ['rangeStart', x1, top, x1, bottom, boundary],
+        ['rangeEnd', x2, top, x2, bottom, boundary],
+        ['rangeHigh', x1, highY, x2, highY, guide],
+        ['rangeLow', x1, lowY, x2, lowY, guide],
+      ].map(([key, left, y1, right, y2, style]) =>
+        h('line', { key, x1: left, x2: right, y1, y2, style, strokeWidth: 1, vectorEffect: 'non-scaling-stroke' }),
+      ).concat([
+        h('circle', { key: 'rangeHighDot', cx: highX, cy: highY, r: 2, style: { fill: brand }, pointerEvents: 'none' }),
+        h('circle', { key: 'rangeLowDot', cx: lowX, cy: lowY, r: 2, style: { fill: brand }, pointerEvents: 'none' }),
+        h('text', { key: 'rangeHighText', x: x1 + 3, y: Math.max(9, highY - 3), style: label, pointerEvents: 'none' }, highText),
+        h('text', { key: 'rangeLowText', x: x1 + 3, y: Math.min(textBottom - 2, lowY + 9), style: label, pointerEvents: 'none' }, lowText),
+      ])
+    }
+
+    function RangeSummary(props) {
+      const { t, title, changePct, highText, lowText, amplitude, volume, onClear } = props
+      return h(
+        'div',
+        { className: 'dshst-range' },
+        h('span', { className: 'dshst-rangeTitle' }, title),
+        changePct === null
+          ? null
+          : h('span', { className: trendClass(changePct) }, `${t('rangeChange')} ${formatPct(changePct)}`),
+        h('span', null, `${t('high')} ${highText}`),
+        h('span', null, `${t('low')} ${lowText}`),
+        amplitude === null ? null : h('span', null, `${t('rangeAmplitude')} ${formatPct(amplitude)}`),
+        h('span', null, `${t('volume')} ${shortNumber(volume)}`),
+        h('button', { type: 'button', className: 'dshst-link', onClick: onClear }, t('rangeClear')),
+      )
+    }
+
     /**
      * Minute K rows spell their timestamp as YYYYMMDDHHMM. For each row, find
      * the same HHMM on the previous trading day present in this page, which is
@@ -1500,8 +1511,8 @@ window.__ModuleLoader__.load({
       const chartStyle = block
         ? { width: '100%', height: 'auto', aspectRatio: `${width} / ${height}`, display: 'block' }
         : { width: `${width}px`, height: `${height}px` }
-      const empty = (extra) =>
-        h('div', { className: 'dshst-chartEmpty', style: chartStyle, title: props.emptyLabel ?? '' }, extra)
+      const empty = () =>
+        h('div', { className: 'dshst-chartEmpty', style: chartStyle, title: props.emptyLabel ?? '' })
 
       if (rows.length < 2) return empty()
 
@@ -1672,7 +1683,6 @@ window.__ModuleLoader__.load({
         }
       })
 
-
       if (volumeBaseline.size > 0 && maxVolume > 0) {
         let path = ''
         let drawing = false
@@ -1702,89 +1712,20 @@ window.__ModuleLoader__.load({
       }
 
       if (selectedRange) {
-        const highY = scaleY(selectedRange.highRow.high)
-        const lowY = scaleY(selectedRange.lowRow.low)
-        const highIndex = rows.indexOf(selectedRange.highRow)
-        const lowIndex = rows.indexOf(selectedRange.lowRow)
         children.push(
-          h('line', {
-            key: 'rangeStart',
-            x1: selectedRange.x1,
-            x2: selectedRange.x1,
-            y1: inset,
-            y2: height,
-            style: { stroke: 'var(--dsw-alias-brand-primary)', strokeDasharray: '2 3', strokeOpacity: 0.8 },
-            strokeWidth: 1,
-            vectorEffect: 'non-scaling-stroke',
-          }),
-          h('line', {
-            key: 'rangeEnd',
-            x1: selectedRange.x2,
-            x2: selectedRange.x2,
-            y1: inset,
-            y2: height,
-            style: { stroke: 'var(--dsw-alias-brand-primary)', strokeDasharray: '2 3', strokeOpacity: 0.8 },
-            strokeWidth: 1,
-            vectorEffect: 'non-scaling-stroke',
-          }),
-          h('line', {
-            key: 'rangeHigh',
+          ...rangeMarks({
             x1: selectedRange.x1,
             x2: selectedRange.x2,
-            y1: highY,
-            y2: highY,
-            style: { stroke: 'var(--dsw-alias-brand-primary)', strokeDasharray: '2 3', strokeOpacity: 0.7 },
-            strokeWidth: 1,
-            vectorEffect: 'non-scaling-stroke',
+            top: inset,
+            bottom: height,
+            textBottom: priceHeight,
+            highY: scaleY(selectedRange.highRow.high),
+            lowY: scaleY(selectedRange.lowRow.low),
+            highX: step * (rows.indexOf(selectedRange.highRow) + 0.5),
+            lowX: step * (rows.indexOf(selectedRange.lowRow) + 0.5),
+            highText: t('high') + ' ' + formatPrice(selectedRange.highRow.high),
+            lowText: t('low') + ' ' + formatPrice(selectedRange.lowRow.low),
           }),
-          h('line', {
-            key: 'rangeLow',
-            x1: selectedRange.x1,
-            x2: selectedRange.x2,
-            y1: lowY,
-            y2: lowY,
-            style: { stroke: 'var(--dsw-alias-brand-primary)', strokeDasharray: '2 3', strokeOpacity: 0.7 },
-            strokeWidth: 1,
-            vectorEffect: 'non-scaling-stroke',
-          }),
-          h('circle', {
-            key: 'rangeHighDot',
-            cx: step * (highIndex + 0.5),
-            cy: highY,
-            r: 2,
-            style: { fill: 'var(--dsw-alias-brand-primary)' },
-            pointerEvents: 'none',
-          }),
-          h('circle', {
-            key: 'rangeLowDot',
-            cx: step * (lowIndex + 0.5),
-            cy: lowY,
-            r: 2,
-            style: { fill: 'var(--dsw-alias-brand-primary)' },
-            pointerEvents: 'none',
-          }),
-          h(
-            'text',
-            {
-              key: 'rangeHighText',
-              x: selectedRange.x1 + 3,
-              y: Math.max(9, highY - 3),
-              style: { fill: 'var(--dsw-alias-brand-primary)', fontSize: '8px' },
-              pointerEvents: 'none',
-            },
-            `${t('high')} ${formatPrice(selectedRange.highRow.high)}`,
-          ),
-          h(
-            'text',
-            {
-              key: 'rangeLowText',
-              x: selectedRange.x1 + 3,
-              y: Math.min(priceHeight - 2, lowY + 9),
-              style: { fill: 'var(--dsw-alias-brand-primary)', fontSize: '8px' },
-              pointerEvents: 'none',
-            },
-            `${t('low')} ${formatPrice(selectedRange.lowRow.low)}`,
-          ),
         )
       }
 
@@ -1954,31 +1895,18 @@ window.__ModuleLoader__.load({
         ),
         minutePeriod && volumeBaseline.size > 0 ? h(VolumeLegend, { t }) : null,
         selectedRange
-          ? h(
-              'div',
-              { className: 'dshst-range' },
-              h(
-                'span',
-                { className: 'dshst-rangeTitle' },
-                `${t('range')} ${shortDate(rows[selectedRange.start]?.date)} → ${shortDate(
-                  rows[selectedRange.end]?.date,
-                )} · ${selectedRange.end - selectedRange.start + 1}${t('rangeBars')}`,
-              ),
-              selectedRange.changePct === null
-                ? null
-                : h(
-                    'span',
-                    { className: trendClass(selectedRange.changePct) },
-                    `${t('rangeChange')} ${formatPct(selectedRange.changePct)}`,
-                  ),
-              h('span', null, `${t('high')} ${formatPrice(selectedRange.highRow.high)} (${shortDate(selectedRange.highRow.date)})`),
-              h('span', null, `${t('low')} ${formatPrice(selectedRange.lowRow.low)} (${shortDate(selectedRange.lowRow.date)})`),
-              selectedRange.amplitude === null
-                ? null
-                : h('span', null, `${t('rangeAmplitude')} ${formatPct(selectedRange.amplitude)}`),
-              h('span', null, `${t('volume')} ${shortNumber(selectedRange.volume)}`),
-              h('button', { type: 'button', className: 'dshst-link', onClick: () => setRange(null) }, t('rangeClear')),
-            )
+          ? h(RangeSummary, {
+              t,
+              title: `${t('range')} ${shortDate(rows[selectedRange.start]?.date)} → ${shortDate(
+                rows[selectedRange.end]?.date,
+              )} · ${selectedRange.end - selectedRange.start + 1}${t('rangeBars')}`,
+              changePct: selectedRange.changePct,
+              highText: `${formatPrice(selectedRange.highRow.high)} (${shortDate(selectedRange.highRow.date)})`,
+              lowText: `${formatPrice(selectedRange.lowRow.low)} (${shortDate(selectedRange.lowRow.date)})`,
+              amplitude: selectedRange.amplitude,
+              volume: selectedRange.volume,
+              onClear: () => setRange(null),
+            })
           : null,
       )
     }
@@ -2451,87 +2379,19 @@ window.__ModuleLoader__.load({
       ]
 
       if (selectedRange) {
-        const highY = scaleY(selectedRange.highPoint.price)
-        const lowY = scaleY(selectedRange.lowPoint.price)
         children.push(
-          h('line', {
-            key: 'rangeStart',
-            x1: selectedRange.x1,
-            x2: selectedRange.x1,
-            y1: 0,
-            y2: priceHeight,
-            style: { stroke: 'var(--dsw-alias-brand-primary)', strokeDasharray: '2 3', strokeOpacity: 0.8 },
-            strokeWidth: 1,
-            vectorEffect: 'non-scaling-stroke',
-          }),
-          h('line', {
-            key: 'rangeEnd',
-            x1: selectedRange.x2,
-            x2: selectedRange.x2,
-            y1: 0,
-            y2: priceHeight,
-            style: { stroke: 'var(--dsw-alias-brand-primary)', strokeDasharray: '2 3', strokeOpacity: 0.8 },
-            strokeWidth: 1,
-            vectorEffect: 'non-scaling-stroke',
-          }),
-          h('line', {
-            key: 'rangeHigh',
+          ...rangeMarks({
             x1: selectedRange.x1,
             x2: selectedRange.x2,
-            y1: highY,
-            y2: highY,
-            style: { stroke: 'var(--dsw-alias-brand-primary)', strokeDasharray: '2 3', strokeOpacity: 0.7 },
-            strokeWidth: 1,
-            vectorEffect: 'non-scaling-stroke',
+            top: 0,
+            bottom: priceHeight,
+            highY: scaleY(selectedRange.highPoint.price),
+            lowY: scaleY(selectedRange.lowPoint.price),
+            highX: scaleX(points.indexOf(selectedRange.highPoint)),
+            lowX: scaleX(points.indexOf(selectedRange.lowPoint)),
+            highText: `${t('high')} ${formatPrice(selectedRange.highPoint.price)} ${pointLabel(selectedRange.highPoint)}`,
+            lowText: `${t('low')} ${formatPrice(selectedRange.lowPoint.price)} ${pointLabel(selectedRange.lowPoint)}`,
           }),
-          h('line', {
-            key: 'rangeLow',
-            x1: selectedRange.x1,
-            x2: selectedRange.x2,
-            y1: lowY,
-            y2: lowY,
-            style: { stroke: 'var(--dsw-alias-brand-primary)', strokeDasharray: '2 3', strokeOpacity: 0.7 },
-            strokeWidth: 1,
-            vectorEffect: 'non-scaling-stroke',
-          }),
-          h('circle', {
-            key: 'rangeHighDot',
-            cx: scaleX(points.indexOf(selectedRange.highPoint)),
-            cy: highY,
-            r: 2,
-            style: { fill: 'var(--dsw-alias-brand-primary)' },
-            pointerEvents: 'none',
-          }),
-          h('circle', {
-            key: 'rangeLowDot',
-            cx: scaleX(points.indexOf(selectedRange.lowPoint)),
-            cy: lowY,
-            r: 2,
-            style: { fill: 'var(--dsw-alias-brand-primary)' },
-            pointerEvents: 'none',
-          }),
-          h(
-            'text',
-            {
-              key: 'rangeHighText',
-              x: selectedRange.x1 + 3,
-              y: Math.max(9, highY - 3),
-              style: { fill: 'var(--dsw-alias-brand-primary)', fontSize: '8px' },
-              pointerEvents: 'none',
-            },
-            `${t('high')} ${formatPrice(selectedRange.highPoint.price)} ${pointLabel(selectedRange.highPoint)}`,
-          ),
-          h(
-            'text',
-            {
-              key: 'rangeLowText',
-              x: selectedRange.x1 + 3,
-              y: Math.min(priceHeight - 2, lowY + 9),
-              style: { fill: 'var(--dsw-alias-brand-primary)', fontSize: '8px' },
-              pointerEvents: 'none',
-            },
-            `${t('low')} ${formatPrice(selectedRange.lowPoint.price)} ${pointLabel(selectedRange.lowPoint)}`,
-          ),
         )
       }
 
@@ -2755,39 +2615,18 @@ window.__ModuleLoader__.load({
         })(),
         baselineDays > 0 && baselineAt.size > 0 ? h(VolumeLegend, { t }) : null,
         selectedRange
-          ? h(
-              'div',
-              { className: 'dshst-range' },
-              h(
-                'span',
-                { className: 'dshst-rangeTitle' },
-                `${t('range')} ${pointLabel(points[selectedRange.start])} → ${pointLabel(
-                  points[selectedRange.end],
-                )} · ${selectedRange.end - selectedRange.start + 1}${t('rangeMinutes')}`,
-              ),
-              selectedRange.changePct === null
-                ? null
-                : h(
-                    'span',
-                    { className: trendClass(selectedRange.changePct) },
-                    `${t('rangeChange')} ${formatPct(selectedRange.changePct)}`,
-                  ),
-              h(
-                'span',
-                null,
-                `${t('high')} ${formatPrice(selectedRange.highPoint.price)} (${pointLabel(selectedRange.highPoint)})`,
-              ),
-              h(
-                'span',
-                null,
-                `${t('low')} ${formatPrice(selectedRange.lowPoint.price)} (${pointLabel(selectedRange.lowPoint)})`,
-              ),
-              selectedRange.amplitude === null
-                ? null
-                : h('span', null, `${t('rangeAmplitude')} ${formatPct(selectedRange.amplitude)}`),
-              h('span', null, `${t('volume')} ${shortNumber(selectedRange.volume)}`),
-              h('button', { type: 'button', className: 'dshst-link', onClick: () => setRange(null) }, t('rangeClear')),
-            )
+          ? h(RangeSummary, {
+              t,
+              title: `${t('range')} ${pointLabel(points[selectedRange.start])} → ${pointLabel(
+                points[selectedRange.end],
+              )} · ${selectedRange.end - selectedRange.start + 1}${t('rangeMinutes')}`,
+              changePct: selectedRange.changePct,
+              highText: `${formatPrice(selectedRange.highPoint.price)} (${pointLabel(selectedRange.highPoint)})`,
+              lowText: `${formatPrice(selectedRange.lowPoint.price)} (${pointLabel(selectedRange.lowPoint)})`,
+              amplitude: selectedRange.amplitude,
+              volume: selectedRange.volume,
+              onClear: () => setRange(null),
+            })
           : null,
         active
           ? h(

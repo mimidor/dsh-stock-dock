@@ -59,7 +59,7 @@ test('disk cache drops the oldest entries to stay under its byte cap', async () 
     cache.remember('klines', 'new:m5:qfq:1', { at: 2, rows: [{ date: '2', close: 2 }] })
     await cache.flush()
     const loaded = { klines: new Map(), trends: new Map() }
-    const second = createDiskCache({ path, maps: loaded, maxBytes: 160 })
+    const second = createDiskCache({ path, maps: loaded, maxBytes: 120 })
     await second.ready()
     assert.equal(loaded.klines.has('old:m5:qfq:1'), false, 'the oldest entry is dropped')
     assert.equal(loaded.klines.has('new:m5:qfq:1'), true, 'the newest entry survives')

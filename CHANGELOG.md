@@ -657,3 +657,16 @@ Settings discoverability and the options the strip was missing.
   pages; the settings card shows the size and a clear action.
 - Tests: disk-cache round-trip, corrupt file, byte-cap eviction and clear.
   90 tests.
+
+## 1.13.1 — 2026-11-14
+
+- Code cleanup, no intended behaviour change:
+  - extracted the shared K-line/intraday range overlay (`rangeMarks`) and range
+    summary (`RangeSummary`), removing two ~90-line copies;
+  - removed dead translation keys, the unused `empty(extra)` parameter and an
+    unused sidebar CSS class;
+  - centralized cache limits and `rememberKline` / `rememberTrend` in
+    `lib/cache.js`, so providers no longer hand-roll the LRU + disk mirror;
+  - disk-cache limits now come from the same constants; dropped the unused
+    `savedAt` field and a redundant await.
+- `client.js` shrinks by ~160 lines; tests stay at 90.
