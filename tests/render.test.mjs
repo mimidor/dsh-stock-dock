@@ -1037,3 +1037,23 @@ test('dragging on the intraday chart marks a range with summary stats', async ()
   assert.match(text, /振幅/)
   assert.match(text, /清除/)
 })
+
+test('the K-line chart zooms with the wheel and resets on double click', async () => {
+  const { harness, component, t } = boot()
+  harness.mount(component, { t })
+  let tree = await harness.settle()
+  click(findAll(tree, (element) => hasClass(element, 'dshst-card') && textOf(element).includes('贵州茅台'))[0])
+  tree = await harness.settle()
+  click(findAll(tree, (element) => element.tag === 'button' && hasClass(element, 'dshst-tab') && textOf(element) === '日K')[0])
+  tree = await harness.settle()
+
+  const detail = findAll(tree, (element) => hasClass(element, 'dshst-detail'))[0]
+  const chart = findAll(detail, (element) => element.tag === 'svg' && hasClass(element, 'dshst-chart'))[0]
+  assert.match(textOf(tree), /40\/40/)
+  chart.props.onWheel({ deltaY: -100, clientX: 300, currentTarget: chart, preventDefault() {} })
+  tree = await harness.settle()
+  assert.match(textOf(tree), /32\/40/, 'the wheel shows a narrower window')
+  chart.props.onDoubleClick()
+  tree = await harness.settle()
+  assert.match(textOf(tree), /40\/40/, 'double click restores the full window')
+})

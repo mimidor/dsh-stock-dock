@@ -670,3 +670,20 @@ Settings discoverability and the options the strip was missing.
   - disk-cache limits now come from the same constants; dropped the unused
     `savedAt` field and a redundant await.
 - `client.js` shrinks by ~160 lines; tests stay at 90.
+
+## 1.14.0 — 2026-11-14
+
+- The detail K-line now has a movable/zoomable window like the desktop trading
+  apps:
+  - wheel over the chart zooms the x-axis around the cursor (10 bars minimum);
+  - horizontal wheel (trackpad) or Shift-drag pans the window;
+  - double-click restores the full page;
+  - the y-axis, volume bars, previous-session baseline, ghost bars and range
+    statistics all follow the visible window;
+  - a small `滚轮缩放 · Shift+拖动平移 · 双击复位 · N/M` hint makes it
+    discoverable. A native non-passive wheel listener stops the detail panel
+    from scrolling while zooming.
+- Kept the custom SVG renderer instead of ECharts: the client bundle may only
+  require React, and the existing volume-tier/ghost/range features would need a
+  larger rewrite and a ~1MB dependency; the two gestures are cheap in SVG.
+- Test: wheel zoom narrows 40 bars to 32 and double-click restores. 91 tests.

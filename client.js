@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.13.1'
+    const BUILD = 'v1.14.0'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -85,6 +85,7 @@ window.__ModuleLoader__.load({
       rangeChange: '涨跌幅',
       rangeAmplitude: '振幅',
       rangeClear: '清除',
+      chartZoomHint: '滚轮缩放 · Shift+拖动平移 · 双击复位',
       volumePrev: '昨',
       amplitude: '振幅',
       marketCap: '市值',
@@ -248,6 +249,7 @@ window.__ModuleLoader__.load({
       rangeChange: 'Change',
       rangeAmplitude: 'Amplitude',
       rangeClear: 'Clear',
+      chartZoomHint: 'Wheel to zoom · Shift-drag to pan · double-click to reset',
       volumePrev: 'prev',
       amplitude: 'Range',
       marketCap: 'Cap',
@@ -608,6 +610,12 @@ window.__ModuleLoader__.load({
 .dshst-volumeSignal[data-trend="up"][data-strength="strong"] { color: var(--dsw-alias-state-error-primary); }
 .dshst-volumeSignal[data-trend="down"],
 .dshst-volumeSignal[data-trend="flat"] { color: var(--dsw-alias-label-secondary); }
+.dshst-chartHint {
+  padding: 0 2px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
 .dshst-volumeLegend {
   position: absolute;
   top: 3px;
@@ -1480,7 +1488,7 @@ window.__ModuleLoader__.load({
      * readout. The mini version on the strip draws bodies only.
      */
     function Candles(props) {
-      const rows = Array.isArray(props.rows) ? props.rows : []
+      const sourceRows = Array.isArray(props.rows) ? props.rows : []
       const width = props.width
       const height = props.height
       const block = Boolean(props.block)
@@ -1488,19 +1496,31 @@ window.__ModuleLoader__.load({
       const showVolume = block && props.showVolume !== false
       const t = props.t ?? ((key) => key)
       const minutePeriod = props.period === 'm5' || props.period === 'm15' || props.period === 'm30' || props.period === 'm60'
-      const volumeBaseline = minutePeriod && showVolume ? minuteVolumeBaseline(rows) : new Map()
       const [hover, setHover] = useState(null)
       const [range, setRange] = useState(null)
+      const [view, setView] = useState(null)
       const drag = useRef(null)
+      const pan = useRef(null)
+      const svgRef = useRef(null)
+      const wheelHandler = useRef(null)
+      const total = sourceRows.length
+      const visible = view
+        ? Math.min(total, Math.max(Math.min(10, total), view.end - view.start + 1))
+        : total
+      const viewStart = view ? Math.min(Math.max(0, view.start), Math.max(0, total - visible)) : 0
+      const rows = view ? sourceRows.slice(viewStart, viewStart + visible) : sourceRows
+      const volumeBaseline = minutePeriod && showVolume ? minuteVolumeBaseline(sourceRows) : new Map()
       const dayKeyOf = (value) => {
         const text = String(value ?? '')
         return /^\d{12}$/.test(text) ? text.slice(0, 8) : text
       }
-      const windowKey = `${dayKeyOf(rows[0]?.date)}|${dayKeyOf(rows[rows.length - 1]?.date)}`
+      const windowKey = `${dayKeyOf(sourceRows[0]?.date)}|${dayKeyOf(sourceRows[sourceRows.length - 1]?.date)}`
       useEffect(() => {
-        // Periods have different x scales; a range from the old tab is meaningless.
+        // Periods have different x scales; a range/view from the old tab is meaningless.
         setRange(null)
+        setView(null)
         drag.current = null
+        pan.current = null
       }, [props.period, windowKey])
       const indexAt = (event) => {
         const rect = event.currentTarget.getBoundingClientRect()
@@ -1508,6 +1528,48 @@ window.__ModuleLoader__.load({
         const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width))
         return Math.min(rows.length - 1, Math.max(0, Math.floor(ratio * rows.length)))
       }
+      const setWindow = (start, count) => {
+        const nextCount = Math.min(total, Math.max(Math.min(10, total), Math.round(count)))
+        const nextStart = Math.min(Math.max(0, Math.round(start)), Math.max(0, total - nextCount))
+        setView(nextCount >= total && nextStart === 0 ? null : { start: nextStart, end: nextStart + nextCount - 1 })
+        setRange(null)
+      }
+      const zoomAt = (event) => {
+        if (!block || total < 2) return
+        const rect = event.currentTarget.getBoundingClientRect()
+        if (!rect || rect.width <= 0) return
+        const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width))
+        const current = rows.length
+        const nextCount = Math.min(total, Math.max(Math.min(10, total), Math.round(current * (event.deltaY > 0 ? 1.25 : 0.8))))
+        const anchor = (view ? viewStart : 0) + ratio * current
+        setWindow(anchor - ratio * nextCount, nextCount)
+      }
+      const panBy = (bars) => {
+        if (!view) return
+        setWindow(viewStart + bars, rows.length)
+      }
+      const handleWheel = (event) => {
+        const native = event.nativeEvent ?? event
+        if (native.__dshWheel) return
+        native.__dshWheel = true
+        event.preventDefault?.()
+        if (total < 2) return
+        if (Math.abs(event.deltaX) > Math.abs(event.deltaY) && view) {
+          panBy(Math.round(event.deltaX / 30))
+          return
+        }
+        zoomAt(event)
+      }
+      wheelHandler.current = handleWheel
+      useEffect(() => {
+        const node = svgRef.current
+        if (!block || !node) return undefined
+        // React's root wheel listener is passive; a native non-passive listener
+        // is what actually stops the detail panel from scrolling while zooming.
+        const listener = (event) => wheelHandler.current?.(event)
+        node.addEventListener('wheel', listener, { passive: false })
+        return () => node.removeEventListener('wheel', listener)
+      }, [block])
       const chartStyle = block
         ? { width: '100%', height: 'auto', aspectRatio: `${width} / ${height}`, display: 'block' }
         : { width: `${width}px`, height: `${height}px` }
@@ -1792,6 +1854,7 @@ window.__ModuleLoader__.load({
         'svg',
         {
           className: 'dshst-chart',
+          ref: block ? svgRef : undefined,
           viewBox: `0 0 ${width} ${height}`,
           preserveAspectRatio: 'none',
           style: chartStyle,
@@ -1799,15 +1862,34 @@ window.__ModuleLoader__.load({
           'aria-label': props.label ?? '',
           onMouseDown: block
             ? (event) => {
+                if (event.shiftKey && view) {
+                  event.preventDefault?.()
+                  pan.current = {
+                    x: event.clientX,
+                    start: viewStart,
+                    count: rows.length,
+                    width: event.currentTarget.getBoundingClientRect().width,
+                  }
+                  return
+                }
                 const index = indexAt(event)
                 if (index === null) return
                 event.preventDefault?.()
+                pan.current = null
                 drag.current = { start: index, end: index }
                 setHover(index)
               }
             : undefined,
           onMouseMove: block
             ? (event) => {
+                if (pan.current) {
+                  const { x, start, count, width: pixels } = pan.current
+                  if (pixels > 0) {
+                    const bars = Math.round((event.clientX - x) / (pixels / count))
+                    if (bars !== 0) setWindow(start - bars, count)
+                  }
+                  return
+                }
                 const index = indexAt(event)
                 if (index === null) return
                 setHover(index)
@@ -1823,6 +1905,10 @@ window.__ModuleLoader__.load({
             : undefined,
           onMouseUp: block
             ? (event) => {
+                if (pan.current) {
+                  pan.current = null
+                  return
+                }
                 if (!drag.current) return
                 const index = indexAt(event) ?? drag.current.end
                 const start = drag.current.start
@@ -1833,7 +1919,15 @@ window.__ModuleLoader__.load({
           onMouseLeave: block
             ? () => {
                 drag.current = null
+                pan.current = null
                 setHover(null)
+              }
+            : undefined,
+          onWheel: block ? handleWheel : undefined,
+          onDoubleClick: block
+            ? () => {
+                setView(null)
+                setRange(null)
               }
             : undefined,
         },
@@ -1893,6 +1987,9 @@ window.__ModuleLoader__.load({
           h('span', null, rows[0]?.date ?? ''),
           h('span', null, rows[rows.length - 1]?.date ?? ''),
         ),
+        block
+          ? h('div', { className: 'dshst-chartHint' }, `${t('chartZoomHint')} · ${rows.length}/${total}`)
+          : null,
         minutePeriod && volumeBaseline.size > 0 ? h(VolumeLegend, { t }) : null,
         selectedRange
           ? h(RangeSummary, {
