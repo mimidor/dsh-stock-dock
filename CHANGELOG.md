@@ -618,3 +618,14 @@ Settings discoverability and the options the strip was missing.
 - The intraday range resets when the 1/3/5-day window changes; it shares the
   same `.dshst-range` strip and clear action as the K-line range.
 - Test: dragging the intraday chart yields the summary. 86 tests.
+
+## 1.12.1 — 2026-11-14
+
+- Fixed the stale big K-line chart: an open K-line tab only fetched once, so it
+  could still show dates from days earlier (a 5m chart showing 11-06 → 11-09 on
+  11-14). It now refreshes after 60s (intraday stays at 30s) while the panel is
+  open, and the range clears when the data window moves to a new trading day.
+- The K-line canvas is taller (164px) with 3% breathing room above/below the
+  wicks, five price labels and matching five-division grid lines, so the trend
+  reads at a glance instead of being squeezed into a 128px box.
+- 86 tests.

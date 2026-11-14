@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.12.0'
+    const BUILD = 'v1.12.1'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -1475,11 +1475,16 @@ window.__ModuleLoader__.load({
       const [hover, setHover] = useState(null)
       const [range, setRange] = useState(null)
       const drag = useRef(null)
+      const dayKeyOf = (value) => {
+        const text = String(value ?? '')
+        return /^\d{12}$/.test(text) ? text.slice(0, 8) : text
+      }
+      const windowKey = `${dayKeyOf(rows[0]?.date)}|${dayKeyOf(rows[rows.length - 1]?.date)}`
       useEffect(() => {
         // Periods have different x scales; a range from the old tab is meaningless.
         setRange(null)
         drag.current = null
-      }, [props.period, rows.length])
+      }, [props.period, windowKey])
       const indexAt = (event) => {
         const rect = event.currentTarget.getBoundingClientRect()
         if (!rect || rect.width <= 0) return null
@@ -1506,6 +1511,11 @@ window.__ModuleLoader__.load({
         min -= pad
         max += pad
       }
+      // Leave a little air above the highest wick and below the lowest so the
+      // chart does not look clipped; standard K-line charts do the same.
+      const breathing = (max - min) * 0.03
+      min -= breathing
+      max += breathing
 
       const volumeBand = showVolume ? Math.round(height * 0.22) : 0
       const priceHeight = height - volumeBand
@@ -1555,8 +1565,8 @@ window.__ModuleLoader__.load({
 
       const children = []
       if (props.grid) {
-        for (let index = 0; index <= 3; index += 1) {
-          const y = inset + ((bottom - inset) * index) / 3
+        for (let index = 0; index <= 4; index += 1) {
+          const y = inset + ((bottom - inset) * index) / 4
           children.push(
             h('line', {
               key: `g${index}`,
@@ -1893,7 +1903,7 @@ window.__ModuleLoader__.load({
         activeRatio === null ? 'mild' : activeRatio >= 1.5 ? 'strong' : activeRatio >= 1.15 ? 'medium' : 'mild'
       const activeLabel =
         activeSignal === 'up' ? t('volumeExpand') : activeSignal === 'down' ? t('volumeShrink') : t('volumeFlat')
-      const yLabels = [max, (max + min) / 2, min].map((value) => ({
+      const yLabels = [max, max - (max - min) / 4, (max + min) / 2, min + (max - min) / 4, min].map((value) => ({
         text: formatPrice(value),
         top: (scaleY(value) / height) * 100,
       }))
@@ -2938,7 +2948,12 @@ window.__ModuleLoader__.load({
         forceNext.current = false
         if (entry && !force) {
           if (!entry.ok) return undefined
-          if (!(isTrend && Date.now() - entry.at > 30_000)) return undefined
+          // The intraday line moves continuously; a K-line page can still gain
+          // a bar at the session boundary while the panel stays open. Refresh
+          // either after 30 s (trend) or 60 s (K-line) so the big chart never
+          // shows a window that has become days old.
+          const staleAfter = isTrend ? 30_000 : 60_000
+          if (Date.now() - entry.at <= staleAfter) return undefined
         }
         let cancelled = false
         // Five sessions of minute data already ship with the intraday endpoint,
@@ -3094,7 +3109,7 @@ window.__ModuleLoader__.load({
         return h(Candles, {
           rows: entry.payload.rows,
           width: 640,
-          height: 128,
+          height: 164,
           block: true,
           grid: true,
           period: tab,
