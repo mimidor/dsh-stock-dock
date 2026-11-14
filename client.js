@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.14.0'
+    const BUILD = 'v1.15.0'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -86,6 +86,7 @@ window.__ModuleLoader__.load({
       rangeAmplitude: '振幅',
       rangeClear: '清除',
       chartZoomHint: '滚轮缩放 · Shift+拖动平移 · 双击复位',
+      echartsHint: '滚轮缩放 · 拖动平移 · 工具栏框选区间 · 双击复位',
       volumePrev: '昨',
       amplitude: '振幅',
       marketCap: '市值',
@@ -250,6 +251,7 @@ window.__ModuleLoader__.load({
       rangeAmplitude: 'Amplitude',
       rangeClear: 'Clear',
       chartZoomHint: 'Wheel to zoom · Shift-drag to pan · double-click to reset',
+      echartsHint: 'Wheel to zoom · drag to pan · toolbar to select a range · double-click to reset',
       volumePrev: 'prev',
       amplitude: 'Range',
       marketCap: 'Cap',
@@ -688,6 +690,15 @@ window.__ModuleLoader__.load({
 }
 .dshst-rangeTitle { color: var(--dsw-alias-label-primary); font-weight: 600; }
 .dshst-range button { margin-left: auto; }
+.dshst-echartWrap {
+  position: relative;
+  max-width: 1040px;
+  margin: 0 auto;
+}
+.dshst-echart {
+  width: 100%;
+  height: 320px;
+}
 .dshst-chartEmpty {
   display: block;
   flex: 0 0 auto;
@@ -2023,6 +2034,426 @@ window.__ModuleLoader__.load({
       return value.toFixed(0)
     }
 
+    /* ------------------------------------------------------ ECharts K-line */
+
+    let echartsChunkPromise = null
+    function loadEchartsChunk() {
+      if (typeof require.async !== 'function') return Promise.reject(new Error('echarts chunk loader unavailable'))
+      if (!echartsChunkPromise) echartsChunkPromise = require.async('./client.echarts.js').then((module) => module?.default ?? module)
+      return echartsChunkPromise
+    }
+
+    /** Resolve DSH theme tokens for ECharts, which cannot read CSS variables itself. */
+    function chartTheme(host) {
+      const style = host && typeof getComputedStyle === 'function' ? getComputedStyle(host) : null
+      const read = (name, fallback) => (style?.getPropertyValue(name) ?? '').trim() || fallback
+      return {
+        text: read('--dsw-alias-label-primary', '#1f2329'),
+        muted: read('--dsw-alias-label-secondary', '#646a73'),
+        border: read('--dsw-alias-border-l1', '#e5e6eb'),
+        bg: read('--dsw-alias-bg-layer-1', '#ffffff'),
+        brand: read('--dsw-alias-brand-primary', '#6f5bd6'),
+        warn: read('--dsw-alias-state-warn-primary', '#d9822b'),
+        error: read('--dsw-alias-state-error-primary', '#e5484d'),
+        success: read('--dsw-alias-state-success-primary', '#2f9e63'),
+      }
+    }
+
+    function echartsVolumeTone(ratio, theme) {
+      if (typeof ratio !== 'number' || !Number.isFinite(ratio)) return null
+      if (ratio >= 1.5) return { color: theme.error, opacity: 0.95 }
+      if (ratio >= 1.15) return { color: theme.warn, opacity: 0.9 }
+      if (ratio >= 1) return { color: theme.warn, opacity: 0.55 }
+      if (ratio >= 0.85) return { color: theme.muted, opacity: 0.45 }
+      if (ratio >= 0.6) return { color: theme.muted, opacity: 0.3 }
+      return { color: theme.muted, opacity: 0.18 }
+    }
+
+    function echartsRangeMarks(rows, range, theme, t, holdingCost) {
+      const dates = rows.map((row) => shortDate(row.date))
+      const marks = {
+        markArea: { silent: true, itemStyle: { color: theme.brand, opacity: 0.08 }, data: [] },
+        markLine: {
+          symbol: 'none',
+          silent: true,
+          lineStyle: { color: theme.brand, type: 'dashed', width: 1, opacity: 0.75 },
+          label: { show: false },
+          data: [],
+        },
+        markPoint: {
+          symbol: 'circle',
+          symbolSize: 5,
+          itemStyle: { color: theme.brand },
+          label: { show: true, position: 'top', color: theme.brand, fontSize: 9 },
+          data: [],
+        },
+      }
+      if (range && range.end > range.start) {
+        const start = Math.max(0, range.start)
+        const end = Math.min(rows.length - 1, range.end)
+        const list = rows.slice(start, end + 1)
+        const high = list.reduce((best, row) => (row.high > best.high ? row : best), list[0])
+        const low = list.reduce((best, row) => (row.low < best.low ? row : best), list[0])
+        marks.markArea.data = [[{ xAxis: dates[start] }, { xAxis: dates[end] }]]
+        marks.markLine.data = [{ yAxis: high.high }, { yAxis: low.low }]
+        marks.markPoint.data = [
+          { coord: [shortDate(high.date), high.high], value: `${t('high')} ${formatPrice(high.high)}` },
+          { coord: [shortDate(low.date), low.low], value: `${t('low')} ${formatPrice(low.low)}` },
+        ]
+      }
+      if (typeof holdingCost === 'number' && holdingCost > 0) {
+        marks.markLine.data.push({
+          yAxis: holdingCost,
+          lineStyle: { color: theme.warn, type: 'dashed', width: 1, opacity: 0.8 },
+        })
+      }
+      return marks
+    }
+
+    function buildEChartOption({ rows, t, colorMode, showMA, showVolume, period, holdingCost, zoom, theme }) {
+      const dates = rows.map((row) => shortDate(row.date))
+      const up = colorMode === 'intl' ? theme.success : theme.error
+      const down = colorMode === 'intl' ? theme.error : theme.success
+      const minute = period === 'm5' || period === 'm15' || period === 'm30' || period === 'm60'
+      const baseline = minute ? minuteVolumeBaseline(rows) : new Map()
+      const hasVolume = showVolume !== false
+      const axisIndexes = hasVolume ? [0, 1] : [0]
+      const priceGrid = hasVolume
+        ? [{ left: 6, right: 58, top: 8, height: '58%' }, { left: 6, right: 58, top: '73%', height: '17%' }]
+        : [{ left: 6, right: 58, top: 8, bottom: 24 }]
+      const axes = [
+        {
+          type: 'category',
+          data: dates,
+          boundaryGap: true,
+          axisLine: { lineStyle: { color: theme.border } },
+          axisTick: { show: false },
+          axisLabel: { color: theme.muted, fontSize: 9, hideOverlap: true },
+          splitLine: { show: false },
+          axisPointer: { label: { backgroundColor: theme.muted } },
+          gridIndex: 0,
+        },
+      ]
+      if (hasVolume) {
+        axes.push({
+          type: 'category',
+          data: dates,
+          boundaryGap: true,
+          gridIndex: 1,
+          axisLine: { lineStyle: { color: theme.border } },
+          axisTick: { show: false },
+          axisLabel: { show: false },
+          splitLine: { show: false },
+        })
+      }
+      const yAxes = [
+        {
+          scale: true,
+          splitNumber: 4,
+          gridIndex: 0,
+          axisLine: { show: false },
+          axisTick: { show: false },
+          axisLabel: { color: theme.muted, fontSize: 9, formatter: (value) => formatPrice(value) },
+          splitLine: { lineStyle: { color: theme.border, opacity: 0.7 } },
+        },
+      ]
+      if (hasVolume) {
+        yAxes.push({
+          gridIndex: 1,
+          axisLine: { show: false },
+          axisTick: { show: false },
+          axisLabel: { show: false },
+          splitLine: { show: false },
+        })
+      }
+      const volumeData = rows.map((row) => {
+        const ref = baseline.get(String(row.date))
+        const ratio = typeof ref === 'number' && ref > 0 && typeof row.volume === 'number' ? row.volume / ref : null
+        const tone = echartsVolumeTone(ratio, theme)
+        return {
+          value: row.volume,
+          itemStyle: {
+            color: tone?.color ?? (row.close >= row.open ? up : down),
+            opacity: tone?.opacity ?? 0.55,
+          },
+        }
+      })
+      const ghostData = rows.map((row) => baseline.get(String(row.date)) ?? null)
+      const baselineData = rows.map((row) => baseline.get(String(row.date)) ?? null)
+      const maSeries = showMA === false ? [] : MA_WINDOWS.map((window, order) => ({
+        type: 'line',
+        name: `MA${window}`,
+        data: movingAverage(rows, window),
+        showSymbol: false,
+        smooth: false,
+        silent: true,
+        lineStyle: { width: 1, color: [theme.warn, theme.brand, theme.brand, theme.muted][order], opacity: 0.85 },
+        emphasis: { disabled: true },
+        z: 3,
+      }))
+      const series = [
+        {
+          id: 'kline',
+          type: 'candlestick',
+          name: t('tabDay'),
+          data: rows.map((row) => [row.open, row.close, row.low, row.high]),
+          barWidth: '60%',
+          itemStyle: { color: up, color0: down, borderColor: up, borderColor0: down },
+          ...echartsRangeMarks(rows, null, theme, t, holdingCost),
+          z: 2,
+        },
+        ...maSeries,
+      ]
+      if (hasVolume) {
+        series.push(
+          {
+            id: 'ghost-volume',
+            type: 'bar',
+            xAxisIndex: 1,
+            yAxisIndex: 1,
+            data: ghostData,
+            barWidth: '58%',
+            barGap: '-100%',
+            silent: true,
+            itemStyle: { color: theme.muted, opacity: 0.12, borderColor: theme.muted, borderWidth: 0.5 },
+            z: 1,
+          },
+          {
+            id: 'volume',
+            type: 'bar',
+            xAxisIndex: 1,
+            yAxisIndex: 1,
+            data: volumeData,
+            barWidth: '58%',
+            barGap: '-100%',
+            z: 2,
+          },
+        )
+        if (baseline.size > 0) {
+          series.push({
+            id: 'baseline',
+            type: 'line',
+            xAxisIndex: 1,
+            yAxisIndex: 1,
+            data: baselineData,
+            showSymbol: false,
+            smooth: false,
+            silent: true,
+            lineStyle: { color: theme.muted, type: 'dashed', width: 1, opacity: 0.75 },
+            z: 3,
+          })
+        }
+      }
+      const zoomStart = typeof zoom?.start === 'number' ? zoom.start : 0
+      const zoomEnd = typeof zoom?.end === 'number' ? zoom.end : 100
+      return {
+        animation: false,
+        backgroundColor: 'transparent',
+        grid: priceGrid,
+        xAxis: axes,
+        yAxis: yAxes,
+        dataZoom: [
+          {
+            type: 'inside',
+            xAxisIndex: axisIndexes,
+            start: zoomStart,
+            end: zoomEnd,
+            zoomOnMouseWheel: true,
+            moveOnMouseMove: true,
+            moveOnMouseWheel: false,
+            preventDefaultMouseMove: true,
+          },
+        ],
+        toolbox: {
+          show: true,
+          right: 4,
+          top: 4,
+          itemSize: 12,
+          iconStyle: { color: theme.muted, borderColor: theme.muted },
+          feature: {
+            brush: {
+              type: ['lineX', 'clear'],
+              title: { lineX: t('range'), clear: t('rangeClear') },
+            },
+          },
+        },
+        brush: {
+          xAxisIndex: axisIndexes,
+          brushType: 'lineX',
+          brushMode: 'single',
+          transformable: false,
+          removeOnClick: true,
+          throttleType: 'debounce',
+          throttleDelay: 80,
+        },
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: { type: 'cross', label: { backgroundColor: theme.muted } },
+          backgroundColor: theme.bg,
+          borderColor: theme.border,
+          textStyle: { color: theme.text, fontSize: 10 },
+          formatter: (params) => {
+            const index = Array.isArray(params) ? params[0]?.dataIndex : params?.dataIndex
+            const row = rows[index]
+            if (!row) return ''
+            const ref = baseline.get(String(row.date))
+            const ratio = typeof ref === 'number' && ref > 0 && typeof row.volume === 'number' ? row.volume / ref : null
+            const parts = [
+              `<b>${shortDate(row.date)}</b>`,
+              `${t('open')} ${formatPrice(row.open)}  ${t('high')} ${formatPrice(row.high)}`,
+              `${t('low')} ${formatPrice(row.low)}  ${t('close')} ${formatPrice(row.close)}`,
+              `${t('volume')} ${shortNumber(row.volume)}${ref ? `  ·  ${t('volumePrev')} ${shortNumber(ref)}${ratio === null ? '' : ` (${ratio.toFixed(2)}×)`}` : ''}`,
+            ]
+            return parts.join('<br/>')
+          },
+        },
+        series,
+      }
+    }
+
+    function EChartKline(props) {
+      const rows = Array.isArray(props.rows) ? props.rows : []
+      const t = props.t ?? ((key) => key)
+      const [lib, setLib] = useState(null)
+      const [failed, setFailed] = useState(false)
+      const [range, setRange] = useState(null)
+      const hostRef = useRef(null)
+      const chartRef = useRef(null)
+      const rangeRef = useRef(range)
+      rangeRef.current = range
+
+      useEffect(() => {
+        let alive = true
+        loadEchartsChunk()
+          .then((loaded) => alive && setLib(loaded))
+          .catch((error) => {
+            if (!alive) return
+            setFailed(true)
+            console.warn('[stock-ticker] ECharts chunk unavailable; using SVG chart', error?.message ?? error)
+          })
+        return () => {
+          alive = false
+        }
+      }, [])
+
+      useEffect(() => {
+        if (!lib || !hostRef.current || rows.length < 2) return undefined
+        let chart
+        try {
+          chart = lib.init(hostRef.current, null, { renderer: 'svg' })
+        } catch (error) {
+          setFailed(true)
+          console.warn('[stock-ticker] ECharts init failed; using SVG chart', error?.message ?? error)
+          return undefined
+        }
+        chartRef.current = chart
+        const observer =
+          typeof ResizeObserver === 'function'
+            ? new ResizeObserver(() => chart.resize())
+            : null
+        observer?.observe(hostRef.current)
+        chart.on('brushSelected', (event) => {
+          const selected = event?.batch?.[0]?.selected?.[0]
+          const indices = Array.isArray(selected?.dataIndex) ? selected.dataIndex : []
+          if (indices.length === 0) {
+            setRange(null)
+            return
+          }
+          setRange({ start: Math.min(...indices), end: Math.max(...indices) })
+        })
+        return () => {
+          observer?.disconnect()
+          chart.dispose()
+          chartRef.current = null
+        }
+      }, [lib, rows.length])
+
+      useEffect(() => {
+        const chart = chartRef.current
+        if (!lib || !chart || rows.length < 2) return
+        const current = chart.getOption()?.dataZoom?.[0]
+        const zoom = { start: current?.start ?? 0, end: current?.end ?? 100 }
+        chart.setOption(
+          buildEChartOption({
+            rows,
+            t,
+            colorMode: props.colorMode,
+            showMA: props.showMA,
+            showVolume: props.showVolume,
+            period: props.period,
+            holdingCost: props.holdingCost,
+            zoom,
+            theme: chartTheme(hostRef.current),
+          }),
+          { notMerge: true },
+        )
+      }, [lib, rows, props.colorMode, props.showMA, props.showVolume, props.period, props.holdingCost, t])
+
+      useEffect(() => {
+        const chart = chartRef.current
+        if (!chart) return
+        chart.setOption({
+          series: [{ id: 'kline', ...echartsRangeMarks(rows, range, chartTheme(hostRef.current), t, props.holdingCost) }],
+        })
+      }, [range, rows, t, props.holdingCost])
+
+      if (!lib || failed) return h(Candles, props)
+
+      const selected = range && range.end > range.start ? rows.slice(range.start, range.end + 1) : null
+      const high = selected ? selected.reduce((best, row) => (row.high > best.high ? row : best), selected[0]) : null
+      const low = selected ? selected.reduce((best, row) => (row.low < best.low ? row : best), selected[0]) : null
+      const first = selected?.[0]
+      const last = selected?.[selected.length - 1]
+      const changePct =
+        first && last && Number.isFinite(first.open) && first.open !== 0
+          ? ((last.close - first.open) / first.open) * 100
+          : null
+      const amplitude =
+        high && low && first && Number.isFinite(first.open) && first.open !== 0
+          ? ((high.high - low.low) / first.open) * 100
+          : null
+      const volume = selected ? selected.reduce((sum, row) => sum + (typeof row.volume === 'number' ? row.volume : 0), 0) : 0
+      const minute = props.period === 'm5' || props.period === 'm15' || props.period === 'm30' || props.period === 'm60'
+      const baseline = minute ? minuteVolumeBaseline(rows) : new Map()
+
+      return h(
+        'div',
+        {
+          className: 'dshst-echartWrap',
+          onDoubleClick: () => {
+            chartRef.current?.dispatchAction({ type: 'dataZoom', start: 0, end: 100 })
+            chartRef.current?.dispatchAction({ type: 'brush', areas: [] })
+            setRange(null)
+          },
+        },
+        h('div', {
+          className: 'dshst-echart',
+          ref: hostRef,
+          role: 'img',
+          'aria-label': props.label ?? '',
+        }),
+        minute && baseline.size > 0 ? h(VolumeLegend, { t }) : null,
+        h('div', { className: 'dshst-chartHint' }, `${t('echartsHint')} · ${rows.length}`),
+        selected && high && low
+          ? h(RangeSummary, {
+              t,
+              title: `${t('range')} ${shortDate(rows[range.start]?.date)} → ${shortDate(
+                rows[range.end]?.date,
+              )} · ${range.end - range.start + 1}${t('rangeBars')}`,
+              changePct,
+              highText: `${formatPrice(high.high)} (${shortDate(high.date)})`,
+              lowText: `${formatPrice(low.low)} (${shortDate(low.date)})`,
+              amplitude,
+              volume,
+              onClear: () => {
+                chartRef.current?.dispatchAction({ type: 'brush', areas: [] })
+                setRange(null)
+              },
+            })
+          : null,
+      )
+    }
+
     /**
      * The card-sized intraday line. Prices are already sampled by the Host, so
      * this only maps them to the 54x24 box and keeps the day's direction colour.
@@ -3056,7 +3487,7 @@ window.__ModuleLoader__.load({
             h('button', { type: 'button', className: 'dshst-link', onClick: retry }, t('retry')),
           )
         }
-        return h(Candles, {
+        return h(EChartKline, {
           rows: entry.payload.rows,
           width: 640,
           height: 164,
@@ -3065,6 +3496,7 @@ window.__ModuleLoader__.load({
           period: tab,
           showMA,
           showVolume,
+          colorMode: prefs.colorMode,
           holdingCost: holding?.cost,
           label: `${quote.name ?? quote.symbol} ${t(tab === 'trend' ? 'tabTrend' : `tab${tab.charAt(0).toUpperCase()}${tab.slice(1)}`)}`,
           emptyLabel: t('noKline'),

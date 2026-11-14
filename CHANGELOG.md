@@ -687,3 +687,18 @@ Settings discoverability and the options the strip was missing.
   require React, and the existing volume-tier/ghost/range features would need a
   larger rewrite and a ~1MB dependency; the two gestures are cheap in SVG.
 - Test: wheel zoom narrows 40 bars to 32 and double-click restores. 91 tests.
+
+## 1.15.0 — 2026-11-14
+
+- The detailed K-line now renders with a **lazily loaded ECharts chunk**
+  (`client.echarts.js`, ~600KB, only fetched when a K-line tab opens). It brings
+  mature dataZoom wheel/drag pan, a toolbar brush for range selection and ECharts
+  tooltips while keeping our volume tiers, prior-session ghost bars, MA lines,
+  cost line and range summary.
+- Added `scripts/echarts-entry.js` + `npm run build:echarts`; the chunk is
+  self-contained and registers itself with `__ModuleLoader__`. The old SVG
+  `Candles` remains the fallback when the chunk cannot load (and for tests /
+  static previews); intraday and mini charts still use SVG.
+- Docs and screenshots refreshed. 91 tests.
+
+Local commit only; not pushed.
