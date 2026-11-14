@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.12.1'
+    const BUILD = 'v1.12.2'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -1491,7 +1491,9 @@ window.__ModuleLoader__.load({
         const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width))
         return Math.min(rows.length - 1, Math.max(0, Math.floor(ratio * rows.length)))
       }
-      const chartStyle = block ? { width: '100%', height: `${height}px` } : { width: `${width}px`, height: `${height}px` }
+      const chartStyle = block
+        ? { width: '100%', height: 'auto', aspectRatio: `${width} / ${height}`, display: 'block' }
+        : { width: `${width}px`, height: `${height}px` }
       const empty = (extra) =>
         h('div', { className: 'dshst-chartEmpty', style: chartStyle, title: props.emptyLabel ?? '' }, extra)
 
@@ -1914,7 +1916,7 @@ window.__ModuleLoader__.load({
         : ''
       return h(
         'div',
-        { className: 'dshst-chartWrap' },
+        { className: 'dshst-chartWrap', style: { maxWidth: '1040px', margin: '0 auto' } },
         svg,
         active
           ? h(
@@ -2666,7 +2668,7 @@ window.__ModuleLoader__.load({
         activeSignal === 'up' ? t('volumeExpand') : activeSignal === 'down' ? t('volumeShrink') : t('volumeFlat')
       return h(
         'div',
-        { className: 'dshst-chartWrap' },
+        { className: 'dshst-chartWrap', style: { maxWidth: '1040px', margin: '0 auto' } },
         h(
           'svg',
           {
@@ -2675,7 +2677,13 @@ window.__ModuleLoader__.load({
             preserveAspectRatio: 'none',
             role: 'img',
             'aria-label': props.label ?? '',
-            style: { width: '100%', height: `${height}px`, cursor: 'crosshair' },
+            style: {
+              width: '100%',
+              height: 'auto',
+              aspectRatio: `${width} / ${height}`,
+              display: 'block',
+              cursor: 'crosshair',
+            },
             onMouseDown: (event) => {
               const index = indexAt(event)
               if (index === null) return

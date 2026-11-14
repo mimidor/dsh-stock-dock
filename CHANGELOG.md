@@ -629,3 +629,15 @@ Settings discoverability and the options the strip was missing.
   wicks, five price labels and matching five-division grid lines, so the trend
   reads at a glance instead of being squeezed into a 128px box.
 - 86 tests.
+
+## 1.12.2 — 2026-11-14
+
+- Fixed the real “squashed” look: the big chart SVG kept a 640×164 viewBox
+  but was stretched to the full panel width with a fixed 164px height
+  (`preserveAspectRatio="none"`), so a 1500px panel stretched it ~2.3×
+  horizontally and the trend looked flat. The chart now keeps its aspect ratio
+  (`height: auto`, `aspect-ratio: 640 / 164` for K, `640 / 132` for intraday)
+  and is capped at 1040px and centred. On a wide panel the K-line chart is about
+  1040×266 instead of 1500×164; the axis numbers were correct, the picture was
+  distorted.
+- Tests: 86.
