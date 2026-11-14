@@ -197,6 +197,10 @@ function makeFetch(calls, overrides = {}) {
     if (method === 'POST' && path.startsWith('/alerts')) return respond({ ok: true, alerts: [] })
     if (method === 'POST' && path.startsWith('/groups')) return respond({ ok: true, groups: [], activeGroup: 'default' })
     if (method === 'POST' && path.startsWith('/config')) return respond({ ok: true, symbols: ['sh600519'], persisted: 'store' })
+    if (path.startsWith('/cache')) {
+      if (method === 'POST') return respond({ ok: true, bytes: 0 })
+      return respond({ ok: true, bytes: 123456, entries: { klines: 3, trends: 2 } })
+    }
     if (path.startsWith('/sparklines')) {
       const type = /[?&]type=([a-z]+)/.exec(path)?.[1] ?? 'day'
       if (type === 'intraday') {
@@ -486,6 +490,8 @@ test('the settings card renders and writes preferences', async () => {
   assert.match(text, /显示均线/)
   assert.match(text, /分组/)
   assert.match(text, /行情条/, 'the section renders its own heading')
+  assert.match(text, /图表缓存/, 'the cache row is present')
+  assert.match(text, /120\.6 KB/, 'the cache size is formatted')
 })
 
 test('mini charts are fetched separately from the quote poll', async () => {

@@ -308,6 +308,7 @@ function makeFetch() {
     }
     if (path.startsWith('/quotes')) return respond(quotesPayload())
     if (path.startsWith('/settings')) return respond(settingsPayload())
+    if (path.startsWith('/cache')) return respond({ ok: true, bytes: 1234567, entries: { klines: 3, trends: 2 } })
     if (path.startsWith('/kline')) return respond({ ok: true, rows: candles(40), source: 'tencent' })
     if (path.startsWith('/trend')) {
       const trendPoints = points(1)

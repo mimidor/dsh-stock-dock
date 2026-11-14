@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.12.2'
+    const BUILD = 'v1.13.0'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -134,6 +134,8 @@ window.__ModuleLoader__.load({
       groupName: '分组名',
       deleteGroup: '删除分组',
       settingsTitle: '行情条',
+      chartCache: '图表缓存',
+      clearCache: '清除缓存',
       refreshSeconds: '刷新间隔（秒）',
       klineDays: '迷你K线根数',
       miniChartType: '迷你图类型',
@@ -308,6 +310,8 @@ window.__ModuleLoader__.load({
       groupName: 'Group name',
       deleteGroup: 'Delete group',
       settingsTitle: 'Quote strip',
+      chartCache: 'Chart cache',
+      clearCache: 'Clear cache',
       refreshSeconds: 'Refresh seconds',
       klineDays: 'Mini chart bars',
       miniChartType: 'Mini chart type',
@@ -1080,6 +1084,8 @@ window.__ModuleLoader__.load({
   font-size: 12px;
   animation: dshst-panel-in 180ms var(--dshst-ease);
 }
+.dshst-cacheRow { display: flex; align-items: center; gap: 8px; flex: 1 1 auto; min-width: 0; }
+.dshst-cacheRow .dshst-link { margin-left: auto; white-space: nowrap; flex: 0 0 auto; }
 .dshst-settingsRow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .dshst-settingsRow > label { min-width: 132px; color: var(--dsw-alias-label-secondary); }
 .dshst-settingsGroup { display: flex; flex-direction: column; gap: 4px; }
@@ -4740,6 +4746,20 @@ window.__ModuleLoader__.load({
       const [error, setError] = useState('')
       const [saved, setSaved] = useState(false)
       const [draft, setDraft] = useState({ refreshSeconds: 15, klineDays: 40, colorMode: 'cn' })
+      const [cacheBytes, setCacheBytes] = useState(null)
+      const [clearing, setClearing] = useState(false)
+
+      useEffect(() => {
+        let cancelled = false
+        api('/cache')
+          .then((payload) => {
+            if (!cancelled && payload?.ok === true) setCacheBytes(Number(payload.bytes) || 0)
+          })
+          .catch(() => {})
+        return () => {
+          cancelled = true
+        }
+      }, [])
 
       useEffect(() => {
         let cancelled = false
@@ -4774,6 +4794,21 @@ window.__ModuleLoader__.load({
           window.setTimeout(() => setSaved(false), 2000)
         } catch (failure) {
           setError(String(failure?.message ?? failure))
+        }
+      }
+
+      const clearCache = async () => {
+        setClearing(true)
+        try {
+          const payload = await api('/cache/clear', { method: 'POST' })
+          if (payload.ok !== true) throw new Error(payload.error || 'cache-clear-failed')
+          setCacheBytes(0)
+          setSaved(true)
+          window.setTimeout(() => setSaved(false), 2000)
+        } catch (failure) {
+          setError(String(failure?.message ?? failure))
+        } finally {
+          setClearing(false)
         }
       }
 
@@ -4836,6 +4871,13 @@ window.__ModuleLoader__.load({
 
       const row = (label, control) =>
         h('div', { className: 'dshst-settingsRow', key: label }, h('label', null, label), control)
+
+      const formatBytes = (value) => {
+        if (typeof value !== 'number' || !Number.isFinite(value)) return t('loading')
+        if (value < 1024) return `${value} B`
+        if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`
+        return `${(value / 1024 / 1024).toFixed(1)} MB`
+      }
 
       return h(
         'div',
@@ -4934,6 +4976,19 @@ window.__ModuleLoader__.load({
         row(t('showExtended'), toggle('showExtended', t('showExtended'))),
         row(t('alertToast'), toggle('alertToast', t('alertToast'))),
         row(t('sourceDot'), toggle('sourceDot', t('sourceDot'))),
+        row(
+          t('chartCache'),
+          h(
+            'div',
+            { className: 'dshst-cacheRow' },
+            h('span', { className: 'dshst-hint' }, formatBytes(cacheBytes)),
+            h(
+              'button',
+              { type: 'button', className: 'dshst-link', onClick: clearCache, disabled: clearing },
+              t('clearCache'),
+            ),
+          ),
+        ),
         h(
           'div',
           { className: 'dshst-settingsGroup' },

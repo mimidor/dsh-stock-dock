@@ -2,7 +2,7 @@
 
 **中文** · [English](README.en.md)
 
-![version](https://img.shields.io/badge/version-1.12.2-blue)
+![version](https://img.shields.io/badge/version-1.13.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![dsh](https://img.shields.io/badge/DSH-0.2.x-6f5bd6)
 ![data](https://img.shields.io/badge/data-Tencent%20%7C%20Sina%20%7C%20Eastmoney-orange)
@@ -114,6 +114,7 @@ GET  /dsh-stock-ticker/trend?symbol=...&days=1|3|5&refresh=1
 GET  /dsh-stock-ticker/search?q=<term>&limit=8
 GET  /dsh-stock-ticker/trades?symbol=...
 GET  /dsh-stock-ticker/settings
+GET  /dsh-stock-ticker/cache
 GET  /dsh-stock-ticker/health
 POST /dsh-stock-ticker/config
 POST /dsh-stock-ticker/prefs
@@ -121,6 +122,7 @@ POST /dsh-stock-ticker/alerts
 POST /dsh-stock-ticker/holdings
 POST /dsh-stock-ticker/trades
 POST /dsh-stock-ticker/groups
+POST /dsh-stock-ticker/cache/clear
 ```
 
 约定：**上游失败一律 HTTP 200 + `{ ok:false, error }`**，不返回 5xx；只有请求本身有问题才用 400/403/404。`/sparklines` 支持 `If-None-Match`，数据没变时回 304。
@@ -131,16 +133,19 @@ POST /dsh-stock-ticker/groups
 
 ```text
 <$DSH_HOME|~/.dsh>/dsh-stock-dock/store.json      # 可用 DSH_STOCK_DOCK_STORE 覆盖
+<$DSH_HOME|~/.dsh>/dsh-stock-dock/cache.json      # K线/分时缓存，可用 DSH_STOCK_DOCK_CACHE 覆盖
 ```
 
-写入是「先写 `.tmp-<pid>` 再 rename」的原子替换；文件损坏时重命名成 `store.json.broken-<时间戳>` 留着。老版本文件缺字段会自动补默认值。
+写入是「先写 `.tmp-<pid>` 再 rename」的原子替换；文件损坏时重命名成 `.broken-<时间戳>` 留着。老版本文件缺字段会自动补默认值。
+
+图表缓存只保存 K 线和分时（不保存实时报价），上限 20MB，按 `at` 做 LRU；重启后先显示磁盘里的旧图，同时后台刷新，上游失败时回退到旧图。收盘/午休时 K 线 TTL 延长到 30 分钟，避免反复拉同一份。设置页显示缓存大小并可清除。
 
 ## 自测
 
 ```bash
 npm run check          # 语法
 npm run lint           # oxlint
-npm test               # 58 个测试：解析器 fixture、盘前解析、流水算术、预警、会话、存储、工具、渲染
+npm test               # 90 个测试：解析器 fixture、盘前解析、流水算术、预警、会话、存储、工具、渲染
 npm run test:coverage  # 覆盖率（Node 内置，约 79% 行覆盖）
 npm run verify         # 177 项：路由、抽样、ETag、三源、盘前、流水、分组、工具、客户端
 npm run verify:offline # 跳过联网检查

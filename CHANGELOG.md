@@ -641,3 +641,19 @@ Settings discoverability and the options the strip was missing.
   1040×266 instead of 1500×164; the axis numbers were correct, the picture was
   distorted.
 - Tests: 86.
+
+## 1.13.0 — 2026-11-14
+
+- Persisted K-line and intraday answers to
+  `$DSH_HOME/dsh-stock-dock/cache.json` (override with
+  `DSH_STOCK_DOCK_CACHE`). Live quotes are still never persisted. The file is
+  written through a temp file + rename, capped at 20MB with an LRU by `at`;
+  corrupt files are renamed to `.broken-<timestamp>`.
+- Reopening a chart after a restart now paints the persisted page immediately
+  and revalidates in the background. If the provider fails, the old page is
+  returned with `stale: true` instead of an empty chart. Closed-market and lunch
+  K-lines use a 30-minute TTL so a shut session is not fetched repeatedly.
+- `GET /cache` reports size/counts, `POST /cache/clear` clears the persisted
+  pages; the settings card shows the size and a clear action.
+- Tests: disk-cache round-trip, corrupt file, byte-cap eviction and clear.
+  90 tests.

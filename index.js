@@ -22,6 +22,7 @@
  */
 
 import { KLINES_MAX_ENTRIES, rememberKline } from './lib/cache.js'
+import { createDiskCache } from './lib/disk-cache.js'
 import { DEFAULT_PREFS, normalizePrefs, normalizeSettings, publicSettings } from './lib/config.js'
 import { evaluateAlerts, normalizeAlert, rearmAlert } from './lib/alerts.js'
 import { buildQuotes } from './lib/providers/index.js'
@@ -63,6 +64,7 @@ export function apply(ctx, config) {
     extended: new Map(),
     health: {},
   }
+  cache.disk = createDiskCache({ maps: { klines: cache.klines, trends: cache.trends } })
   const store = createStore({ seedSymbols: settings.symbols })
   const handle = createRouter({ ctx, settings, cache, store })
 
@@ -90,8 +92,10 @@ export function apply(ctx, config) {
   }
 
   // A store write is queued behind the previous one; flushing on dispose keeps a
-  // hot reload from dropping the last click.
+  // hot reload from dropping the last click. The chart cache is flushed the same
+  // way so a reload does not lose the most recent K-line.
   ctx.effect(() => () => void store.flush(), 'stock-ticker: store flush')
+  ctx.effect(() => () => void cache.disk.flush(), 'stock-ticker: chart cache flush')
 
   return { store, cache }
 }

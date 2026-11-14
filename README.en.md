@@ -2,7 +2,7 @@
 
 [中文](README.md) · **English**
 
-![version](https://img.shields.io/badge/version-1.12.2-blue)
+![version](https://img.shields.io/badge/version-1.13.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![dsh](https://img.shields.io/badge/DSH-0.2.x-6f5bd6)
 ![data](https://img.shields.io/badge/data-Tencent%20%7C%20Sina%20%7C%20Eastmoney-orange)
@@ -114,6 +114,7 @@ GET  /dsh-stock-ticker/trend?symbol=...&days=1|3|5&refresh=1
 GET  /dsh-stock-ticker/search?q=<term>&limit=8
 GET  /dsh-stock-ticker/trades?symbol=...
 GET  /dsh-stock-ticker/settings
+GET  /dsh-stock-ticker/cache
 GET  /dsh-stock-ticker/health
 POST /dsh-stock-ticker/config
 POST /dsh-stock-ticker/prefs
@@ -121,6 +122,7 @@ POST /dsh-stock-ticker/alerts
 POST /dsh-stock-ticker/holdings
 POST /dsh-stock-ticker/trades
 POST /dsh-stock-ticker/groups
+POST /dsh-stock-ticker/cache/clear
 ```
 
 Upstream failures always answer **HTTP 200 with `{ ok:false, error }`**; only a malformed request uses 400/403/404. `/sparklines` honours `If-None-Match` and answers 304 while the data is unchanged.
@@ -131,6 +133,7 @@ Groups, positions, trades, alerts and preferences live in a host-side JSON file:
 
 ```text
 <$DSH_HOME|~/.dsh>/dsh-stock-dock/store.json      # override with DSH_STOCK_DOCK_STORE
+<$DSH_HOME|~/.dsh>/dsh-stock-dock/cache.json      # K-line/intraday cache, override with DSH_STOCK_DOCK_CACHE
 ```
 
 Writes go through a temp file and a rename; an unreadable file is renamed to `store.json.broken-<timestamp>` and kept. Missing fields are filled with defaults on load.
