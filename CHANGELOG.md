@@ -702,3 +702,14 @@ Settings discoverability and the options the strip was missing.
 - Docs and screenshots refreshed. 91 tests.
 
 Local commit only; not pushed.
+
+## 1.15.1 — 2026-11-14
+
+- Fixed the ECharts K-line rendering at ~200px wide inside the flex detail
+  panel: the wrapper had `max-width:1040px; margin:0 auto` but no `width`, so
+  the flex item shrank to its content. It now has `width:100%`,
+  `align-self:stretch`, and an explicit post-layout `chart.resize()`; the chart
+  fills the 1040px cap instead of a narrow centered strip.
+- Test count unchanged (91); no chunk rebuild needed.
+
+Local commit only; not pushed.

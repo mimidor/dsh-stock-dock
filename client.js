@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
     const NS = 'stockTicker'
-    const BUILD = 'v1.15.0'
+    const BUILD = 'v1.15.1'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
     const STYLE_ID = 'stock-ticker'
@@ -692,8 +692,10 @@ window.__ModuleLoader__.load({
 .dshst-range button { margin-left: auto; }
 .dshst-echartWrap {
   position: relative;
+  width: 100%;
   max-width: 1040px;
   margin: 0 auto;
+  align-self: stretch;
 }
 .dshst-echart {
   width: 100%;
@@ -2352,6 +2354,7 @@ window.__ModuleLoader__.load({
             ? new ResizeObserver(() => chart.resize())
             : null
         observer?.observe(hostRef.current)
+        requestAnimationFrame(() => chart.resize())
         chart.on('brushSelected', (event) => {
           const selected = event?.batch?.[0]?.selected?.[0]
           const indices = Array.isArray(selected?.dataIndex) ? selected.dataIndex : []
