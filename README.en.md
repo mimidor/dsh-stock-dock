@@ -113,6 +113,7 @@ GET  /dsh-stock-ticker/quotes?symbols=...&source=tencent|sina|eastmoney&group=<i
 GET  /dsh-stock-ticker/sparklines?symbols=...&days=40&type=intraday|day|week|month
 GET  /dsh-stock-ticker/kline?symbol=...&period=day|week|month|m1|m5|m15|m30|m60&adjust=qfq|hfq|none&limit=40&refresh=1
 GET  /dsh-stock-ticker/trend?symbol=...&days=1|3|5&refresh=1
+GET  /dsh-stock-ticker/day-trend?symbol=...&date=YYYYMMDD
 GET  /dsh-stock-ticker/search?q=<term>&limit=8
 GET  /dsh-stock-ticker/trades?symbol=...
 GET  /dsh-stock-ticker/settings

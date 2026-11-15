@@ -163,6 +163,11 @@ window.__ModuleLoader__.load({
       defaultTrendDays: '默认分时天数',
       showMA: '显示均线',
       compare: '叠加对比',
+      viewDayTrend: '查看当日分时',
+      dayIntraday: '当日分时',
+      dayTrendLoading: '正在加载当日分时…',
+      dayTrendUnavailable: '该日分时数据不可用',
+      backToDaily: '返回日K',
       loadMoreHistory: '加载更多历史',
       historyCurrent: '当前 {n} 根',
       loadAllHistory: '加载全部',
@@ -357,6 +362,11 @@ window.__ModuleLoader__.load({
       defaultTrendDays: 'Default intraday days',
       showMA: 'Show moving averages',
       compare: 'Compare',
+      viewDayTrend: 'View intraday',
+      dayIntraday: 'Intraday',
+      dayTrendLoading: 'Loading intraday…',
+      dayTrendUnavailable: 'Intraday data is unavailable for this day',
+      backToDaily: 'Back to daily',
       loadMoreHistory: 'Load more',
       historyCurrent: 'Current: {n} bars',
       loadAllHistory: 'Load all',
@@ -678,6 +688,13 @@ window.__ModuleLoader__.load({
 .dshst-chart { display: block; flex: 0 0 auto; animation: dshst-fade-in 220ms var(--dshst-ease); }
 .dshst-miniLine { display: block; flex: 0 0 auto; animation: dshst-fade-in 220ms var(--dshst-ease); }
 .dshst-chartWrap { position: relative; width: 100%; }
+.dshst-dayPick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 2px 0;
+}
 .dshst-historyTools {
   display: flex;
   align-items: center;
@@ -2883,6 +2900,14 @@ window.__ModuleLoader__.load({
           return undefined
         }
         chartRef.current = chart
+        const pickDay = (params) => {
+          if (props.period !== 'day' || typeof props.onPickDay !== 'function') return
+          const row = rowsRef.current[params?.dataIndex]
+          if (!row) return
+          const date = String(row.date ?? '').replace(/\D/g, '').slice(0, 8)
+          if (/^\d{8}$/.test(date)) props.onPickDay(date)
+        }
+        if (typeof chart.on === 'function') chart.on('click', pickDay)
         const updateExtremes = () => {
           if (typeof chart.getOption !== 'function' || typeof chart.convertToPixel !== 'function') return
           const dataZoom = chart.getOption()?.dataZoom?.[0] ?? {}
@@ -4137,6 +4162,8 @@ window.__ModuleLoader__.load({
       const historyRequest = useRef(null)
       const [compareSymbol, setCompareSymbol] = useState('')
       const [compare, setCompare] = useState(null)
+      const [pickedDay, setPickedDay] = useState(null)
+      const [dayView, setDayView] = useState(null)
       const [trendDays, setTrendDays] = useState(prefs.defaultTrendDays)
       const [showMA, setShowMA] = useState(prefs.showMA)
       const [showVolume, setShowVolume] = useState(prefs.showVolume)
@@ -4420,10 +4447,40 @@ window.__ModuleLoader__.load({
         }
       }
 
+      const openDay = async (date) => {
+        const normalized = String(date ?? '').replace(/\D/g, '').slice(0, 8)
+        if (!/^\d{8}$/.test(normalized)) return
+        setDayView({ date: normalized, loading: true, error: '', payload: null })
+        try {
+          const payload = await api(`/day-trend?symbol=${encodeURIComponent(quote.symbol)}&date=${normalized}`)
+          if (payload.ok !== true) throw new Error(payload.error || t('dayTrendUnavailable'))
+          setDayView({ date: normalized, loading: false, error: '', payload })
+        } catch (failure) {
+          setDayView({ date: normalized, loading: false, error: String(failure?.message ?? failure), payload: null })
+        }
+      }
+
       const seriesKey = `${tab}:${adjust}:${isTrend ? trendDays : klineLimit}`
       const entry = series[seriesKey]
 
       const chart = (() => {
+        if (dayView) {
+          if (dayView.loading) return h('div', { className: 'dshst-note' }, t('dayTrendLoading'))
+          if (dayView.error) return h('div', { className: 'dshst-note dshst-error' }, dayView.error)
+          if (!dayView.payload?.points?.length) return h('div', { className: 'dshst-note' }, t('dayTrendUnavailable'))
+          const points = dayView.payload.points
+          const dayUp = points[points.length - 1].price >= points[0].price ? 'var(--dshst-up)' : 'var(--dshst-down)'
+          return h(TrendChart, {
+            points,
+            prevClose: dayView.payload.prevClose,
+            days: 1,
+            market: quote.market,
+            up: dayUp,
+            showVolume,
+            label: `${quote.name ?? quote.symbol} ${t('dayIntraday')} ${shortDate(dayView.date)}`,
+            t,
+          })
+        }
         if (!entry) return h('div', { className: 'dshst-note' }, t('loading'))
         if (!entry.ok) {
           return h(
@@ -4478,6 +4535,7 @@ window.__ModuleLoader__.load({
           holdingCost: holding?.cost,
           compareRows: currentCompare?.rows ?? null,
           compareLabel: compareName,
+          onPickDay: tab === 'day' ? (date) => setPickedDay(date) : undefined,
           label: `${quote.name ?? quote.symbol} ${t(tab === 'trend' ? 'tabTrend' : `tab${tab.charAt(0).toUpperCase()}${tab.slice(1)}`)}`,
           emptyLabel: t('noKline'),
           t,
@@ -4623,6 +4681,8 @@ window.__ModuleLoader__.load({
                     historyRequest.current?.abort()
                     historyRequest.current = null
                     setTab(item.id)
+                    setPickedDay(null)
+                    setDayView(null)
                     setHistoryLoad(null)
                     setRetryToken(0)
                   },
@@ -4753,6 +4813,38 @@ window.__ModuleLoader__.load({
             `${t('trades')}${tradeList?.count ? ` ${tradeList.count}` : ''}`,
           ),
         ),
+        pickedDay && tab === 'day' && !dayView
+          ? h(
+              'div',
+              { className: 'dshst-dayPick' },
+              h('span', { className: 'dshst-hint' }, `${shortDate(pickedDay)} ${t('dayIntraday')}`),
+              h(
+                'button',
+                { type: 'button', className: 'dshst-historyButton', onClick: () => openDay(pickedDay) },
+                t('viewDayTrend'),
+              ),
+            )
+          : null,
+        dayView
+          ? h(
+              'div',
+              { className: 'dshst-dayPick' },
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'dshst-link',
+                  onClick: () => {
+                    setDayView(null)
+                    setPickedDay(null)
+                  },
+                },
+                t('backToDaily'),
+              ),
+              h('span', { className: 'dshst-hint' }, `${shortDate(dayView.date)} ${t('dayIntraday')}`),
+              dayView.loading ? h('span', { className: 'dshst-hint' }, t('dayTrendLoading')) : null,
+            )
+          : null,
         minuteTab
           ? h(
               'div',
