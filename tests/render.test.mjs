@@ -1143,3 +1143,29 @@ test('ECharts treats an unexpected date as tooltip text and formats percent chan
   assert.match(tooltip, /<b>a &lt; b &amp; c &gt; d<\/b>/)
   assert.match(tooltip, /color:#e5484d[^>]*>[^<]*\+5\.00%/)
 })
+
+test('ECharts minute separators and opening dots use the same full category as the candles', async () => {
+  let option
+  const echarts = { init: () => ({
+    setOption: (value) => { if (value.xAxis) option = value },
+    getOption: () => ({}),
+    resize() {},
+    dispose() {},
+  }) }
+  globalThis.requestAnimationFrame = () => 1
+  const bar = (date) => ({ date, open: 100, close: 101, high: 102, low: 99, volume: 10 })
+  const { harness, component, t } = boot({
+    echarts, minuteKline: ['202511120935', '202511120940', '202611120935'].map(bar),
+  })
+  harness.mount(component, { t })
+  let tree = await harness.settle()
+  click(findAll(tree, (node) => hasClass(node, 'dshst-card'))[0])
+  tree = await harness.settle()
+  click(findAll(tree, (node) => hasClass(node, 'dshst-tab') && textOf(node) === '5分')[0])
+  await harness.settle()
+  assert.deepEqual(option.xAxis[0].data, ['202511120935', '202511120940', '202611120935'])
+  assert.deepEqual(option.xAxis[0].data.map((_, index) => option.xAxis[0].axisLabel.interval(index)), [true, false, true])
+  const price = option.series.find((series) => series.id === 'kline')
+  assert.ok(price.markLine.data.some((line) => line.xAxis === option.xAxis[0].data[2]))
+  assert.deepEqual(price.markPoint.data.map((point) => point.coord[0]), ['202511120935', '202611120935'])
+})

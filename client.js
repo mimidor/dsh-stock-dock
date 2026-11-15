@@ -2483,7 +2483,7 @@ window.__ModuleLoader__.load({
         if (!/^\d{8}$/.test(day) || seen.has(day)) return
         seen.add(day)
         points.push({
-          coord: [shortDate(row.date), row.low],
+          coord: [String(row.date), row.low],
           symbol: 'circle',
           symbolSize: 3,
           itemStyle: { color: theme.brand },
@@ -2493,8 +2493,9 @@ window.__ModuleLoader__.load({
       return points
     }
 
-    function echartsRangeMarks(rows, range, theme, t, holdingCost, up, down) {
-      const dates = rows.map((row) => shortDate(row.date))
+    function echartsRangeMarks(rows, range, theme, t, holdingCost, up, down, period) {
+      const dates = rows.map((row) => String(row.date))
+      const minute = /^m(?:5|15|30|60)$/.test(period)
       const marks = {
         markArea: { silent: true, itemStyle: { color: theme.brand, opacity: 0.08 }, data: [] },
         markLine: {
@@ -2512,7 +2513,7 @@ window.__ModuleLoader__.load({
           data: [],
         },
       }
-      marks.markPoint.data = echartsDayOpenPoints(rows, theme)
+      if (minute) marks.markPoint.data = echartsDayOpenPoints(rows, theme)
       if (range && range.end > range.start) {
         const start = Math.max(0, range.start)
         const end = Math.min(rows.length - 1, range.end)
@@ -2528,13 +2529,13 @@ window.__ModuleLoader__.load({
         const spreadPct = low.low > 0 ? (spread / low.low) * 100 : null
         marks.markPoint.data.push(
           {
-            coord: [shortDate(high.date), high.high],
+            coord: [String(high.date), high.high],
             value: `${t('high')} ${formatPrice(high.high)}`,
             itemStyle: { color: up },
             label: { color: up },
           },
           {
-            coord: [shortDate(low.date), low.low],
+            coord: [String(low.date), low.low],
             value: `${t('low')} ${formatPrice(low.low)}`,
             itemStyle: { color: down },
             label: { color: down },
@@ -2558,11 +2559,12 @@ window.__ModuleLoader__.load({
         })
       }
       marks.markLine.data.push(...echartsDayLines(rows, theme, true))
+      if (minute) marks.markLine.data.push(...echartsDayLines(rows, theme, false))
       return marks
     }
 
     function buildEChartOption({ rows, t, colorMode, showMA, showVolume, period, holdingCost, zoom, theme, maPeriods, compareRows }) {
-      const dates = rows.map((row) => shortDate(row.date))
+      const dates = rows.map((row) => String(row.date))
       const up = colorMode === 'intl' ? theme.success : theme.error
       const down = colorMode === 'intl' ? theme.error : theme.success
       const minute = period === 'm5' || period === 'm15' || period === 'm30' || period === 'm60'
@@ -2597,7 +2599,7 @@ window.__ModuleLoader__.load({
                 interval: (index) => dayStarts.has(index),
                 formatter: (_value, index) => shortDate(String(rows[index]?.date ?? '').slice(0, 8)),
               }
-            : { color: theme.muted, fontSize: 9, hideOverlap: true },
+            : { color: theme.muted, fontSize: 9, hideOverlap: true, formatter: shortDate },
           axisTick: minute
             ? {
                 show: true,
@@ -2607,7 +2609,7 @@ window.__ModuleLoader__.load({
               }
             : { show: false },
           splitLine: { show: false },
-          axisPointer: { label: { backgroundColor: theme.muted } },
+          axisPointer: { label: { backgroundColor: theme.muted, formatter: ({ value }) => shortDate(value) } },
           gridIndex: 0,
         },
       ]
@@ -2669,7 +2671,7 @@ window.__ModuleLoader__.load({
         emphasis: { disabled: true },
         z: 3,
       }))
-      const dayLines = hasVolume ? echartsDayLines(rows, theme, false) : []
+      const dayLines = hasVolume && minute ? echartsDayLines(rows, theme, false) : []
       const compareData = alignedKlineComparison(rows, compareRows, period)
       const series = [
         {
@@ -2679,7 +2681,7 @@ window.__ModuleLoader__.load({
           data: rows.map((row) => [row.open, row.close, row.low, row.high]),
           barWidth: '68%',
           itemStyle: { color: up, color0: down, borderColor: up, borderColor0: down },
-          ...echartsRangeMarks(rows, null, theme, t, holdingCost, up, down),
+          ...echartsRangeMarks(rows, null, theme, t, holdingCost, up, down, period),
           z: 2,
         },
         ...maSeries,
@@ -2951,9 +2953,9 @@ window.__ModuleLoader__.load({
         const up = props.colorMode === 'intl' ? theme.success : theme.error
         const down = props.colorMode === 'intl' ? theme.error : theme.success
         chart.setOption({
-          series: [{ id: 'kline', ...echartsRangeMarks(rows, range, theme, t, props.holdingCost, up, down) }],
+          series: [{ id: 'kline', ...echartsRangeMarks(rows, range, theme, t, props.holdingCost, up, down, props.period) }],
         })
-      }, [range, rows, t, props.holdingCost])
+      }, [range, rows, t, props.holdingCost, props.period])
 
       if (!lib || failed) {
         return h(
