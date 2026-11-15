@@ -2558,8 +2558,10 @@ window.__ModuleLoader__.load({
           lineStyle: { color: theme.warn, type: 'dashed', width: 1, opacity: 0.8 },
         })
       }
-      marks.markLine.data.push(...echartsDayLines(rows, theme, true))
-      if (minute) marks.markLine.data.push(...echartsDayLines(rows, theme, false))
+      if (minute) {
+        marks.markLine.data.push(...echartsDayLines(rows, theme, true))
+        marks.markLine.data.push(...echartsDayLines(rows, theme, false))
+      }
       return marks
     }
 

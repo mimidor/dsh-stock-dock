@@ -104,7 +104,7 @@ test('minute history consolidates legacy pages and refreshes the tail after rest
     await first.disk.flush()
     const second = open()
     globalThis.fetch = async (url) => {
-      assert.equal(new URL(url).searchParams.get('param'), 'hk00700,m5,,96')
+      assert.equal(new URL(url).searchParams.get('param'), 'hk00700,m5,,640')
       return new Response(JSON.stringify({
         data: { hk00700: { m5: [['2026-11-13 06:49', '10', '12', '12', '10', '50']] } },
       }))
