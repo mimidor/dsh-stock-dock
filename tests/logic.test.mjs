@@ -14,6 +14,7 @@ import { normalizeMaPeriods, normalizePrefs, normalizeSettings, publicSettings }
 import { extendedWindow, freshnessByMarket, marketState, parseQuoteDate, sessionFor } from '../lib/session.js'
 import { isIndexSymbol, normalizeSymbol, parseSymbols } from '../lib/symbols.js'
 import { buildToolDefinition } from '../lib/tool.js'
+import { buildTrendPoints } from '../lib/providers/tencent.js'
 
 test('an alert fires in the declared direction only', () => {
   const alerts = [
@@ -163,4 +164,11 @@ test('custom MA periods are normalized and bounded', () => {
   assert.deepEqual(normalizeMaPeriods('20,20,0,999,abc,30'), [20, 30])
   assert.deepEqual(normalizeMaPeriods([]), [5, 10, 20, 60])
   assert.deepEqual(normalizePrefs({ maPeriods: [7, 21, 55] }).maPeriods, [7, 21, 55])
+})
+
+test('STAR Market turnover volume is shares, not lots', () => {
+  const star = buildTrendPoints(['0930 41.44 1595689 66125352'], 'cn', '20261113', false, 'sh688825')
+  const main = buildTrendPoints(['0930 1404.00 150 21060000'], 'cn', '20261113', false, 'sh600519')
+  assert.ok(Math.abs(star[0].avg - 41.44) < 0.1)
+  assert.ok(Math.abs(main[0].avg - 1404) < 1)
 })
