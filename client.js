@@ -2810,6 +2810,7 @@ window.__ModuleLoader__.load({
       const [themeTick, setThemeTick] = useState(0)
       const [crosshairX, setCrosshairX] = useState(null)
       const hostRef = useRef(null)
+      const zoomRowsRef = useRef(null)
       const chartRef = useRef(null)
       const rangeRef = useRef(range)
       rangeRef.current = range
@@ -2921,7 +2922,16 @@ window.__ModuleLoader__.load({
         const chart = chartRef.current
         if (!lib || !chart || rows.length < 2) return
         const current = chart.getOption()?.dataZoom?.[0]
-        const zoom = { start: current?.start ?? 0, end: current?.end ?? 100 }
+        const previous = zoomRowsRef.current
+        const historyChanged =
+          !previous ||
+          Math.abs(rows.length - previous.length) > 1 ||
+          rows[0]?.date !== previous.first
+        zoomRowsRef.current = { length: rows.length, first: rows[0]?.date }
+        const zoom =
+          !historyChanged && current && typeof current.start === 'number' && typeof current.end === 'number'
+            ? { start: current.start, end: current.end }
+            : undefined
         chart.setOption(
           buildEChartOption({
             rows,
