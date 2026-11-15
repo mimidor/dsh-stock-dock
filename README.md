@@ -119,6 +119,8 @@ GET  /dsh-stock-ticker/settings
 GET  /dsh-stock-ticker/cache
 GET  /dsh-stock-ticker/volume-alerts?symbols=...&pct=100
 GET  /dsh-stock-ticker/health
+GET  /dsh-stock-ticker/warmup
+POST /dsh-stock-ticker/warmup
 POST /dsh-stock-ticker/config
 POST /dsh-stock-ticker/prefs
 POST /dsh-stock-ticker/alerts

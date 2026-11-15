@@ -139,6 +139,11 @@ window.__ModuleLoader__.load({
       settingsTabCharts: '图表',
       settingsTabAlerts: '提醒',
       settingsTabGroups: '分组',
+      warmupTitle: '全量加载',
+      warmupHint: '一次性加载所有分组标的的 K 线、分时和 logo，耗时较长',
+      warmupStart: '开始全量加载',
+      warmupRunning: '正在加载 {done}/{total}',
+      warmupDone: '全量加载完成，失败 {errors} 项',
       chartCache: '图表缓存',
       clearCache: '清除缓存',
       refreshSeconds: '刷新间隔（秒）',
@@ -328,6 +333,11 @@ window.__ModuleLoader__.load({
       settingsTabCharts: 'Charts',
       settingsTabAlerts: 'Alerts',
       settingsTabGroups: 'Groups',
+      warmupTitle: 'Load everything',
+      warmupHint: 'Load all K-lines, intraday pages and logos for every group; this can take a while',
+      warmupStart: 'Load everything',
+      warmupRunning: 'Loading {done}/{total}',
+      warmupDone: 'Finished, {errors} failed',
       chartCache: 'Chart cache',
       clearCache: 'Clear cache',
       refreshSeconds: 'Refresh seconds',
@@ -6244,6 +6254,8 @@ window.__ModuleLoader__.load({
       const [cacheBytes, setCacheBytes] = useState(null)
       const [clearing, setClearing] = useState(false)
       const [settingsTab, setSettingsTab] = useState('general')
+      const [warmup, setWarmup] = useState(null)
+      const [warmupStarting, setWarmupStarting] = useState(false)
 
       useEffect(() => {
         let cancelled = false
@@ -6256,6 +6268,37 @@ window.__ModuleLoader__.load({
           cancelled = true
         }
       }, [])
+
+      useEffect(() => {
+        let cancelled = false
+        const poll = async () => {
+          try {
+            const payload = await api('/warmup')
+            if (!cancelled && payload?.ok === true) setWarmup(payload.warmup ?? null)
+          } catch {
+            /* optional status */
+          }
+        }
+        poll()
+        const timer = window.setInterval(poll, 1500)
+        return () => {
+          cancelled = true
+          window.clearInterval(timer)
+        }
+      }, [])
+
+      const startWarmup = async () => {
+        setWarmupStarting(true)
+        try {
+          const payload = await api('/warmup', { method: 'POST' })
+          if (payload.ok !== true) throw new Error(payload.error || 'warmup-failed')
+          setWarmup(payload.warmup ?? null)
+        } catch (failure) {
+          setError(String(failure?.message ?? failure))
+        } finally {
+          setWarmupStarting(false)
+        }
+      }
 
       useEffect(() => {
         let cancelled = false
@@ -6554,6 +6597,51 @@ window.__ModuleLoader__.load({
               t('clearCache'),
             ),
           ),
+        ),
+        h(
+          'div',
+          { className: 'dshst-settingsGroup', 'data-section': 'general' },
+          h('strong', null, t('warmupTitle')),
+          h('span', { className: 'dshst-hint' }, t('warmupHint')),
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'dshst-button',
+              disabled: warmupStarting || warmup?.running === true,
+              onClick: startWarmup,
+            },
+            warmup?.running
+              ? t('warmupRunning')
+                  .replace('{done}', String(warmup.done ?? 0))
+                  .replace('{total}', String(warmup.total ?? 0))
+              : t('warmupStart'),
+          ),
+          warmup
+            ? h(
+                'div',
+                { className: 'dshst-historyLoad' },
+                h(
+                  'div',
+                  { className: 'dshst-historyBar' },
+                  h('i', {
+                    style: {
+                      width: `${warmup.total > 0 ? Math.min(100, (warmup.done / warmup.total) * 100) : 0}%`,
+                    },
+                  }),
+                ),
+                h(
+                  'span',
+                  { className: 'dshst-hint' },
+                  warmup.running
+                    ? t('warmupRunning')
+                        .replace('{done}', String(warmup.done ?? 0))
+                        .replace('{total}', String(warmup.total ?? 0))
+                    : t('warmupDone').replace('{errors}', String(warmup.errors ?? 0)),
+                ),
+                warmup.current ? h('span', { className: 'dshst-hint' }, warmup.current) : null,
+              )
+            : null,
         ),
         h(
           'div',
