@@ -1244,3 +1244,27 @@ test('the volume threshold saves on blur and displays the value accepted by Host
   assert.deepEqual(patches, [{ volumeAlertPct: 999 }])
   assert.equal(threshold().props.value, 500)
 })
+
+test('opening the stock form before the first poll uses the active empty group', async () => {
+  const { harness, component, t, calls } = boot()
+  const original = globalThis.fetch
+  globalThis.fetch = (url, init) => {
+    if (String(url).includes('/quotes?')) return new Promise(() => {})
+    if (!String(url).endsWith('/settings')) return original(url, init)
+    return Promise.resolve(new Response(JSON.stringify({
+      ok: true, activeGroup: 'market',
+      groups: [{ id: 'default', symbols: ['sh600519'] }, { id: 'market', symbols: [] }],
+    })))
+  }
+  harness.mount(component, { t })
+  let tree = await harness.settle()
+  const find = (predicate) => findAll(tree, predicate)[0]
+  click(find((node) => node.props?.['data-toggle'] === 'true'))
+  tree = await harness.settle()
+  assert.equal(find((node) => node.tag === 'textarea').props.value, '')
+  change(find((node) => node.tag === 'textarea'), 'hk00700')
+  tree = await harness.settle()
+  click(find((node) => node.tag === 'button' && textOf(node) === '保存'))
+  await harness.settle()
+  assert.deepEqual(calls.find((call) => call.path === '/config')?.body, { group: 'market', symbols: ['hk00700'] })
+})

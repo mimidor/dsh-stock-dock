@@ -4836,39 +4836,34 @@ window.__ModuleLoader__.load({
 
     function SymbolForm(props) {
       const { t, symbols, group, onDone } = props
-      const [text, setText] = useState(symbols.length > 0 ? symbols.join('\n') : '')
-      const [ready, setReady] = useState(symbols.length > 0)
+      const [text, setText] = useState(symbols.join('\n'))
+      const [targetGroup, setTargetGroup] = useState(group)
       const [saving, setSaving] = useState(false)
       const [error, setError] = useState('')
       const [query, setQuery] = useState('')
       const [results, setResults] = useState([])
       const [searching, setSearching] = useState(false)
+      const ready = Boolean(targetGroup)
 
-      // The strip can open this form before its first quote answer arrived, so an
-      // empty textarea must never be able to overwrite the saved list: ask the
-      // Host for the current list and keep saving disabled until it answers.
+      // The form can open before quotes tells us which group is active.
       useEffect(() => {
         if (ready) return undefined
-        let cancelled = false
-        ;(async () => {
-          try {
-            const payload = await fetch(`${ENDPOINT}/settings`, {
-              headers: { Accept: 'application/json' },
-              cache: 'no-store',
-              signal: AbortSignal.timeout(9000),
-            }).then((response) => response.json())
-            const groupList = payload?.groups?.find((entry) => entry.id === group)?.symbols
-            const list = Array.isArray(groupList) ? groupList : payload?.settings?.symbols
-            if (!cancelled && Array.isArray(list) && list.length > 0) setText(list.join('\n'))
-          } catch {
-            /* keep the empty box; typing a fresh list still works */
-          }
-          if (!cancelled) setReady(true)
-        })()
-        return () => {
-          cancelled = true
-        }
-      }, [ready, group])
+        const controller = new AbortController()
+        api('/settings', { signal: controller.signal })
+          .then((payload) => {
+            if (controller.signal.aborted) return
+            if (payload.ok !== true) throw new Error(payload.error || 'settings-failed')
+            const id = group ?? payload.activeGroup
+            const list = payload.groups?.find((entry) => entry.id === id)?.symbols
+            if (!id || !Array.isArray(list)) throw new Error('unknown-group')
+            setText(list.join('\n'))
+            setTargetGroup(id)
+          })
+          .catch((failure) => {
+            if (!controller.signal.aborted) setError(describeLoadError(failure, t))
+          })
+        return () => controller.abort()
+      }, [ready, group, t])
 
       // Debounced search so typing a name does not fire a request per keystroke.
       useEffect(() => {
@@ -4908,6 +4903,7 @@ window.__ModuleLoader__.load({
       }
 
       const submit = useCallback(async () => {
+        if (!targetGroup || saving) return
         const items = text
           .split(/[\s,，;；、]+/)
           .map((item) => item.trim())
@@ -4922,7 +4918,7 @@ window.__ModuleLoader__.load({
           const response = await fetch(`${ENDPOINT}/config`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify({ symbols: items, group: group ?? 'default' }),
+            body: JSON.stringify({ symbols: items, group: targetGroup }),
             // A stalled write must not leave the button on "saving" forever.
             signal: AbortSignal.timeout(15000),
           })
@@ -4946,7 +4942,7 @@ window.__ModuleLoader__.load({
         } finally {
           setSaving(false)
         }
-      }, [text, group, t, onDone])
+      }, [text, targetGroup, saving, t, onDone])
 
       return h(
         'div',
@@ -4990,6 +4986,7 @@ window.__ModuleLoader__.load({
         h('textarea', {
           className: 'dshst-textarea',
           value: text,
+          disabled: !ready,
           spellCheck: false,
           placeholder: t('hint'),
           onChange: (event) => setText(event.target.value),
@@ -5761,9 +5758,8 @@ window.__ModuleLoader__.load({
         if (pendingGroup) return h('div', { className: 'dshst-note' }, t('loading'))
         if (formOpen) {
           return h(SymbolForm, {
-            key: data?.activeGroup,
             t,
-            group: data?.activeGroup ?? 'default',
+            group: data?.activeGroup,
             symbols,
             onDone: (result) => {
               setFormOpen(false)
@@ -6603,7 +6599,6 @@ window.__ModuleLoader__.load({
 
         // A first-class Settings section (the dialog's left nav), not a tab under
         // 内置插件: display and data-source options belong next to 通用设置/模型.
-        // The in-strip gear stays as the shortcut that always works.
         if (typeof ctx.slots.inject === 'function') {
           try {
             ctx.slots.inject('settings.section', () =>
