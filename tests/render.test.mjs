@@ -1219,3 +1219,28 @@ test('index cards skip logos while stock cards use an 18px first-letter fallback
   assert.equal(textOf(fallback), payload.quotes[0].name[0])
   assert.equal(fallback.props.style.height, '18px')
 })
+
+test('the volume threshold saves on blur and displays the value accepted by Host', async () => {
+  const { harness, registrations, t } = boot()
+  const original = globalThis.fetch
+  const patches = []
+  globalThis.fetch = (url, init) => {
+    if (!String(url).endsWith('/prefs')) return original(url, init)
+    patches.push(JSON.parse(init.body).patch)
+    return Promise.resolve(new Response(JSON.stringify({ ok: true, settings: { volumeAlertPct: 500 } })))
+  }
+  harness.mount(registrations.find((registration) => registration.slot === 'settings.section').factory().component, { t })
+  let tree = await harness.settle()
+  const alerts = findAll(tree, (node) => node.props?.role === 'tab' && textOf(node) === t('settingsTabAlerts'))[0]
+  click(alerts)
+  tree = await harness.settle()
+  const threshold = () => findAll(tree, (node) => node.tag === 'input' && node.props.max === 500)[0]
+  change(threshold(), '999')
+  tree = await harness.settle()
+  assert.equal(patches.length, 0)
+  assert.equal(threshold().props.value, '999')
+  threshold().props.onBlur()
+  tree = await harness.settle()
+  assert.deepEqual(patches, [{ volumeAlertPct: 999 }])
+  assert.equal(threshold().props.value, 500)
+})

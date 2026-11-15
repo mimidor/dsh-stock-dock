@@ -6208,7 +6208,7 @@ window.__ModuleLoader__.load({
       const [groups, setGroups] = useState([])
       const [error, setError] = useState('')
       const [saved, setSaved] = useState(false)
-      const [draft, setDraft] = useState({ refreshSeconds: 15, klineDays: 40, colorMode: 'cn' })
+      const [draft, setDraft] = useState({ refreshSeconds: 15, klineDays: 40, colorMode: 'cn', volumeAlertPct: 100 })
       const [cacheBytes, setCacheBytes] = useState(null)
       const [clearing, setClearing] = useState(false)
       const [settingsTab, setSettingsTab] = useState('general')
@@ -6238,6 +6238,7 @@ window.__ModuleLoader__.load({
               refreshSeconds: payload.settings?.refreshSeconds ?? 15,
               klineDays: payload.settings?.klineDays ?? 40,
               colorMode: payload.settings?.colorMode ?? 'cn',
+              volumeAlertPct: payload.settings?.volumeAlertPct ?? 100,
             })
           } catch (failure) {
             if (!cancelled) setError(String(failure?.message ?? failure))
@@ -6252,13 +6253,26 @@ window.__ModuleLoader__.load({
         try {
           const payload = await api('/prefs', { method: 'POST', body: { patch } })
           if (payload.ok !== true) throw new Error(payload.error || 'save-failed')
-          setPrefs((current) => ({ ...current, ...patch }))
-          onSaved?.(patch)
+          const accepted = Object.fromEntries(Object.entries(patch).map(([key, value]) =>
+            [key, payload.settings?.[key] ?? payload.prefs?.[key] ?? value],
+          ))
+          setPrefs((current) => ({ ...current, ...accepted }))
+          onSaved?.(accepted)
           setSaved(true)
           window.setTimeout(() => setSaved(false), 2000)
+          return accepted
         } catch (failure) {
           setError(String(failure?.message ?? failure))
+          return null
         }
+      }
+
+      const commitNumber = async (key, raw) => {
+        const value = String(raw).trim() === '' ? NaN : Number(raw)
+        const accepted = Number.isFinite(value) && value !== prefs[key] ? await save({ [key]: value }) : null
+        setDraft((current) => current[key] === raw
+          ? { ...current, [key]: accepted?.[key] ?? prefs[key] ?? draft[key] }
+          : current)
       }
 
       const clearCache = async () => {
@@ -6383,7 +6397,7 @@ window.__ModuleLoader__.load({
             max: 300,
             value: draft.refreshSeconds,
             onChange: (event) => setDraft((current) => ({ ...current, refreshSeconds: event.target.value })),
-            onBlur: () => save({ refreshSeconds: Number(draft.refreshSeconds) }),
+            onBlur: () => commitNumber('refreshSeconds', draft.refreshSeconds),
           }),
         ),
         row(
@@ -6395,7 +6409,7 @@ window.__ModuleLoader__.load({
             max: 120,
             value: draft.klineDays,
             onChange: (event) => setDraft((current) => ({ ...current, klineDays: event.target.value })),
-            onBlur: () => save({ klineDays: Number(draft.klineDays) }),
+            onBlur: () => commitNumber('klineDays', draft.klineDays),
           }),
         ),
         row(
@@ -6489,8 +6503,9 @@ window.__ModuleLoader__.load({
             type: 'number',
             min: 10,
             max: 500,
-            value: prefs.volumeAlertPct ?? 100,
-            onChange: (event) => save({ volumeAlertPct: Number(event.target.value) }),
+            value: draft.volumeAlertPct,
+            onChange: (event) => setDraft((current) => ({ ...current, volumeAlertPct: event.target.value })),
+            onBlur: () => commitNumber('volumeAlertPct', draft.volumeAlertPct),
           }),
           'alerts',
         ),
