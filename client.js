@@ -145,6 +145,7 @@ window.__ModuleLoader__.load({
       klineDays: '迷你K线根数',
       miniChartType: '迷你图类型',
       years: '年',
+      allHistory: '全部',
       historyYears: '拉取更多历史',
       miniIntraday: '分时线',
       miniDay: '日K',
@@ -333,6 +334,7 @@ window.__ModuleLoader__.load({
       klineDays: 'Mini chart bars',
       miniChartType: 'Mini chart type',
       years: 'y',
+      allHistory: 'All',
       historyYears: 'Load more history',
       miniIntraday: 'Intraday line',
       miniDay: 'Daily',
@@ -4069,16 +4071,21 @@ window.__ModuleLoader__.load({
       const minuteTab = tab === 'm5' || tab === 'm15' || tab === 'm30' || tab === 'm60'
       const maxMinute = quote.market === 'cn' ? (tab === 'm60' ? 4111 : 5001) : 640
       const historyBars = tab === 'day' ? 250 : tab === 'week' ? 52 : 12
+      const historyAll = historyYears === 'all'
       const klineLimit = isTrend
         ? 0
         : tab === 'm5' || tab === 'm15' || tab === 'm30' || tab === 'm60'
           ? minuteLimit
           : tab === 'day'
             ? historyYears
-              ? historyYears * historyBars
+              ? historyAll
+                ? 1300
+                : historyYears * historyBars
               : Math.max(10, Math.min(klineDays ?? 60, 120))
             : historyYears
-              ? historyYears * historyBars
+              ? historyAll
+                ? 1300
+                : historyYears * historyBars
               : 60
       const retry = () => {
         setSeries((currentSeries) => {
@@ -4574,7 +4581,7 @@ window.__ModuleLoader__.load({
             ? h(
                 'span',
                 { className: 'dshst-seg', title: t('historyYears') },
-                ...[1, 3, 5].map((years) =>
+                ...[1, 3, 5, 'all'].map((years) =>
                   h(
                     'button',
                     {
@@ -4584,7 +4591,7 @@ window.__ModuleLoader__.load({
                       'data-active': historyYears === years ? 'true' : 'false',
                       onClick: () => setHistoryYears(historyYears === years ? 0 : years),
                     },
-                    `${years}${t('years')}`,
+                    years === 'all' ? t('allHistory') : `${years}${t('years')}`,
                   ),
                 ),
               )
