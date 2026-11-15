@@ -2800,7 +2800,7 @@ window.__ModuleLoader__.load({
                 : null
             const changeColor = changePct === null ? theme.muted : changePct >= 0 ? up : down
             const parts = [
-              `<b>${shortDate(row.date)}</b>`,
+              `<b>${shortDate(row.date).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')}</b>`,
               `<span style="color:${changeColor};font-weight:600">${t('changePctLabel')} ${formatPct(changePct)}</span>`,
               `${t('open')} ${formatPrice(row.open)}  ${t('high')} ${formatPrice(row.high)}`,
               `${t('low')} ${formatPrice(row.low)}  ${t('close')} ${formatPrice(row.close)}`,

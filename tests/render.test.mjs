@@ -22,6 +22,7 @@ afterEach(() => {
   delete globalThis.window
   delete globalThis.document
   delete globalThis.fetch
+  delete globalThis.requestAnimationFrame
 })
 
 /* ------------------------------------------------------------- fixtures */
@@ -315,10 +316,12 @@ function boot(options = {}) {
     },
     inject: () => ({ dispose() {} }),
   }
-  const plugin = definition.factory((name) => {
+  const requireStub = (name) => {
     if (name === 'react') return harness.React
     throw new Error(`unexpected require(${name})`)
-  })
+  }
+  if (options.echarts) requireStub.async = async () => options.echarts
+  const plugin = definition.factory(requireStub)
   plugin.apply(ctx)
   const dock = registrations.find((registration) => registration.slot === 'conversation.composer.dock').factory()
   return { harness, calls, plugin, dictionaries, registrations, component: dock.component, t: (key) => dictionaries.zh?.[key] ?? key }
@@ -1110,4 +1113,33 @@ test('changing K-line period removes the old comparison while the new one is pen
   finishCompare(new Response(JSON.stringify({ ok: false })))
   tree = await harness.settle()
   assert.equal(find((node) => hasClass(node, 'dshst-klineCompare')), undefined)
+})
+
+test('ECharts treats an unexpected date as tooltip text and formats percent change', async () => {
+  const options = []
+  const echarts = { init: () => ({
+    setOption: (option) => options.push(option),
+    getOption: () => ({}),
+    resize() {},
+    dispose() {},
+  }) }
+  globalThis.requestAnimationFrame = () => 1
+  const { harness, component, t } = boot({ echarts })
+  const original = globalThis.fetch
+  globalThis.fetch = (url, init) => !String(url).includes('/kline?') ? original(url, init) :
+    Promise.resolve(new Response(JSON.stringify({ ok: true, rows: [
+      { date: '2026-11-12', open: 100, close: 100, high: 101, low: 99, volume: 10 },
+      { date: 'a < b & c > d', open: 100, close: 105, high: 106, low: 99, volume: 10 },
+    ] })))
+  harness.mount(component, { t })
+  let tree = await harness.settle()
+  click(findAll(tree, (node) => hasClass(node, 'dshst-card'))[0])
+  tree = await harness.settle()
+  click(findAll(tree, (node) => hasClass(node, 'dshst-tab') && textOf(node) === '日K')[0])
+  await harness.settle()
+  const format = options.find((option) => option.tooltip)?.tooltip.formatter
+  assert.equal(typeof format, 'function')
+  const tooltip = format([{ dataIndex: 1 }])
+  assert.match(tooltip, /<b>a &lt; b &amp; c &gt; d<\/b>/)
+  assert.match(tooltip, /color:#e5484d[^>]*>[^<]*\+5\.00%/)
 })
