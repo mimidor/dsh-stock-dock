@@ -842,6 +842,20 @@ window.__ModuleLoader__.load({
   position: absolute;
   inset: 0;
 }
+.dshst-extremeLabel {
+  position: absolute;
+  z-index: 4;
+  padding: 0 2px;
+  border-radius: 2px;
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 14px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  white-space: nowrap;
+}
 .dshst-echartCrosshair {
   position: absolute;
   top: 0;
@@ -2824,8 +2838,10 @@ window.__ModuleLoader__.load({
       const [range, setRange] = useState(null)
       const [themeTick, setThemeTick] = useState(0)
       const [crosshairX, setCrosshairX] = useState(null)
+      const [extremes, setExtremes] = useState(null)
       const hostRef = useRef(null)
       const zoomRowsRef = useRef(null)
+      const extremeRefreshRef = useRef(null)
       const chartRef = useRef(null)
       const rangeRef = useRef(range)
       rangeRef.current = range
@@ -2867,6 +2883,48 @@ window.__ModuleLoader__.load({
           return undefined
         }
         chartRef.current = chart
+        const updateExtremes = () => {
+          if (typeof chart.getOption !== 'function' || typeof chart.convertToPixel !== 'function') return
+          const dataZoom = chart.getOption()?.dataZoom?.[0] ?? {}
+          const visibleRows = rowsRef.current
+          if (visibleRows.length === 0) {
+            setExtremes(null)
+            return
+          }
+          const startPct = Number.isFinite(dataZoom.start) ? dataZoom.start : 0
+          const endPct = Number.isFinite(dataZoom.end) ? dataZoom.end : 100
+          const start = Math.max(0, Math.floor((visibleRows.length * startPct) / 100))
+          const end = Math.min(visibleRows.length - 1, Math.ceil((visibleRows.length * endPct) / 100) - 1)
+          let highRow = null
+          let lowRow = null
+          for (let index = start; index <= end; index += 1) {
+            const row = visibleRows[index]
+            if (!row) continue
+            if (!highRow || row.high > highRow.high) highRow = row
+            if (!lowRow || row.low < lowRow.low) lowRow = row
+          }
+          if (!highRow || !lowRow) {
+            setExtremes(null)
+            return
+          }
+          const highPoint = chart.convertToPixel({ xAxisIndex: 0, yAxisIndex: 0 }, [String(highRow.date), highRow.high])
+          const lowPoint = chart.convertToPixel({ xAxisIndex: 0, yAxisIndex: 0 }, [String(lowRow.date), lowRow.low])
+          if (!Array.isArray(highPoint) || !Array.isArray(lowPoint)) {
+            setExtremes(null)
+            return
+          }
+          const box = host.getBoundingClientRect()
+          const xFor = (point) => Math.max(4, Math.min(Math.max(4, box.width - 54), point[0] + 5))
+          setExtremes({
+            high: { text: formatPrice(highRow.high), x: xFor(highPoint), y: Math.max(2, highPoint[1] - 18) },
+            low: { text: formatPrice(lowRow.low), x: xFor(lowPoint), y: Math.min(box.height - 14, lowPoint[1] + 5) },
+          })
+        }
+        extremeRefreshRef.current = updateExtremes
+        if (typeof chart.on === 'function') {
+          chart.on('dataZoom', updateExtremes)
+          chart.on('finished', updateExtremes)
+        }
         const observer =
           typeof ResizeObserver === 'function'
             ? new ResizeObserver(() => chart.resize())
@@ -2928,6 +2986,7 @@ window.__ModuleLoader__.load({
           window.removeEventListener('blur', cancelSelection)
           if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(resizeFrame)
           host.removeEventListener('mouseleave', leave)
+          extremeRefreshRef.current = null
           chart.dispose()
           chartRef.current = null
         }
@@ -2963,6 +3022,7 @@ window.__ModuleLoader__.load({
           }),
           { notMerge: true },
         )
+        extremeRefreshRef.current?.()
       }, [lib, rows, props.colorMode, props.showMA, props.showVolume, props.period, props.holdingCost, props.maPeriods, props.compareRows, t, themeTick])
 
       useEffect(() => {
@@ -2974,6 +3034,7 @@ window.__ModuleLoader__.load({
         chart.setOption({
           series: [{ id: 'kline', ...echartsRangeMarks(rows, range, theme, t, props.holdingCost, up, down, props.period) }],
         })
+        extremeRefreshRef.current?.()
       }, [range, rows, t, props.holdingCost, props.period])
 
       if (!lib || failed) {
@@ -3031,6 +3092,20 @@ window.__ModuleLoader__.load({
           crosshairX === null
             ? null
             : h('div', { className: 'dshst-echartCrosshair', style: { left: `${crosshairX}px` } }),
+          extremes
+            ? [
+                h('span', {
+                  key: 'high',
+                  className: 'dshst-extremeLabel',
+                  style: { left: `${extremes.high.x}px`, top: `${extremes.high.y}px` },
+                }, extremes.high.text),
+                h('span', {
+                  key: 'low',
+                  className: 'dshst-extremeLabel',
+                  style: { left: `${extremes.low.x}px`, top: `${extremes.low.y}px` },
+                }, extremes.low.text),
+              ]
+            : null,
         ),
         minute && baseline.size > 0 ? h(VolumeLegend, { t }) : null,
         h(
