@@ -4087,7 +4087,7 @@ window.__ModuleLoader__.load({
           const staleAfter = isTrend ? 30_000 : 60_000
           if (Date.now() - entry.at <= staleAfter) return undefined
         }
-        let cancelled = false
+        const controller = new AbortController()
         // Five sessions of minute data already ship with the intraday endpoint,
         // so the same-time volume baseline needs no archive; the five-day view
         // keeps its sequential payload and omits the comparison.
@@ -4095,28 +4095,29 @@ window.__ModuleLoader__.load({
         ;(async () => {
           try {
             const payload = isTrend
-              ? await api(`/trend?symbol=${encodeURIComponent(quote.symbol)}&days=${trendDays}${baselineParam}${force || entry ? '&refresh=1' : ''}`)
+              ? await api(`/trend?symbol=${encodeURIComponent(quote.symbol)}&days=${trendDays}${baselineParam}${force || entry ? '&refresh=1' : ''}`, { signal: controller.signal })
               : await api(
                   `/kline?symbol=${encodeURIComponent(quote.symbol)}&period=${tab}&adjust=${adjust}&limit=${klineLimit}${
                     force || entry ? '&refresh=1' : ''
                   }`,
+                  { signal: controller.signal },
                 )
             // HTTP 200 still carries `ok:false` for an upstream failure; treat it
             // as an error so the panel offers a retry instead of an empty chart.
             if (payload.ok !== true) throw new Error(payload.error || 'chart-failed')
-            if (cancelled) return
+            if (controller.signal.aborted) return
             setSeries((currentSeries) => ({ ...currentSeries, [key]: { ok: true, at: Date.now(), payload } }))
           } catch (failure) {
-            if (cancelled) return
+            if (controller.signal.aborted) return
             setSeries((currentSeries) => ({
               ...currentSeries,
-              [key]: { ok: false, at: Date.now(), error: String(failure?.message ?? failure) },
+              [key]: currentSeries[key]?.ok
+                ? { ...currentSeries[key], at: Date.now() }
+                : { ok: false, at: Date.now(), error: String(failure?.message ?? failure) },
             }))
           }
         })()
-        return () => {
-          cancelled = true
-        }
+        return () => controller.abort()
       }, [quote.symbol, tab, adjust, trendDays, cycle, retryToken, klineLimit, isTrend])
 
       const compareName =

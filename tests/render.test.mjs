@@ -1268,3 +1268,32 @@ test('opening the stock form before the first poll uses the active empty group',
   await harness.settle()
   assert.deepEqual(calls.find((call) => call.path === '/config')?.body, { group: 'market', symbols: ['hk00700'] })
 })
+
+test('a failed background refresh leaves the last good detail chart visible', async (t) => {
+  t.mock.timers.enable({ apis: ['Date'], now: 1_800_000_000_000 })
+  const first = quotesPayload()
+  const { harness, component, t: translate, calls } = boot({
+    quotesSequence: [first, { ...first, updatedAt: first.updatedAt + 61_000 }],
+  })
+  const original = globalThis.fetch
+  let failedRefreshes = 0
+  globalThis.fetch = (url, init) => {
+    if (!String(url).includes('/kline?') || !String(url).includes('&refresh=1')) return original(url, init)
+    failedRefreshes += 1
+    return Promise.resolve(new Response(JSON.stringify({ ok: false, error: 'upstream timeout' })))
+  }
+  harness.mount(component, { t: translate })
+  let tree = await harness.settle()
+  const find = (predicate) => findAll(tree, predicate)[0]
+  click(find((node) => hasClass(node, 'dshst-card')))
+  tree = await harness.settle()
+  click(find((node) => hasClass(node, 'dshst-tab') && textOf(node) === '日K'))
+  tree = await harness.settle()
+  assert.ok(find((node) => hasClass(node, 'dshst-echartWrap')))
+  t.mock.timers.tick(61_000)
+  tree = await harness.flushIntervals()
+  assert.ok(calls.filter((call) => call.path.startsWith('/quotes?')).length >= 2)
+  assert.equal(failedRefreshes, 1)
+  assert.ok(find((node) => hasClass(node, 'dshst-echartWrap')))
+  assert.doesNotMatch(textOf(tree), /upstream timeout/)
+})
