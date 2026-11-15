@@ -943,25 +943,42 @@ window.__ModuleLoader__.load({
   font-size: 10px;
   line-height: 14px;
 }
-.dshst-book { display: flex; flex-direction: column; gap: 3px; }
+.dshst-chartRow { display: flex; align-items: flex-start; gap: 8px; width: 100%; }
+.dshst-chartCol { flex: 1 1 auto; min-width: 0; }
+.dshst-book {
+  display: flex;
+  flex: 0 0 176px;
+  flex-direction: column;
+  gap: 2px;
+  width: 176px;
+  min-width: 0;
+  padding-left: 6px;
+  border-left: 1px solid var(--dsw-alias-border-l1);
+}
 .dshst-bookHead {
   display: flex;
   justify-content: space-between;
-  font-size: 11px;
+  gap: 4px;
+  font-size: 10px;
   color: var(--dsw-alias-label-secondary);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .dshst-bookGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2px 16px;
-  font-size: 11px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1px 8px;
+  font-size: 10px;
   font-variant-numeric: tabular-nums;
 }
-.dshst-bookRow { display: flex; align-items: baseline; gap: 6px; }
-.dshst-bookLabel { width: 20px; color: var(--dsw-alias-label-secondary); }
-.dshst-bookPrice { min-width: 54px; text-align: right; }
-.dshst-bookVolume { margin-left: auto; color: var(--dsw-alias-label-secondary); }
+.dshst-bookRow { display: flex; align-items: baseline; gap: 3px; min-width: 0; }
+.dshst-bookLabel { flex: 0 0 15px; color: var(--dsw-alias-label-secondary); font-size: 9px; }
+.dshst-bookPrice { flex: 1 1 auto; text-align: right; font-size: 10px; }
+.dshst-bookVolume { flex: 0 0 36px; margin-left: 0; text-align: right; color: var(--dsw-alias-label-secondary); font-size: 9px; }
+@media (max-width: 720px) {
+  .dshst-chartRow { flex-direction: column; }
+  .dshst-book { flex-basis: auto; width: 100%; border-left: 0; border-top: 1px solid var(--dsw-alias-border-l1); padding: 6px 0 0; }
+}
 .dshst-chip {
   padding: 0 5px;
   border: 1px solid var(--dsw-alias-border-l1);
@@ -4803,9 +4820,15 @@ window.__ModuleLoader__.load({
               ),
             )
           : null,
-        chart,
+        h(
+          'div',
+          { className: 'dshst-chartRow' },
+          h('div', { className: 'dshst-chartCol' }, chart),
+          prefs.showOrderBook === false
+            ? null
+            : h(OrderBook, { depth: quote.depth, prevClose: quote.prevClose, t }),
+        ),
         prefs.showStats === false ? null : h(StatChips, { quote, t }),
-        prefs.showOrderBook === false ? null : h(OrderBook, { depth: quote.depth, prevClose: quote.prevClose, t }),
         h(
           'div',
           { className: 'dshst-holding' },
