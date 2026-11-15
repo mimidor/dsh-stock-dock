@@ -65,7 +65,7 @@ window.__ModuleLoader__.load({
       tabDay: '日K',
       tabWeek: '周K',
       tabMonth: '月K',
-      orderBook: '五档盘口',
+      orderBook: '盘口',
       orderRatio: '委比',
       amount: '成交额',
       turnover: '换手',
@@ -253,7 +253,7 @@ window.__ModuleLoader__.load({
       tabDay: 'Daily',
       tabWeek: 'Weekly',
       tabMonth: 'Monthly',
-      orderBook: 'Order book',
+      orderBook: 'Book',
       orderRatio: 'Ratio',
       amount: 'Turnover',
       turnover: 'Turn',
@@ -947,12 +947,12 @@ window.__ModuleLoader__.load({
 .dshst-chartCol { flex: 1 1 auto; min-width: 0; }
 .dshst-book {
   display: flex;
-  flex: 0 0 92px;
+  flex: 0 0 84px;
   flex-direction: column;
   gap: 2px;
-  width: 92px;
+  width: 84px;
   min-width: 0;
-  padding-left: 3px;
+  padding-left: 2px;
   border-left: 1px solid var(--dsw-alias-border-l1);
 }
 .dshst-bookHead {
@@ -973,9 +973,9 @@ window.__ModuleLoader__.load({
   font-variant-numeric: tabular-nums;
 }
 .dshst-bookRow { display: flex; align-items: baseline; gap: 2px; min-width: 0; white-space: nowrap; }
-.dshst-bookLabel { flex: 0 0 14px; white-space: nowrap; color: var(--dsw-alias-label-secondary); font-size: 7px; }
-.dshst-bookPrice { flex: 0 0 36px; text-align: left; font-size: 8.5px; }
-.dshst-bookVolume { flex: 0 0 32px; margin-left: 0; text-align: right; color: var(--dsw-alias-label-secondary); font-size: 7.5px; }
+.dshst-bookLabel { flex: 0 0 12px; white-space: nowrap; color: var(--dsw-alias-label-secondary); font-size: 7px; }
+.dshst-bookPrice { flex: 0 0 32px; text-align: left; font-size: 8px; }
+.dshst-bookVolume { flex: 0 0 28px; margin-left: 0; text-align: right; color: var(--dsw-alias-label-secondary); font-size: 7px; }
 @media (max-width: 720px) {
   .dshst-chartRow { flex-direction: column; }
   .dshst-book { flex-basis: auto; width: 100%; border-left: 0; border-top: 1px solid var(--dsw-alias-border-l1); padding: 6px 0 0; }
@@ -3906,7 +3906,16 @@ window.__ModuleLoader__.load({
           'div',
           { className: 'dshst-bookHead' },
           h('span', null, t('orderBook')),
-          ratio === null ? null : h('span', { className: ratio >= 0 ? 'dshst-up' : 'dshst-down' }, `${t('orderRatio')} ${ratio.toFixed(1)}%`),
+          ratio === null
+            ? null
+            : h(
+                'span',
+                {
+                  className: ratio >= 0 ? 'dshst-up' : 'dshst-down',
+                  title: `${t('orderRatio')} ${ratio.toFixed(1)}%`,
+                },
+                t('orderRatio'),
+              ),
         ),
         h(
           'div',

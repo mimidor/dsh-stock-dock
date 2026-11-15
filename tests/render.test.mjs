@@ -358,7 +358,7 @@ test('a card click opens the detail panel with every period and the order book',
   tree = await harness.settle()
   const text = textOf(tree)
 
-  assert.match(text, /五档盘口/)
+  assert.match(text, /盘口/)
   assert.match(text, /分时/)
   assert.match(text, /15分/)
   assert.match(text, /30分/)
