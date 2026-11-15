@@ -2994,7 +2994,16 @@ window.__ModuleLoader__.load({
           if (!host.contains(event.target)) return
           const index = indexAt(event)
           if (index === null) return
-          setRange(index === start ? null : { start: Math.min(start, index), end: Math.max(start, index) })
+          if (index === start) {
+            setRange(null)
+            if (props.period === 'day' && typeof props.onPickDay === 'function') {
+              const row = rowsRef.current[index]
+              const date = String(row?.date ?? '').replace(/\D/g, '').slice(0, 8)
+              if (/^\d{8}$/.test(date)) props.onPickDay(date)
+            }
+          } else {
+            setRange({ start: Math.min(start, index), end: Math.max(start, index) })
+          }
         }
         const cancelSelection = () => { selecting = null }
         // ECharts' zrender handlers can stop bubbling; capture before them.
