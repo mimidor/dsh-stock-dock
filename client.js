@@ -193,6 +193,11 @@ window.__ModuleLoader__.load({
       ma: '均线',
       volume: '量',
       sidebarTitle: '行情',
+      sidebarMode: '左侧极简行情',
+      sidebarSymbols: '侧栏标的',
+      sidebarModeHint: '在左侧导航增加一个行情面板，只显示选定标的',
+      sidebarSymbolsHint: '逗号分隔，最多 8 个；留空时使用当前分组前 3 个',
+      sidebarEmpty: '还没有配置侧栏标的',
       dismiss: '忽略',
       hostMissing: '行情服务未加载，刷新页面或重启 DSH 后再试',
       remove: '移除',
@@ -393,6 +398,11 @@ window.__ModuleLoader__.load({
       ma: 'MA',
       volume: 'Vol',
       sidebarTitle: 'Quotes',
+      sidebarMode: 'Sidebar quote mode',
+      sidebarSymbols: 'Sidebar symbols',
+      sidebarModeHint: 'Add a quote panel to the left navigation showing only the chosen symbols',
+      sidebarSymbolsHint: 'Comma-separated, up to 8; empty uses the first 3 of the active group',
+      sidebarEmpty: 'No sidebar symbols configured',
       dismiss: 'Dismiss',
       hostMissing: 'The quote service is not loaded; reload the page or restart DSH',
       remove: 'Remove',
@@ -697,6 +707,30 @@ window.__ModuleLoader__.load({
   width: 100%;
   padding: 2px 0;
 }
+.dshst-sidePanel {
+  width: 100%;
+  max-width: 760px;
+  padding: 20px 24px;
+  box-sizing: border-box;
+}
+.dshst-sidePanelHead { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
+.dshst-sidePanelHead h2 { margin: 0; font-size: 16px; font-weight: 600; }
+.dshst-sidePanelHead span { color: var(--dsw-alias-label-secondary); font-size: 11px; }
+.dshst-sideCards { display: flex; flex-direction: column; gap: 6px; }
+.dshst-sideCard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-1);
+}
+.dshst-sideCardName { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 600; }
+.dshst-sideCardName span { margin-left: 6px; color: var(--dsw-alias-label-secondary); font-size: 10px; font-weight: 400; }
+.dshst-sidePrice { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.dshst-sidePct { min-width: 64px; text-align: right; font-size: 11px; font-variant-numeric: tabular-nums; }
 .dshst-maLegend {
   display: flex;
   align-items: center;
@@ -6474,6 +6508,92 @@ window.__ModuleLoader__.load({
       return h(Ticker, { ...props, variant: 'sidebar', active: props.visible !== false })
     }
 
+    function SidebarQuoteIcon(props) {
+      const size = props.size ?? 16
+      return h(
+        'svg',
+        { width: size, height: size, viewBox: '0 0 24 24', 'aria-hidden': true },
+        h('path', {
+          d: 'M4 19h16v2H4zM6 16V9h3v7zm5 0V5h3v11zm5 0v-4h3v4z',
+          fill: 'currentColor',
+        }),
+      )
+    }
+
+    function SidebarQuotePanel(props) {
+      const t = props.t ?? ((key) => key)
+      const [quotes, setQuotes] = useState([])
+      const [status, setStatus] = useState('loading')
+      useEffect(() => {
+        let cancelled = false
+        let timer = 0
+        const run = async () => {
+          try {
+            const settings = await api('/settings')
+            const configured = Array.isArray(settings?.settings?.sidebarSymbols)
+              ? settings.settings.sidebarSymbols
+              : []
+            const fallback = Array.isArray(settings?.settings?.symbols) ? settings.settings.symbols.slice(0, 3) : []
+            const symbols = configured.length > 0 ? configured : fallback
+            if (symbols.length === 0) {
+              if (!cancelled) {
+                setQuotes([])
+                setStatus('empty')
+              }
+              return
+            }
+            const payload = await api(`/quotes?symbols=${encodeURIComponent(symbols.join(','))}`)
+            if (!cancelled) {
+              setQuotes(Array.isArray(payload?.quotes) ? payload.quotes : [])
+              setStatus(payload?.ok === true ? 'ready' : 'error')
+            }
+          } catch {
+            if (!cancelled) setStatus('error')
+          }
+        }
+        run()
+        timer = window.setInterval(run, 15_000)
+        return () => {
+          cancelled = true
+          window.clearInterval(timer)
+        }
+      }, [])
+      return h(
+        'div',
+        { className: 'dshst-sidePanel' },
+        h(
+          'div',
+          { className: 'dshst-sidePanelHead' },
+          h('h2', null, t('sidebarTitle')),
+          h('span', null, t('sidebarModeHint')),
+        ),
+        status === 'loading' ? h('div', { className: 'dshst-note' }, t('loading')) : null,
+        status === 'empty' ? h('div', { className: 'dshst-note' }, t('sidebarEmpty')) : null,
+        status === 'error' ? h('div', { className: 'dshst-note dshst-error' }, t('unavailable')) : null,
+        status === 'ready'
+          ? h(
+              'div',
+              { className: 'dshst-sideCards' },
+              ...quotes.filter((quote) => !quote.error).map((quote) => {
+                const tone = trendClass(quote.changePct)
+                return h(
+                  'div',
+                  { className: 'dshst-sideCard', key: quote.symbol },
+                  h(
+                    'span',
+                    { className: 'dshst-sideCardName' },
+                    quote.name ?? quote.symbol,
+                    h('span', null, displayCode(quote)),
+                  ),
+                  h('span', { className: `dshst-sidePrice ${tone}` }, formatPrice(quote.price)),
+                  h('span', { className: `dshst-sidePct ${tone}` }, formatPct(quote.changePct)),
+                )
+              }),
+            )
+          : null,
+      )
+    }
+
     /* ------------------------------------------------------------ settings */
 
     function SettingsCard(props) {
@@ -6565,6 +6685,9 @@ window.__ModuleLoader__.load({
             [key, payload.settings?.[key] ?? payload.prefs?.[key] ?? value],
           ))
           setPrefs((current) => ({ ...current, ...accepted }))
+          if (typeof window.dispatchEvent === 'function' && typeof CustomEvent === 'function') {
+            window.dispatchEvent(new CustomEvent('dsh-stock-ticker:prefs', { detail: accepted }))
+          }
           onSaved?.(accepted)
           setSaved(true)
           window.setTimeout(() => setSaved(false), 2000)
@@ -6578,9 +6701,8 @@ window.__ModuleLoader__.load({
       const commitNumber = async (key, raw) => {
         const value = String(raw).trim() === '' ? NaN : Number(raw)
         const accepted = Number.isFinite(value) && value !== prefs[key] ? await save({ [key]: value }) : null
-        setDraft((current) => current[key] === raw
-          ? { ...current, [key]: accepted?.[key] ?? prefs[key] ?? draft[key] }
-          : current)
+        const resolved = accepted?.[key] ?? prefs[key] ?? draft[key]
+        setDraft((current) => ({ ...current, [key]: resolved }))
       }
 
       const clearCache = async () => {
@@ -6831,6 +6953,24 @@ window.__ModuleLoader__.load({
             ),
           ),
         ),
+        row(t('sidebarMode'), toggle('sidebarMode', t('sidebarMode')), 'general'),
+        row(
+          t('sidebarSymbols'),
+          h('input', {
+            className: 'dshst-input dshst-inputSmall',
+            defaultValue: (prefs.sidebarSymbols ?? []).join(','),
+            title: t('sidebarSymbolsHint'),
+            onBlur: (event) => {
+              const next = event.target.value
+                .split(/[,\s，]+/)
+                .map((item) => item.trim())
+                .filter(Boolean)
+                .slice(0, 8)
+              save({ sidebarSymbols: next })
+            },
+          }),
+          'general',
+        ),
         h(
           'div',
           { className: 'dshst-settingsGroup', 'data-section': 'general' },
@@ -6974,6 +7114,77 @@ window.__ModuleLoader__.load({
             console.error('[stock-ticker] settings section unavailable', failure)
           }
         }
+
+        // Optional left-nav stock panel. Registration follows the persisted
+        // sidebarMode preference, so the default install never adds a nav entry.
+        let sidebarDisposers = []
+        const disposeSidebarPanel = () => {
+          for (const dispose of sidebarDisposers) {
+            try {
+              dispose?.()
+            } catch {
+              /* already gone */
+            }
+          }
+          sidebarDisposers = []
+        }
+        const installSidebarPanel = () => {
+          if (sidebarDisposers.length > 0 || typeof ctx.slots.inject !== 'function') return
+          try {
+            sidebarDisposers.push(
+              ctx.slots.inject('sidebar.panellist', () =>
+                ctx.slots.register(
+                  {
+                    name: 'sidebar.panellist',
+                    id: 'stock-ticker-panel',
+                    order: 35,
+                    label: () => translate('sidebarTitle'),
+                  },
+                  (slotProps) => h(SidebarQuoteIcon, slotProps),
+                ),
+              ),
+            )
+            sidebarDisposers.push(
+              ctx.slots.inject('main', () =>
+                ctx.slots.register(
+                  { name: 'main', key: 'stock-ticker-panel' },
+                  (slotProps) => h(SidebarQuotePanel, { ...slotProps, t: translate }),
+                ),
+              ),
+            )
+          } catch (failure) {
+            console.error('[stock-ticker] sidebar panel registration failed', failure)
+            disposeSidebarPanel()
+          }
+        }
+        ctx.effect(() => {
+          let alive = true
+          let syncing = false
+          const sync = async () => {
+            if (syncing) return
+            syncing = true
+            try {
+              const payload = await api('/settings')
+              if (!alive) return
+              if (payload?.settings?.sidebarMode === true) installSidebarPanel()
+              else disposeSidebarPanel()
+            } catch {
+              /* the panel is optional */
+            } finally {
+              syncing = false
+            }
+          }
+          const onPrefs = () => {
+            void sync()
+          }
+          window.addEventListener('dsh-stock-ticker:prefs', onPrefs)
+          void sync()
+          return () => {
+            alive = false
+            window.removeEventListener('dsh-stock-ticker:prefs', onPrefs)
+            disposeSidebarPanel()
+          }
+        }, 'stock-ticker: left sidebar panel')
 
         // Optional dsh-better-sidebar integration: a soft dependency, so it is
         // waited for at runtime instead of being listed in the static `inject`
