@@ -730,3 +730,20 @@ Local commit only; not pushed.
 - **UI**: group pills support drag reordering; the detail close button is `×`;
   active tabs/toggles/selects use a dark border; volume legend colours separated.
 - 92 tests.
+
+
+## 1.17.0 — 2026-11-15
+
+- Minute K history: 96 bars by default, 1000-bar steps and a load-all action;
+  A-share Sina fills up to 5001 rows (4111 for 60m), Hong Kong/US stay at 640;
+  history consolidates into one pinned `:history` page and refreshes a short tail.
+- Full warmup in Settings: loads every group's intraday 1/3/5-day pages, all
+  minute/daily/weekly/monthly history, and logos with a progress bar.
+- Daily bar click opens an on-demand "当日分时" view: latest five sessions from
+  Tencent, older dates reconstructed from cached minute history when available.
+- Daily/weekly/monthly "全部" range (1300 bars) and automatic use of cached
+  history without painting a dense flash.
+- Order book moved to a narrow right-hand column; MA legend with high-contrast
+  MA5/10/20/60 colours; dynamic visible-range high/low price labels; compact
+  group count badges and drag reordering.
+- 105 tests; README route and version updates.

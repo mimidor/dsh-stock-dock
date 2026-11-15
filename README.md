@@ -2,7 +2,7 @@
 
 **中文** · [English](README.en.md)
 
-![version](https://img.shields.io/badge/version-1.16.0-blue)
+![version](https://img.shields.io/badge/version-1.17.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![dsh](https://img.shields.io/badge/DSH-0.2.x-6f5bd6)
 ![data](https://img.shields.io/badge/data-Tencent%20%7C%20Sina%20%7C%20Eastmoney-orange)
@@ -151,7 +151,7 @@ POST /dsh-stock-ticker/cache/clear
 ```bash
 npm run check          # 语法
 npm run lint           # oxlint
-npm test               # 91 个测试：解析器 fixture、盘前解析、流水算术、预警、会话、存储、工具、渲染
+npm test               # 105 个测试：解析器 fixture、盘前解析、流水算术、预警、会话、存储、工具、渲染
 npm run test:coverage  # 覆盖率（Node 内置，约 79% 行覆盖）
 npm run verify         # 177 项：路由、抽样、ETag、三源、盘前、流水、分组、工具、客户端
 npm run verify:offline # 跳过联网检查
