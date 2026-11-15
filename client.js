@@ -19,6 +19,7 @@ window.__ModuleLoader__.load({
     const BUILD = 'v1.16.0'
     const ENDPOINT = '/dsh-stock-ticker'
     const COLLAPSE_KEY = 'dsh-stock-ticker:collapsed'
+    const MINUTE_LIMITS_KEY = 'dsh-stock-ticker:minute-limits'
     const STYLE_ID = 'stock-ticker'
     /** Mini charts change once a day; five minutes is already generous. */
     const SPARK_TTL_MS = 5 * 60 * 1000
@@ -1579,6 +1580,32 @@ window.__ModuleLoader__.load({
       const date = new Date(timestamp)
       const pad = (part) => String(part).padStart(2, '0')
       return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+    }
+
+    function readMinuteLimits(symbol) {
+      try {
+        const raw = JSON.parse(window.localStorage.getItem(MINUTE_LIMITS_KEY) ?? '{}')
+        const out = {}
+        for (const [key, value] of Object.entries(raw ?? {})) {
+          if (typeof value !== 'number' || !Number.isFinite(value) || value < 96) continue
+          const prefix = `${symbol}:`
+          if (key.startsWith(prefix)) out[key.slice(prefix.length)] = Math.round(value)
+        }
+        return out
+      } catch {
+        return {}
+      }
+    }
+
+    function writeMinuteLimit(symbol, tab, value) {
+      try {
+        const raw = JSON.parse(window.localStorage.getItem(MINUTE_LIMITS_KEY) ?? '{}')
+        const next = raw && typeof raw === 'object' ? raw : {}
+        next[`${symbol}:${tab}`] = Math.max(96, Math.round(value))
+        window.localStorage.setItem(MINUTE_LIMITS_KEY, JSON.stringify(next))
+      } catch {
+        /* storage can be unavailable; the chart still works for this mount */
+      }
     }
 
     function readCollapsed() {
@@ -3993,9 +4020,13 @@ window.__ModuleLoader__.load({
       const [tab, setTab] = useState(initialTab)
       const [adjust, setAdjust] = useState(prefs.adjust)
       const [historyYears, setHistoryYears] = useState(0)
-      const [minuteLimits, setMinuteLimits] = useState({})
+      const [minuteLimits, setMinuteLimits] = useState(() => readMinuteLimits(quote.symbol))
       const minuteLimit = minuteLimits[tab] ?? 96
-      const setMinuteLimit = (value) => setMinuteLimits((current) => ({ ...current, [tab]: value }))
+      const setMinuteLimit = (value) => {
+        const next = Math.max(96, Math.round(value))
+        writeMinuteLimit(quote.symbol, tab, next)
+        setMinuteLimits((current) => ({ ...current, [tab]: next }))
+      }
       const [historyLoad, setHistoryLoad] = useState(null)
       const historyRequest = useRef(null)
       const [compareSymbol, setCompareSymbol] = useState('')
