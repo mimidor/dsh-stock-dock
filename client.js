@@ -177,6 +177,7 @@ window.__ModuleLoader__.load({
       changePctLabel: '涨跌幅',
       compareNone: '不叠加',
       maPeriods: '均线周期',
+      maLegendTitle: '均线',
       showVolume: '显示成交量',
       alertToast: '预警弹提示',
       volumeAlert: '放量提醒（5分钟）',
@@ -376,6 +377,7 @@ window.__ModuleLoader__.load({
       changePctLabel: 'Change',
       compareNone: 'None',
       maPeriods: 'MA periods',
+      maLegendTitle: 'MA',
       showVolume: 'Show volume',
       alertToast: 'Toast on alert',
       volumeAlert: 'Volume alert (5m)',
@@ -694,6 +696,26 @@ window.__ModuleLoader__.load({
   gap: 8px;
   width: 100%;
   padding: 2px 0;
+}
+.dshst-maLegend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 0 2px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 9px;
+  line-height: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.dshst-maLegendTitle { font-weight: 600; }
+.dshst-maLegendItem { display: inline-flex; align-items: center; gap: 3px; }
+.dshst-maSwatch {
+  display: inline-block;
+  width: 10px;
+  height: 2px;
+  border-radius: 1px;
+  flex: 0 0 auto;
 }
 .dshst-historyTools {
   display: flex;
@@ -1714,14 +1736,7 @@ window.__ModuleLoader__.load({
     }
 
     const MA_WINDOWS = [5, 10, 20, 60]
-    const MA_COLORS = [
-      'var(--dsw-alias-state-warn-primary)',
-      'var(--dsw-alias-brand-primary)',
-      'color-mix(in srgb, var(--dsw-alias-brand-primary) 55%, var(--dsw-alias-label-secondary))',
-      'var(--dsw-alias-label-secondary)',
-      'var(--dsw-alias-state-error-primary)',
-      'var(--dsw-alias-state-success-primary)',
-    ]
+    const MA_COLORS = ['#e6b800', '#2563eb', '#dc2626', '#16a34a', '#9333ea', '#f97316']
     const maColorAt = (index) => MA_COLORS[index % MA_COLORS.length]
     const maPeriodsOf = (value) => {
       const list = (Array.isArray(value) ? value : String(value ?? '').split(/[,\s，]+/))
@@ -2439,6 +2454,7 @@ window.__ModuleLoader__.load({
         block
           ? h('div', { className: 'dshst-chartHint' }, `${t('chartZoomHint')} · ${rows.length}/${total}`)
           : null,
+        showMA ? h(MALegend, { periods: maPeriods, t }) : null,
         minutePeriod && volumeBaseline.size > 0 ? h(VolumeLegend, { t }) : null,
         selectedRange
           ? h(RangeSummary, {
@@ -2692,7 +2708,7 @@ window.__ModuleLoader__.load({
       })
       const ghostData = rows.map((row) => baseline.get(String(row.date)) ?? null)
       const baselineData = rows.map((row) => baseline.get(String(row.date)) ?? null)
-      const palette = [theme.warn, theme.brand, theme.gold, theme.muted, theme.error, theme.success]
+      const palette = MA_COLORS
       const maSeries = showMA === false ? [] : (maPeriodsOf(maPeriods)).map((window, order) => ({
         type: 'line',
         name: `MA${window}`,
@@ -3147,6 +3163,7 @@ window.__ModuleLoader__.load({
           { className: 'dshst-chartHint' },
           `${t('echartsHint')} · ${rows.length}${props.compareRows ? ` · ${t('compare')} ${props.compareLabel}` : ''}`,
         ),
+        props.showMA !== false ? h(MALegend, { periods: maPeriodsOf(props.maPeriods), t }) : null,
         selected && high && low
           ? h(RangeSummary, {
               t,
@@ -3485,6 +3502,25 @@ window.__ModuleLoader__.load({
      * Intraday line: price, running average, previous close, cost line and one
      * separator per trading day when several days are overlaid.
      */
+    function MALegend(props) {
+      const t = props.t ?? ((key) => key)
+      const periods = Array.isArray(props.periods) ? props.periods : []
+      if (periods.length === 0) return null
+      return h(
+        'div',
+        { className: 'dshst-maLegend' },
+        h('span', { className: 'dshst-maLegendTitle' }, t('maLegendTitle')),
+        ...periods.map((period, index) =>
+          h(
+            'span',
+            { className: 'dshst-maLegendItem', key: `ma${period}` },
+            h('i', { className: 'dshst-maSwatch', style: { background: maColorAt(index) }, 'aria-hidden': true }),
+            `MA${period}`,
+          ),
+        ),
+      )
+    }
+
     function TrendChart(props) {
       const rawPoints = Array.isArray(props.points) ? props.points : []
       // Defensive against old disk-cache pages written before the STAR Market
