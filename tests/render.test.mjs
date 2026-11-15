@@ -1199,3 +1199,23 @@ test('ECharts ends selection when the mouse is released outside the chart', asyn
   tree = await harness.settle()
   assert.equal(findAll(tree, (node) => hasClass(node, 'dshst-range')).length, 1)
 })
+
+test('index cards skip logos while stock cards use an 18px first-letter fallback', async () => {
+  const payload = quotesPayload()
+  payload.quotes.push({ ...payload.quotes[0], name: '上证指数', symbol: 'sh000001' })
+  payload.symbols.push('sh000001')
+  const { harness, component, t } = boot({ quotes: payload })
+  harness.mount(component, { t })
+  let tree = await harness.settle()
+  const stock = () => findAll(tree, (node) => node.props?.['data-symbol'] === 'sh600519')[0]
+  const index = findAll(tree, (node) => node.props?.['data-symbol'] === 'sh000001')[0]
+  assert.ok(index)
+  assert.equal(findAll(index, (node) => node.tag === 'img').length, 0)
+  const image = findAll(stock(), (node) => hasClass(node, 'dshst-logo'))[0]
+  assert.equal(image.props.style.width, '18px')
+  image.props.onError()
+  tree = await harness.settle()
+  const fallback = findAll(stock(), (node) => hasClass(node, 'dshst-logoFallback'))[0]
+  assert.equal(textOf(fallback), payload.quotes[0].name[0])
+  assert.equal(fallback.props.style.height, '18px')
+})

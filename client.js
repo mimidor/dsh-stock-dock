@@ -3249,7 +3249,9 @@ window.__ModuleLoader__.load({
           'data-symbol': quote.symbol,
           ...dragProps,
         },
-        props.showLogos ? h(StockLogo, { quote, t }) : null,
+        props.showLogos && !/^(?:sh000\d{3}|sz399\d{3}|hk[A-Z]+|us(?:IXIC|DJI|SPX))$/.test(quote.symbol)
+          ? h(StockLogo, { quote, t })
+          : null,
         h(
           'span',
           { className: 'dshst-cardMain' },
