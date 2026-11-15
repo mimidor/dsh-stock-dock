@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 import { DISK_CACHE_VERSION, createDiskCache } from '../lib/disk-cache.js'
+import { klineFor } from '../lib/providers/index.js'
 
 async function tempDir() {
   return mkdtemp(join(tmpdir(), 'stock-cache-'))
@@ -82,6 +83,46 @@ test('disk cache clears its maps and file', async () => {
     await second.ready()
     assert.equal(second.path, path)
   } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('minute history consolidates legacy pages and refreshes the tail after restart', async () => {
+  const dir = await tempDir()
+  const original = globalThis.fetch
+  try {
+    const path = join(dir, 'cache.json')
+    const prefix = 'hk00700:m5:none:'
+    const rows = Array.from({ length: 650 }, (_, index) => ({ date: String(202611130000 + index), close: 10 }))
+    const open = () => {
+      const maps = { klines: new Map(), trends: new Map() }
+      return { ...maps, disk: createDiskCache({ path, maps }) }
+    }
+    const first = open()
+    first.disk.remember('klines', prefix + '1000', { at: Date.now(), rows })
+    first.disk.remember('klines', prefix + '96', { at: Date.now(), rows: rows.slice(-96) })
+    await first.disk.flush()
+    const second = open()
+    globalThis.fetch = async (url) => {
+      assert.equal(new URL(url).searchParams.get('param'), 'hk00700,m5,,96')
+      return new Response(JSON.stringify({
+        data: { hk00700: { m5: [['2026-11-13 06:49', '10', '12', '12', '10', '50']] } },
+      }))
+    }
+    const refreshed = await klineFor(second, 'hk00700', 'm5', 'none', 5001, true)
+    assert.equal(refreshed.rows.length, 640)
+    assert.equal(refreshed.rows.at(-1).close, 12)
+    assert.deepEqual([...second.klines.keys()], [prefix + 'history'])
+    await second.disk.flush()
+    const restarted = open()
+    await restarted.disk.ready()
+    assert.deepEqual([...restarted.klines.keys()], [prefix + 'history'])
+    assert.equal(restarted.klines.get(prefix + 'history').pinned, true)
+    const short = await klineFor(restarted, 'hk00700', 'm5', 'none', 96)
+    assert.equal(short.rows.length, 96)
+    assert.equal(short.source, 'cache')
+  } finally {
+    globalThis.fetch = original
     await rm(dir, { recursive: true, force: true })
   }
 })
