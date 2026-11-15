@@ -2573,8 +2573,8 @@ window.__ModuleLoader__.load({
       const hasVolume = showVolume !== false
       const axisIndexes = hasVolume ? [0, 1] : [0]
       const priceGrid = hasVolume
-        ? [{ left: 6, right: 58, top: 8, height: '54%' }, { left: 6, right: 58, top: '68%', height: '24%' }]
-        : [{ left: 6, right: 58, top: 8, bottom: 24 }]
+        ? [{ left: 6, right: 8, top: 8, height: '54%' }, { left: 6, right: 8, top: '68%', height: '24%' }]
+        : [{ left: 6, right: 8, top: 8, bottom: 24 }]
       const axes = [
         {
           type: 'category',
