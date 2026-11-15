@@ -2977,13 +2977,16 @@ window.__ModuleLoader__.load({
       }, [range, rows, t, props.holdingCost, props.period])
 
       if (!lib || failed) {
+        // While the lazy ECharts chunk is loading, never paint the whole cached
+        // page (thousands of bars) and then replace it with the zoomed view.
+        const fallbackRows = rows.slice(-(props.period === 'm5' || props.period === 'm15' || props.period === 'm30' || props.period === 'm60' ? 96 : 120))
         return h(
           'div',
           { className: 'dshst-echartWrap' },
           failed && typeof require.async === 'function'
             ? h('div', { className: 'dshst-chartHint' }, t('echartsFallback'))
             : null,
-          h(Candles, props),
+          h(Candles, { ...props, rows: fallbackRows }),
         )
       }
 
