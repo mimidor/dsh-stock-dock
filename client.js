@@ -2855,9 +2855,10 @@ window.__ModuleLoader__.load({
 
       useEffect(() => {
         if (!lib || !hostRef.current || rows.length < 2) return undefined
+        const host = hostRef.current
         let chart
         try {
-          chart = lib.init(hostRef.current, null, { renderer: 'svg' })
+          chart = lib.init(host, null, { renderer: 'svg' })
         } catch (error) {
           setFailed(true)
           console.warn('[stock-ticker] ECharts init failed; using SVG chart', error?.message ?? error)
@@ -2868,9 +2869,11 @@ window.__ModuleLoader__.load({
           typeof ResizeObserver === 'function'
             ? new ResizeObserver(() => chart.resize())
             : null
-        observer?.observe(hostRef.current)
-        requestAnimationFrame(() => chart.resize())
-        const rect = () => hostRef.current?.getBoundingClientRect()
+        observer?.observe(host)
+        const resizeFrame = requestAnimationFrame(() => {
+          if (chartRef.current === chart) chart.resize()
+        })
+        const rect = () => host.getBoundingClientRect()
         const indexAt = (event) => {
           const box = rect()
           if (!box || box.width <= 0) return null
@@ -2901,23 +2904,28 @@ window.__ModuleLoader__.load({
         const leave = () => setCrosshairX(null)
         const up = (event) => {
           if (!selecting) return
-          const index = indexAt(event)
           const start = selecting.start
           selecting = null
+          if (!host.contains(event.target)) return
+          const index = indexAt(event)
           if (index === null) return
           setRange(index === start ? null : { start: Math.min(start, index), end: Math.max(start, index) })
         }
+        const cancelSelection = () => { selecting = null }
         // ECharts' zrender handlers can stop bubbling; capture before them.
-        hostRef.current.addEventListener('mousedown', down, true)
-        hostRef.current.addEventListener('mousemove', move, true)
-        hostRef.current.addEventListener('mouseup', up, true)
-        hostRef.current.addEventListener('mouseleave', leave)
+        host.addEventListener('mousedown', down, true)
+        host.addEventListener('mousemove', move, true)
+        window.addEventListener('mouseup', up, true)
+        window.addEventListener('blur', cancelSelection)
+        host.addEventListener('mouseleave', leave)
         return () => {
           observer?.disconnect()
-          hostRef.current?.removeEventListener('mousedown', down, true)
-          hostRef.current?.removeEventListener('mousemove', move, true)
-          hostRef.current?.removeEventListener('mouseup', up, true)
-          hostRef.current?.removeEventListener('mouseleave', leave)
+          host.removeEventListener('mousedown', down, true)
+          host.removeEventListener('mousemove', move, true)
+          window.removeEventListener('mouseup', up, true)
+          window.removeEventListener('blur', cancelSelection)
+          if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(resizeFrame)
+          host.removeEventListener('mouseleave', leave)
           chart.dispose()
           chartRef.current = null
         }

@@ -1169,3 +1169,33 @@ test('ECharts minute separators and opening dots use the same full category as t
   assert.ok(price.markLine.data.some((line) => line.xAxis === option.xAxis[0].data[2]))
   assert.deepEqual(price.markPoint.data.map((point) => point.coord[0]), ['202511120935', '202611120935'])
 })
+
+test('ECharts ends selection when the mouse is released outside the chart', async () => {
+  const echarts = { init: () => ({
+    setOption() {},
+    getOption: () => ({}),
+    convertFromPixel: (_axes, [x]) => [Math.round(x / 20), 0],
+    resize() {},
+    dispose() {},
+  }) }
+  globalThis.requestAnimationFrame = () => 1
+  const { harness, component, t } = boot({ echarts })
+  harness.mount(component, { t })
+  let tree = await harness.settle()
+  click(findAll(tree, (node) => hasClass(node, 'dshst-card'))[0])
+  tree = await harness.settle()
+  click(findAll(tree, (node) => hasClass(node, 'dshst-tab') && textOf(node) === '日K')[0])
+  await harness.settle()
+  const chart = harness.findElement((node) => hasClass(node, 'dshst-echart'))
+  const mouse = (x, target) => ({ clientX: x, clientY: 10, target, button: 0, preventDefault() {} })
+  chart.dispatch('mousedown', mouse(20, chart))
+  harness.dispatchWindow('mouseup', mouse(200, harness.document.body))
+  chart.dispatch('mousemove', mouse(140, chart))
+  tree = await harness.settle()
+  assert.equal(findAll(tree, (node) => hasClass(node, 'dshst-range')).length, 0)
+  chart.dispatch('mousedown', mouse(20, chart))
+  chart.dispatch('mousemove', mouse(140, chart))
+  harness.dispatchWindow('mouseup', mouse(140, chart))
+  tree = await harness.settle()
+  assert.equal(findAll(tree, (node) => hasClass(node, 'dshst-range')).length, 1)
+})
