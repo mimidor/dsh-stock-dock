@@ -1596,7 +1596,7 @@ window.__ModuleLoader__.load({
         },
         body: options.body === undefined ? undefined : JSON.stringify(options.body),
         cache: options.cache ?? 'no-store',
-        signal: AbortSignal.timeout(timeout),
+        signal: options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(timeout)]) : AbortSignal.timeout(timeout),
       })
       // DSH answers 401 for a route whose plugin is not loaded; that is a
       // "host restarted, reload the page" situation, not a broken request.
@@ -3964,6 +3964,7 @@ window.__ModuleLoader__.load({
       const [historyYears, setHistoryYears] = useState(0)
       const [minuteLimit, setMinuteLimit] = useState(96)
       const [historyLoad, setHistoryLoad] = useState(null)
+      const historyRequest = useRef(null)
       const [compareSymbol, setCompareSymbol] = useState('')
       const [compare, setCompare] = useState(null)
       const [trendDays, setTrendDays] = useState(prefs.defaultTrendDays)
@@ -4062,7 +4063,7 @@ window.__ModuleLoader__.load({
         return () => {
           cancelled = true
         }
-      }, [quote.symbol, tab, adjust, historyYears, trendDays, cycle, retryToken, klineDays, isTrend])
+      }, [quote.symbol, tab, adjust, trendDays, cycle, retryToken, klineLimit, isTrend])
 
       const compareName =
         compareOptions.find((option) => option.symbol === compareSymbol)?.name ?? compareSymbol
@@ -4175,35 +4176,52 @@ window.__ModuleLoader__.load({
         }
       }
 
+      useEffect(() => () => {
+        historyRequest.current?.abort()
+        historyRequest.current = null
+      }, [quote.symbol, tab, adjust])
+
       const loadMinuteHistory = async (target) => {
-        if (historyLoad?.loading || !minuteTab) return
+        if (historyRequest.current || !minuteTab) return
         const desired = Math.min(maxMinute, Math.max(minuteLimit, Math.round(target)))
         if (desired <= minuteLimit) return
         const steps = []
-        for (let next = Math.max(1000, minuteLimit + 1000); next < desired; next += 1000) steps.push(next)
+        for (let next = minuteLimit < 1000 ? 1000 : minuteLimit + 1000; next < desired; next += 1000) steps.push(next)
         steps.push(desired)
-        let best = minuteLimit
-        setHistoryLoad({ loading: true, loaded: best, target: desired, error: '' })
+        const controller = new AbortController()
+        historyRequest.current = controller
+        let bestPayload = seriesRef.current[`${tab}:${adjust}:${minuteLimit}`]?.payload
+        let loaded = bestPayload?.rows?.length ?? 0
+        let error = ''
+        setHistoryLoad({ loading: true, loaded, target: desired, error })
         try {
           for (const step of steps) {
             const payload = await api(
               `/kline?symbol=${encodeURIComponent(quote.symbol)}&period=${tab}&adjust=${adjust}&limit=${step}`,
+              { signal: controller.signal },
             )
+            if (controller.signal.aborted) return
             if (payload.ok !== true) throw new Error(payload.error || 'history-failed')
-            best = Math.max(best, Array.isArray(payload.rows) ? payload.rows.length : 0)
-            setHistoryLoad({ loading: true, loaded: best, target: desired, error: '' })
-            if (best >= desired) break
+            if (Array.isArray(payload.rows) && payload.rows.length >= loaded) {
+              bestPayload = payload
+              loaded = payload.rows.length
+            }
+            setHistoryLoad({ loading: true, loaded, target: desired, error })
+            if (loaded >= desired) break
           }
-          setMinuteLimit(best)
-          setHistoryLoad({ loading: false, loaded: best, target: desired, error: '' })
         } catch (failure) {
-          setMinuteLimit(best)
-          setHistoryLoad({
-            loading: false,
-            loaded: best,
-            target: desired,
-            error: String(failure?.message ?? failure),
-          })
+          error = String(failure?.message ?? failure)
+        } finally {
+          if (historyRequest.current === controller && !controller.signal.aborted) {
+            historyRequest.current = null
+            if (bestPayload) {
+              const limit = Math.max(minuteLimit, Math.min(desired, loaded))
+              const key = `${tab}:${adjust}:${limit}`
+              setSeries((current) => ({ ...current, [key]: { ok: true, at: Date.now(), payload: bestPayload } }))
+              setMinuteLimit(limit)
+            }
+            setHistoryLoad({ loading: false, loaded, target: desired, error })
+          }
         }
       }
 
@@ -4406,6 +4424,9 @@ window.__ModuleLoader__.load({
                   'data-active': tab === item.id ? 'true' : 'false',
                   'aria-selected': tab === item.id ? 'true' : 'false',
                   onClick: () => {
+                    if (item.id === tab) return
+                    historyRequest.current?.abort()
+                    historyRequest.current = null
                     setTab(item.id)
                     setMinuteLimit(96)
                     setHistoryLoad(null)

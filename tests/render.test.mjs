@@ -1029,3 +1029,31 @@ test('switching groups hides the previous list until the target list arrives', a
   assert.equal(findAll(tree, (node) => hasClass(node, 'dshst-card')).length, 0)
   assert.equal(findAll(tree, (node) => hasClass(node, 'dshst-pill') && textOf(node) === '大盘0')[0].props['data-active'], 'true')
 })
+
+test('minute history renders the downloaded page and keeps it if a later step fails', async () => {
+  const bars = Array.from({ length: 1000 }, (_, index) => ({
+    date: String(202611130000 + index), open: 10, close: 11, high: 12, low: 9, volume: 2,
+  }))
+  const { harness, component, t, calls } = boot({ minuteKline: bars.slice(-96) })
+  const original = globalThis.fetch
+  const historyRequests = []
+  globalThis.fetch = (url, init) => {
+    const limit = Number(new URL(String(url), 'http://localhost').searchParams.get('limit'))
+    if (limit < 1000) return original(url, init)
+    historyRequests.push(limit)
+    return Promise.resolve(new Response(JSON.stringify(limit === 1000 ? { ok: true, rows: bars } : { ok: false })))
+  }
+  harness.mount(component, { t })
+  let tree = await harness.settle()
+  const find = (predicate) => findAll(tree, predicate)[0]
+  click(find((node) => hasClass(node, 'dshst-card')))
+  tree = await harness.settle()
+  click(find((node) => hasClass(node, 'dshst-tab') && textOf(node) === '5分'))
+  tree = await harness.settle()
+  click(find((node) => node.tag === 'button' && textOf(node) === '加载全部'))
+  tree = await harness.settle()
+  assert.deepEqual(historyRequests, [1000, 2000])
+  assert.match(textOf(find((node) => hasClass(node, 'dshst-historyLoad'))), /1000/)
+  assert.ok(find((node) => hasClass(node, 'dshst-echartWrap')), 'the completed page is rendered')
+  assert.equal(calls.filter((call) => call.path.includes('period=m5')).length, 1)
+})
