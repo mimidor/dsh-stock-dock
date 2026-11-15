@@ -126,3 +126,23 @@ test('minute history consolidates legacy pages and refreshes the tail after rest
     await rm(dir, { recursive: true, force: true })
   }
 })
+
+test('pinned history outlives ordinary pages but cannot overflow the disk budget', async () => {
+  const dir = await tempDir()
+  try {
+    const path = join(dir, 'cache.json')
+    const maxBytes = 240
+    const maps = { klines: new Map() }
+    const cache = createDiskCache({ path, maps, maxBytes })
+    const rows = [{ date: '202611131500', close: 10, padding: 'x'.repeat(55) }]
+    cache.remember('klines', 'first:history', { at: 1, rows, pinned: true })
+    cache.remember('klines', 'second:history', { at: 2, rows, pinned: true })
+    cache.remember('klines', 'ordinary', { at: 3, rows })
+    await cache.flush()
+    const bytes = await readFile(path)
+    assert.ok(bytes.length <= maxBytes)
+    assert.deepEqual(Object.keys(JSON.parse(bytes).klines), ['second:history'])
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
