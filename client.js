@@ -2731,7 +2731,10 @@ window.__ModuleLoader__.load({
           })
         }
       }
-      const initialStart = rows.length > 250 ? 100 - (250 / rows.length) * 100 : 0
+      // Loaded history can be thousands of bars; open on a readable window and
+      // let the slider/wheel reveal the rest, like a desktop K-line chart.
+      const initialBars = minute ? 96 : 120
+      const initialStart = rows.length > initialBars ? 100 - (initialBars / rows.length) * 100 : 0
       const zoomStart = typeof zoom?.start === 'number' ? zoom.start : initialStart
       const zoomEnd = typeof zoom?.end === 'number' ? zoom.end : 100
       return {
