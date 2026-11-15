@@ -2128,40 +2128,6 @@ window.__ModuleLoader__.load({
         }
       }
 
-      if (minutePeriod) {
-        const seenDays = new Set()
-        rows.forEach((row, index) => {
-          const day = dayKeyOf(row.date)
-          if (!/^\d{8}$/.test(day) || seenDays.has(day)) return
-          seenDays.add(day)
-          if (index === 0) return
-          const x = step * index
-          children.push(
-            h('line', {
-              key: `day${day}`,
-              x1: x,
-              x2: x,
-              y1: inset,
-              y2: height,
-              style: { stroke: 'var(--dsw-alias-border-l2)', strokeDasharray: '2 3', strokeOpacity: 0.65 },
-              strokeWidth: 1,
-              vectorEffect: 'non-scaling-stroke',
-            }),
-            h(
-              'text',
-              {
-                key: `dayLabel${day}`,
-                x: x + 2,
-                y: inset + 8,
-                style: { fill: 'var(--dsw-alias-label-secondary)', fontSize: '8px' },
-                pointerEvents: 'none',
-              },
-              shortDate(day),
-            ),
-          )
-        })
-      }
-
       if (selectedRange) {
         children.push(
           ...rangeMarks({
@@ -2474,25 +2440,6 @@ window.__ModuleLoader__.load({
       return { color: theme.border, opacity: 0.9 }
     }
 
-    function echartsDayLines(rows, theme, withLabels) {
-      const seen = new Set()
-      const lines = []
-      rows.forEach((row, index) => {
-        const day = String(row.date ?? '').slice(0, 8)
-        if (!/^\d{8}$/.test(day) || seen.has(day)) return
-        seen.add(day)
-        if (index === 0) return
-        lines.push({
-          xAxis: String(row.date),
-          lineStyle: { color: theme.muted, type: 'dashed', width: 1, opacity: 0.45 },
-          ...(withLabels
-            ? { label: { show: true, formatter: shortDate(day), color: theme.muted, fontSize: 9, position: 'insideEndTop' } }
-            : { label: { show: false } }),
-        })
-      })
-      return lines
-    }
-
     function echartsDayOpenPoints(rows, theme) {
       const seen = new Set()
       const points = []
@@ -2575,10 +2522,6 @@ window.__ModuleLoader__.load({
           yAxis: holdingCost,
           lineStyle: { color: theme.warn, type: 'dashed', width: 1, opacity: 0.8 },
         })
-      }
-      if (minute) {
-        marks.markLine.data.push(...echartsDayLines(rows, theme, true))
-        marks.markLine.data.push(...echartsDayLines(rows, theme, false))
       }
       return marks
     }
@@ -2691,7 +2634,6 @@ window.__ModuleLoader__.load({
         emphasis: { disabled: true },
         z: 3,
       }))
-      const dayLines = hasVolume && minute ? echartsDayLines(rows, theme, false) : []
       const compareData = alignedKlineComparison(rows, compareRows, period)
       const series = [
         {
@@ -2745,12 +2687,6 @@ window.__ModuleLoader__.load({
             barWidth: '68%',
             barGap: '-100%',
             z: 2,
-            markLine: {
-              symbol: 'none',
-              silent: true,
-              label: { show: false },
-              data: dayLines,
-            },
           },
         )
         if (baseline.size > 0) {
