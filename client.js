@@ -5485,30 +5485,39 @@ window.__ModuleLoader__.load({
 
       const volumeAlertOn = data?.settings?.volumeAlert === true
       const volumeAlertPct = data?.settings?.volumeAlertPct ?? 100
-      const tradingNow = data?.session?.mode === 'trading'
+      const alertSymbols = (data?.symbols ?? []).filter((symbol) =>
+        data?.session?.markets?.[symbol.startsWith('hk') ? 'hk' : symbol.startsWith('us') ? 'us' : 'cn'] === 'trading',
+      ).join(',')
+      const volumeAlertKey = volumeAlertOn && alertSymbols ? `${alertSymbols}:${volumeAlertPct}` : ''
+      const activeVolumeAlerts = volumeAlerts.key === volumeAlertKey ? volumeAlerts.alerts : {}
       useEffect(() => {
-        if (!active || !volumeAlertOn || !tradingNow || symbolKey === '') {
-          setVolumeAlerts({})
-          return undefined
-        }
-        let cancelled = false
+        if (!active || !volumeAlertKey) return undefined
+        const controller = new AbortController()
+        let busy = false
         const loadAlerts = async () => {
+          if (busy || document.hidden) return
+          busy = true
           try {
             const payload = await api(
-              `/volume-alerts?symbols=${encodeURIComponent(symbolKey)}&pct=${encodeURIComponent(volumeAlertPct)}`,
+              `/volume-alerts?symbols=${encodeURIComponent(alertSymbols)}&pct=${encodeURIComponent(volumeAlertPct)}`,
+              { signal: controller.signal },
             )
-            if (!cancelled && payload?.ok === true) setVolumeAlerts(payload.alerts ?? {})
+            if (!controller.signal.aborted) {
+              setVolumeAlerts({ key: volumeAlertKey, alerts: payload?.ok === true ? payload.alerts ?? {} : {} })
+            }
           } catch {
-            /* the bubble is optional; never break the strip */
+            if (!controller.signal.aborted) setVolumeAlerts({ key: volumeAlertKey, alerts: {} })
+          } finally {
+            busy = false
           }
         }
         loadAlerts()
         const timer = window.setInterval(loadAlerts, 30_000)
         return () => {
-          cancelled = true
+          controller.abort()
           window.clearInterval(timer)
         }
-      }, [active, volumeAlertOn, tradingNow, symbolKey, volumeAlertPct])
+      }, [active, volumeAlertKey, alertSymbols, volumeAlertPct])
 
       const refreshSeconds = data?.settings?.refreshSeconds
       const serverInterval = data?.session?.intervalMs
@@ -5890,7 +5899,7 @@ window.__ModuleLoader__.load({
                   showMiniChart: prefs.showMiniChart !== false,
                   showLogos: prefs.showLogos !== false,
                   showExtended: prefs.showExtended === true,
-                  volumeAlert: chartType === 'intraday' ? volumeAlerts[quote.symbol] ?? null : null,
+                  volumeAlert: chartType === 'intraday' ? activeVolumeAlerts[quote.symbol] ?? null : null,
                   onSelect: () => onCardSelect(quote.symbol),
                   onRemove: () => removeSymbol(quote.symbol),
                 })
