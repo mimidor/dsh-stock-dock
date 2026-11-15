@@ -1057,3 +1057,29 @@ test('minute history renders the downloaded page and keeps it if a later step fa
   assert.ok(find((node) => hasClass(node, 'dshst-echartWrap')), 'the completed page is rendered')
   assert.equal(calls.filter((call) => call.path.includes('period=m5')).length, 1)
 })
+
+test('the SVG K-line aligns comparisons on a shared date and rebases their returns', async () => {
+  const { harness, component, t } = boot()
+  const original = globalThis.fetch
+  const row = (date, close) => ({ date, open: close, high: close + 1, low: close - 1, close, volume: 10 })
+  globalThis.fetch = (url, options) => {
+    if (!String(url).includes('/kline?')) return original(url, options)
+    const rows = String(url).includes('hk00700')
+      ? [row('20261112', 800), row('20261113', 880)]
+      : [row('2026-11-12', 100), row('2026-11-13', 100)]
+    return Promise.resolve(new Response(JSON.stringify({ ok: true, rows })))
+  }
+  harness.mount(component, { t })
+  let tree = await harness.settle()
+  const find = (predicate) => findAll(tree, predicate)[0]
+  click(find((node) => hasClass(node, 'dshst-card')))
+  tree = await harness.settle()
+  click(find((node) => hasClass(node, 'dshst-tab') && textOf(node) === '日K'))
+  tree = await harness.settle()
+  change(find((node) => node.tag === 'select' && node.props['aria-label'] === '叠加对比'), 'hk00700')
+  tree = await harness.settle()
+  const d = find((node) => hasClass(node, 'dshst-klineCompare'))?.props.d
+  assert.match(d, /^M[\d.]+,[\d.]+ L[\d.]+,[\d.]+$/)
+  const [, firstY, lastY] = /^M[\d.]+,([\d.]+) L[\d.]+,([\d.]+)$/.exec(d)
+  assert.ok(Number(lastY) < Number(firstY))
+})

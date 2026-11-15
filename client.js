@@ -1780,6 +1780,29 @@ window.__ModuleLoader__.load({
      * Candles with optional moving averages, an optional volume band and a hover
      * readout. The mini version on the strip draws bodies only.
      */
+    function alignedKlineComparison(rows, compareRows, period) {
+      if (!Array.isArray(compareRows) || compareRows.length === 0) return null
+      const keyOf = (value) => {
+        const date = String(value ?? '').replace(/\D/g, '')
+        if (period === 'month') return date.slice(0, 6)
+        if (period === 'week' && /^\d{8}$/.test(date)) {
+          const day = new Date(Date.UTC(Number(date.slice(0, 4)), Number(date.slice(4, 6)) - 1, Number(date.slice(6, 8))))
+          day.setUTCDate(day.getUTCDate() - (day.getUTCDay() + 6) % 7)
+          return String(day.getTime())
+        }
+        return date
+      }
+      const valid = (value) => Number.isFinite(value) && value > 0
+      const closes = new Map(compareRows.map((row) => [keyOf(row.date), row.close]))
+      const anchor = rows.find((row) => valid(row.close) && valid(closes.get(keyOf(row.date))))
+      if (!anchor) return null
+      const base = closes.get(keyOf(anchor.date))
+      return rows.map((row) => {
+        const close = closes.get(keyOf(row.date))
+        return valid(close) ? anchor.close * (close / base) : null
+      })
+    }
+
     function Candles(props) {
       const sourceRows = Array.isArray(props.rows) ? props.rows : []
       const width = props.width
@@ -1872,6 +1895,8 @@ window.__ModuleLoader__.load({
 
       if (rows.length < 2) return empty()
 
+      const comparison = alignedKlineComparison(sourceRows, props.compareRows, props.period)
+        ?.slice(viewStart, viewStart + rows.length)
       let min = Number.POSITIVE_INFINITY
       let max = Number.NEGATIVE_INFINITY
       for (const row of rows) {
@@ -1879,6 +1904,12 @@ window.__ModuleLoader__.load({
         if (typeof row.low === 'number' && row.low < min) min = row.low
       }
       if (!Number.isFinite(min) || !Number.isFinite(max)) return empty()
+      for (const price of comparison ?? []) {
+        if (price !== null) {
+          min = Math.min(min, price)
+          max = Math.max(max, price)
+        }
+      }
       // A halted or limit-locked day has every bar at the same price; the range
       // must be widened rather than reported as "no data".
       if (max <= min) {
@@ -2157,6 +2188,27 @@ window.__ModuleLoader__.load({
             }),
           )
         })
+      }
+
+      if (comparison) {
+        let drawing = false
+        const d = comparison.map((value, index) => {
+          if (value === null) {
+            drawing = false
+            return ''
+          }
+          const command = drawing ? 'L' : 'M'
+          drawing = true
+          return `${command}${step * (index + 0.5)},${scaleY(value)}`
+        }).join(' ')
+        children.push(h('path', {
+          key: 'compare',
+          className: 'dshst-klineCompare',
+          d,
+          fill: 'none',
+          style: { stroke: 'var(--dsw-alias-brand-primary)', strokeDasharray: '4 3' },
+          vectorEffect: 'non-scaling-stroke',
+        }))
       }
 
       if (typeof props.holdingCost === 'number' && props.holdingCost > 0) {
@@ -2618,17 +2670,7 @@ window.__ModuleLoader__.load({
         z: 3,
       }))
       const dayLines = hasVolume ? echartsDayLines(rows, theme, false) : []
-      const compareData = (() => {
-        if (!Array.isArray(compareRows) || compareRows.length === 0) return null
-        const byDate = new Map(compareRows.map((row) => [String(row.date), row]))
-        const base = compareRows.find((row) => typeof row.close === 'number' && row.close > 0)?.close
-        const anchor = rows[0]?.close
-        if (!base || !anchor) return null
-        return dates.map((date) => {
-          const row = byDate.get(date)
-          return row && typeof row.close === 'number' ? anchor * (1 + (row.close / base - 1) * 1) : null
-        })
-      })()
+      const compareData = alignedKlineComparison(rows, compareRows, period)
       const series = [
         {
           id: 'kline',
@@ -3433,13 +3475,13 @@ window.__ModuleLoader__.load({
       const up = props.up
       const compareLine = (() => {
         const info = props.compare
-        if (!info || !Array.isArray(info.points) || typeof info.prevClose !== 'number' || info.prevClose <= 0) return ''
+        if (!(prevClose > 0) || !info || !Array.isArray(info.points) || typeof info.prevClose !== 'number' || info.prevClose <= 0) return ''
         return info.points
           .map((point) => {
-            if (typeof point.price !== 'number') return null
+            if (!Number.isFinite(point.price) || (timeAxis && !dayIndex.has(point.day))) return null
             const x = xForPoint(point.day, point.time)
             if (x === null) return null
-            const y = scaleY(info.prevClose * (1 + ((point.price - info.prevClose) / info.prevClose) * 1))
+            const y = scaleY(prevClose * (point.price / info.prevClose))
             return `${x.toFixed(1)},${y.toFixed(1)}`
           })
           .filter(Boolean)
