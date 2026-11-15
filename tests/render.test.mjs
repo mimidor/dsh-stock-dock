@@ -1083,3 +1083,31 @@ test('the SVG K-line aligns comparisons on a shared date and rebases their retur
   const [, firstY, lastY] = /^M[\d.]+,([\d.]+) L[\d.]+,([\d.]+)$/.exec(d)
   assert.ok(Number(lastY) < Number(firstY))
 })
+
+test('changing K-line period removes the old comparison while the new one is pending', async () => {
+  const { harness, component, t } = boot()
+  const original = globalThis.fetch
+  let finishCompare
+  globalThis.fetch = (url, init) => {
+    if (String(url).includes('symbol=hk00700&period=week')) {
+      return new Promise((resolve) => { finishCompare = resolve })
+    }
+    return original(url, init)
+  }
+  harness.mount(component, { t })
+  let tree = await harness.settle()
+  const find = (predicate) => findAll(tree, predicate)[0]
+  click(find((node) => hasClass(node, 'dshst-card')))
+  tree = await harness.settle()
+  click(find((node) => hasClass(node, 'dshst-tab') && textOf(node) === '日K'))
+  tree = await harness.settle()
+  change(find((node) => node.tag === 'select' && node.props['aria-label'] === '叠加对比'), 'hk00700')
+  tree = await harness.settle()
+  assert.ok(find((node) => hasClass(node, 'dshst-klineCompare')))
+  click(find((node) => hasClass(node, 'dshst-tab') && textOf(node) === '周K'))
+  tree = await harness.settle()
+  assert.equal(find((node) => hasClass(node, 'dshst-klineCompare')), undefined)
+  finishCompare(new Response(JSON.stringify({ ok: false })))
+  tree = await harness.settle()
+  assert.equal(find((node) => hasClass(node, 'dshst-klineCompare')), undefined)
+})

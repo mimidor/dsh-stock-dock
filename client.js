@@ -4109,33 +4109,37 @@ window.__ModuleLoader__.load({
 
       const compareName =
         compareOptions.find((option) => option.symbol === compareSymbol)?.name ?? compareSymbol
+      const compareKey = compareSymbol === '' ? '' : `${quote.symbol}:${compareSymbol}:${tab}:${adjust}:${isTrend ? trendDays : klineLimit}`
+      const currentCompare = compare?.key === compareKey ? compare.payload : null
       useEffect(() => {
-        if (compareSymbol === '') {
+        if (!compareKey) {
           setCompare(null)
           return undefined
         }
-        let cancelled = false
+        const controller = new AbortController()
+        let busy = false
         const loadCompare = async () => {
+          if (busy) return
+          busy = true
           try {
-            const payload = isTrend
-              ? await api(`/trend?symbol=${encodeURIComponent(compareSymbol)}&days=${trendDays}`)
-              : await api(
-                  `/kline?symbol=${encodeURIComponent(compareSymbol)}&period=${tab}&adjust=${adjust}&limit=${klineLimit}`,
-                )
-            if (!cancelled && payload.ok === true) {
-              setCompare({ kind: isTrend ? 'trend' : 'kline', payload })
-            }
+            const path = isTrend
+              ? `/trend?symbol=${encodeURIComponent(compareSymbol)}&days=${trendDays}`
+              : `/kline?symbol=${encodeURIComponent(compareSymbol)}&period=${tab}&adjust=${adjust}&limit=${klineLimit}`
+            const payload = await api(path, { signal: controller.signal })
+            if (!controller.signal.aborted) setCompare(payload.ok === true ? { key: compareKey, payload } : null)
           } catch {
-            if (!cancelled) setCompare(null)
+            if (!controller.signal.aborted) setCompare(null)
+          } finally {
+            busy = false
           }
         }
         loadCompare()
         const timer = window.setInterval(loadCompare, isTrend ? 15_000 : 60_000)
         return () => {
-          cancelled = true
+          controller.abort()
           window.clearInterval(timer)
         }
-      }, [compareSymbol, isTrend, tab, adjust, trendDays, klineLimit])
+      }, [compareKey, compareSymbol, isTrend, tab, adjust, trendDays, klineLimit])
 
       useEffect(() => {
         if (!tradesOpen) return undefined
@@ -4289,10 +4293,10 @@ window.__ModuleLoader__.load({
             days: trendDays,
             market: quote.market,
             compare:
-              isTrend && compare?.kind === 'trend'
+              currentCompare
                 ? {
-                    points: compare.payload.points,
-                    prevClose: compare.payload.prevClose,
+                    points: currentCompare.points,
+                    prevClose: currentCompare.prevClose,
                     label: compareName,
                   }
                 : null,
@@ -4323,7 +4327,7 @@ window.__ModuleLoader__.load({
           maPeriods: prefs.maPeriods,
           colorMode: prefs.colorMode,
           holdingCost: holding?.cost,
-          compareRows: !isTrend && compare?.kind === 'kline' ? compare.payload.rows : null,
+          compareRows: currentCompare?.rows ?? null,
           compareLabel: compareName,
           label: `${quote.name ?? quote.symbol} ${t(tab === 'trend' ? 'tabTrend' : `tab${tab.charAt(0).toUpperCase()}${tab.slice(1)}`)}`,
           emptyLabel: t('noKline'),
