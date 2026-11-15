@@ -1059,6 +1059,11 @@ test('minute history renders the downloaded page and keeps it if a later step fa
   assert.match(textOf(find((node) => hasClass(node, 'dshst-historyLoad'))), /1000/)
   assert.ok(find((node) => hasClass(node, 'dshst-echartWrap')), 'the completed page is rendered')
   assert.equal(calls.filter((call) => call.path.includes('period=m5')).length, 1)
+  click(find((node) => hasClass(node, 'dshst-tab') && textOf(node) === '15分'))
+  tree = await harness.settle()
+  click(find((node) => hasClass(node, 'dshst-tab') && textOf(node) === '5分'))
+  tree = await harness.settle()
+  assert.match(textOf(find((node) => hasClass(node, 'dshst-historyTools'))), /当前 1000 根/)
 })
 
 test('the SVG K-line aligns comparisons on a shared date and rebases their returns', async () => {

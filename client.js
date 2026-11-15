@@ -3993,7 +3993,9 @@ window.__ModuleLoader__.load({
       const [tab, setTab] = useState(initialTab)
       const [adjust, setAdjust] = useState(prefs.adjust)
       const [historyYears, setHistoryYears] = useState(0)
-      const [minuteLimit, setMinuteLimit] = useState(96)
+      const [minuteLimits, setMinuteLimits] = useState({})
+      const minuteLimit = minuteLimits[tab] ?? 96
+      const setMinuteLimit = (value) => setMinuteLimits((current) => ({ ...current, [tab]: value }))
       const [historyLoad, setHistoryLoad] = useState(null)
       const historyRequest = useRef(null)
       const [compareSymbol, setCompareSymbol] = useState('')
@@ -4464,7 +4466,6 @@ window.__ModuleLoader__.load({
                     historyRequest.current?.abort()
                     historyRequest.current = null
                     setTab(item.id)
-                    setMinuteLimit(96)
                     setHistoryLoad(null)
                     setRetryToken(0)
                   },
