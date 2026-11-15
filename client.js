@@ -947,10 +947,10 @@ window.__ModuleLoader__.load({
 .dshst-chartCol { flex: 1 1 auto; min-width: 0; }
 .dshst-book {
   display: flex;
-  flex: 0 0 84px;
+  flex: 0 0 86px;
   flex-direction: column;
   gap: 2px;
-  width: 84px;
+  width: 86px;
   min-width: 0;
   padding-left: 2px;
   border-left: 1px solid var(--dsw-alias-border-l1);
@@ -959,7 +959,7 @@ window.__ModuleLoader__.load({
   display: flex;
   justify-content: space-between;
   gap: 4px;
-  font-size: 8px;
+  font-size: 8.5px;
   color: var(--dsw-alias-label-secondary);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -968,14 +968,14 @@ window.__ModuleLoader__.load({
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 0;
-  font-size: 8px;
-  line-height: 12px;
+  font-size: 8.5px;
+  line-height: 13px;
   font-variant-numeric: tabular-nums;
 }
 .dshst-bookRow { display: flex; align-items: baseline; gap: 2px; min-width: 0; white-space: nowrap; }
-.dshst-bookLabel { flex: 0 0 12px; white-space: nowrap; color: var(--dsw-alias-label-secondary); font-size: 7px; }
-.dshst-bookPrice { flex: 0 0 32px; text-align: left; font-size: 8px; }
-.dshst-bookVolume { flex: 0 0 28px; margin-left: 0; text-align: right; color: var(--dsw-alias-label-secondary); font-size: 7px; }
+.dshst-bookLabel { flex: 0 0 14px; white-space: nowrap; color: var(--dsw-alias-label-secondary); font-size: 8px; }
+.dshst-bookPrice { flex: 0 0 35px; text-align: left; font-size: 9.5px; }
+.dshst-bookVolume { flex: 0 0 29px; margin-left: 0; text-align: right; color: var(--dsw-alias-label-secondary); font-size: 8px; }
 @media (max-width: 720px) {
   .dshst-chartRow { flex-direction: column; }
   .dshst-book { flex-basis: auto; width: 100%; border-left: 0; border-top: 1px solid var(--dsw-alias-border-l1); padding: 6px 0 0; }
