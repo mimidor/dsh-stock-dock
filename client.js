@@ -3365,7 +3365,14 @@ window.__ModuleLoader__.load({
      * separator per trading day when several days are overlaid.
      */
     function TrendChart(props) {
-      const points = Array.isArray(props.points) ? props.points : []
+      const rawPoints = Array.isArray(props.points) ? props.points : []
+      // Defensive against old disk-cache pages written before the STAR Market
+      // lot-size fix: an average 100x below price must not flatten the axis.
+      const points = rawPoints.map((point) => {
+        if (typeof point.avg !== 'number' || !Number.isFinite(point.avg) || point.avg <= 0) return point
+        if (typeof point.price !== 'number' || point.price <= 0) return { ...point, avg: null }
+        return point.avg < point.price / 10 || point.avg > point.price * 10 ? { ...point, avg: null } : point
+      })
       const prevClose = typeof props.prevClose === 'number' ? props.prevClose : null
       const baseline = Array.isArray(props.baseline) ? props.baseline : []
       const baselineAt = new Map()
