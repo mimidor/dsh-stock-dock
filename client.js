@@ -4147,6 +4147,12 @@ window.__ModuleLoader__.load({
             if (payload.ok !== true) throw new Error(payload.error || 'chart-failed')
             if (controller.signal.aborted) return
             setSeries((currentSeries) => ({ ...currentSeries, [key]: { ok: true, at: Date.now(), payload } }))
+            // A history page already on disk should be usable immediately, but
+            // the visible window stays short. Upgrade the requested limit once;
+            // the ECharts initial-start logic keeps the first paint at ~96 bars.
+            if (minuteTab && typeof payload.available === 'number' && payload.available > (payload.rows?.length ?? 0) && payload.available !== minuteLimit) {
+              setMinuteLimit(payload.available)
+            }
           } catch (failure) {
             if (controller.signal.aborted) return
             setSeries((currentSeries) => ({
