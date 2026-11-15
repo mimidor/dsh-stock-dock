@@ -2815,6 +2815,9 @@ window.__ModuleLoader__.load({
 
     function EChartKline(props) {
       const rows = Array.isArray(props.rows) ? props.rows : []
+      const rowsRef = useRef(rows)
+      rowsRef.current = rows
+      const hasRows = rows.length >= 2
       const t = props.t ?? ((key) => key)
       const [lib, setLib] = useState(null)
       const [failed, setFailed] = useState(false)
@@ -2853,7 +2856,7 @@ window.__ModuleLoader__.load({
       }, [])
 
       useEffect(() => {
-        if (!lib || !hostRef.current || rows.length < 2) return undefined
+        if (!lib || !hostRef.current || !hasRows) return undefined
         const host = hostRef.current
         let chart
         try {
@@ -2881,7 +2884,7 @@ window.__ModuleLoader__.load({
             [event.clientX - box.left, event.clientY - box.top],
           )
           if (typeof value !== 'number' || !Number.isFinite(value)) return null
-          return Math.max(0, Math.min(rows.length - 1, Math.round(value)))
+          return Math.max(0, Math.min(rowsRef.current.length - 1, Math.round(value)))
         }
         let selecting = null
         const down = (event) => {
@@ -2928,7 +2931,7 @@ window.__ModuleLoader__.load({
           chart.dispose()
           chartRef.current = null
         }
-      }, [lib, rows.length])
+      }, [lib, hasRows])
 
       useEffect(() => {
         const chart = chartRef.current
@@ -4146,15 +4149,22 @@ window.__ModuleLoader__.load({
             // as an error so the panel offers a retry instead of an empty chart.
             if (payload.ok !== true) throw new Error(payload.error || 'chart-failed')
             if (controller.signal.aborted) return
-            setSeries((currentSeries) => ({ ...currentSeries, [key]: { ok: true, at: Date.now(), payload } }))
             // A history page already on disk should be usable immediately, but
-            // the visible window stays short. Upgrade the requested limit once;
-            // the ECharts initial-start logic keeps the first paint at ~96 bars.
+            // do not paint the short page first: that causes a visible dense
+            // flash before the full page arrives. Upgrade first, render once.
             const available = typeof payload.available === 'number' ? payload.available : 0
-            if (available > (payload.rows?.length ?? 0)) {
-              if (minuteTab && available !== minuteLimit) setMinuteLimit(available)
-              else if (!minuteTab && historyYears === 0) setHistoryYears('all')
+            const needsUpgrade = available > (payload.rows?.length ?? 0)
+            if (needsUpgrade) {
+              if (minuteTab && available !== minuteLimit) {
+                setMinuteLimit(available)
+                return
+              }
+              if (!minuteTab && historyYears === 0) {
+                setHistoryYears('all')
+                return
+              }
             }
+            setSeries((currentSeries) => ({ ...currentSeries, [key]: { ok: true, at: Date.now(), payload } }))
           } catch (failure) {
             if (controller.signal.aborted) return
             setSeries((currentSeries) => ({
