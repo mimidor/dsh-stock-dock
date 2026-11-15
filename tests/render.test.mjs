@@ -1008,3 +1008,24 @@ test('the K-line history buttons request 1/3/5 years', async () => {
   assert.ok(calls.some((call) => call.path.includes('/kline') && call.path.includes('limit=250')), '1 year asks for 250 daily bars')
   assert.ok(findAll(tree, (element) => element.tag === 'button' && textOf(element) === '5年').length > 0)
 })
+
+test('switching groups hides the previous list until the target list arrives', async () => {
+  const payload = quotesPayload()
+  payload.groups = [{ id: 'default', name: '自选', count: 2 }, { id: 'market', name: '大盘', count: 0 }]
+  const { harness, component, t, calls } = boot({ quotes: payload })
+  const original = globalThis.fetch
+  let resolveGroup
+  globalThis.fetch = (url, init) => String(url).includes('group=market')
+    ? new Promise((resolve) => { resolveGroup = resolve })
+    : original(url, init)
+  harness.mount(component, { t })
+  let tree = await harness.settle()
+  click(findAll(tree, (node) => hasClass(node, 'dshst-pill') && textOf(node) === '大盘0')[0])
+  tree = await harness.settle()
+  assert.equal(findAll(tree, (node) => hasClass(node, 'dshst-card')).length, 0)
+  assert.equal(calls.some((call) => call.path === '/config'), false)
+  resolveGroup(new Response(JSON.stringify({ ...payload, activeGroup: 'market', quotes: [], symbols: [] })))
+  tree = await harness.settle()
+  assert.equal(findAll(tree, (node) => hasClass(node, 'dshst-card')).length, 0)
+  assert.equal(findAll(tree, (node) => hasClass(node, 'dshst-pill') && textOf(node) === '大盘0')[0].props['data-active'], 'true')
+})

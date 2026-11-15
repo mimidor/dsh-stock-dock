@@ -5147,6 +5147,8 @@ window.__ModuleLoader__.load({
       const [loading, setLoading] = useState(true)
       const [collapsed, setCollapsed] = useState(readCollapsed)
       const [formOpen, setFormOpen] = useState(false)
+      const [pendingGroup, setPendingGroup] = useState(null)
+      const pendingGroupRef = useRef(null)
       const [selected, setSelected] = useState(null)
       const [notice, setNotice] = useState('')
       const [failures, setFailures] = useState(0)
@@ -5298,6 +5300,7 @@ window.__ModuleLoader__.load({
         const group = typeof options?.group === 'string' && options.group !== '' ? options.group : ''
         if (!active) return
         if (typeof document !== 'undefined' && document.hidden) return
+        if (pendingGroupRef.current && group !== pendingGroupRef.current) return
         // A request that never settles must not freeze every later tick. A group
         // switch or a manual refresh is allowed to supersede it; the sequence
         // guard below drops the older answer instead of overwriting the new one.
@@ -5518,20 +5521,25 @@ window.__ModuleLoader__.load({
       }
 
       const switchGroup = async (id) => {
-        const previousGroup = data?.activeGroup
-        // Highlight the pill before the round trip; otherwise a poll in flight
-        // can make the click look ignored for up to five seconds.
-        setData((current) => (current ? { ...current, activeGroup: id } : current))
+        if (pendingGroupRef.current || id === data?.activeGroup) return
+        pendingGroupRef.current = id
+        setPendingGroup(id)
+        loadSeq.current += 1
+        refreshing.current.busy = false
+        setFormOpen(false)
         setSelected(null)
         try {
           const payload = await api('/groups', { method: 'POST', body: { action: 'activate', id } })
           if (payload.ok !== true) throw new Error(payload.error || 'group-switch-failed')
-          // Force a fresh page even if an auto poll is still running, and name
-          // the group so the answer cannot belong to the previous selection.
-          await load({ force: true, group: id })
+          if (alive.current) await load({ force: true, group: id })
         } catch (failure) {
-          setData((current) => (current && current.activeGroup === id ? { ...current, activeGroup: previousGroup } : current))
-          flashNotice(String(failure?.message ?? failure))
+          if (alive.current) flashNotice(String(failure?.message ?? failure))
+        } finally {
+          pendingGroupRef.current = null
+          if (alive.current) {
+            setPendingGroup(null)
+            if (!refreshing.current.busy) setBusy(false)
+          }
         }
       }
 
@@ -5589,6 +5597,7 @@ window.__ModuleLoader__.load({
       }
 
       const saveSymbols = async (list) => {
+        if (pendingGroupRef.current || !data?.activeGroup) return
         try {
           const payload = await api('/config', { method: 'POST', body: { symbols: list, group: data?.activeGroup } })
           if (payload.ok !== true) throw new Error(payload.error || 'save-failed')
@@ -5661,8 +5670,10 @@ window.__ModuleLoader__.load({
       }
 
       const body = (() => {
+        if (pendingGroup) return h('div', { className: 'dshst-note' }, t('loading'))
         if (formOpen) {
           return h(SymbolForm, {
+            key: data?.activeGroup,
             t,
             group: data?.activeGroup ?? 'default',
             symbols,
@@ -5938,7 +5949,7 @@ window.__ModuleLoader__.load({
                     type: 'button',
                     className: 'dshst-pill',
                     draggable: true,
-                    'data-active': data?.activeGroup === group.id ? 'true' : 'false',
+                    'data-active': (pendingGroup ?? data?.activeGroup) === group.id ? 'true' : 'false',
                     'data-dragging': groupDrag?.from === index ? 'true' : 'false',
                     'data-drop': groupDrag && groupDrag.from !== groupDrag.over && groupDrag.over === index ? 'true' : 'false',
                     title: `${group.name} (${group.count})`,
