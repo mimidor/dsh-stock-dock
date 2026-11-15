@@ -235,6 +235,7 @@ function quotesPayload() {
       alertToast: true,
       sourceDot: true,
       showMiniChart: true,
+      showLogos: false,
       miniChartType: 'intraday',
       volumeAlert: true,
       volumeAlertPct: 100,
@@ -281,6 +282,7 @@ const settingsPayload = () => ({
   settings: quotesPayload().settings,
   prefs: {
     showMA: true,
+    showLogos: true,
     showVolume: true,
     showMiniChart: true,
     showOrderBook: true,

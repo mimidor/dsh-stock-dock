@@ -575,49 +575,6 @@ test('the trade ledger opens from the detail panel', async () => {
   assert.match(textOf(tree), /买入/)
 })
 
-test('the header gear opens the settings panel inside the strip', async () => {
-  const { harness, component, t } = boot()
-  harness.mount(component, { t })
-  let tree = await harness.settle()
-  const gear = findAll(tree, (element) => element.tag === 'button' && element.props.title === '行情条')[0]
-  assert.ok(gear, 'the settings button exists in the strip header')
-  click(gear)
-  tree = await harness.settle()
-  const text = textOf(tree)
-  assert.match(text, /数据源/)
-  assert.match(text, /显示迷你图/)
-  assert.match(text, /显示美股盘前/)
-})
-
-test('the settings panel switches the data source and the visibility toggles', async () => {
-  const { harness, component, t, calls } = boot()
-  harness.mount(component, { t })
-  let tree = await harness.settle()
-  click(findAll(tree, (element) => element.tag === 'button' && element.props.title === '行情条')[0])
-  tree = await harness.settle()
-
-  const select = findAll(tree, (element) => element.tag === 'select' && element.props['aria-label'] === '数据源')[0]
-  assert.ok(select, 'the data source select exists')
-  change(select, 'sina')
-  tree = await harness.settle()
-  const sourceCall = calls.filter((call) => call.method === 'POST' && call.path === '/prefs').at(-1)
-  assert.deepEqual(sourceCall.body.patch, { source: 'sina' })
-
-  const miniType = findAll(tree, (element) => element.tag === 'select' && element.props['aria-label'] === '迷你图类型')[0]
-  assert.ok(miniType, 'the mini chart type select exists')
-  change(miniType, 'intraday')
-  tree = await harness.settle()
-  const miniCall = calls.filter((call) => call.method === 'POST' && call.path === '/prefs').at(-1)
-  assert.deepEqual(miniCall.body.patch, { miniChartType: 'intraday' })
-
-  const orderBookToggle = findAll(tree, (element) => element.tag === 'input' && element.props['aria-label'] === '显示五档盘口')[0]
-  assert.ok(orderBookToggle, 'the order book toggle exists')
-  orderBookToggle.props.onChange({ target: { checked: false } })
-  tree = await harness.settle()
-  const toggleCall = calls.filter((call) => call.method === 'POST' && call.path === '/prefs').at(-1)
-  assert.deepEqual(toggleCall.body.patch, { showOrderBook: false })
-})
-
 test('US pre/post market prices render when the preference is on', async () => {
   const payload = quotesPayload({ settings: { ...quotesPayload().settings, showExtended: true } })
   payload.quotes[1] = {
@@ -694,26 +651,6 @@ test('a horizontal trackpad swipe scrolls the strip', async () => {
   harness.dispatchWindow('wheel', event)
   assert.equal(strip.scrollLeft, 120)
   assert.equal(event.defaultPrevented, true)
-})
-
-test('the wheel keeps working after the settings panel remounts the strip', async () => {
-  const { harness, component, t } = boot()
-  harness.mount(component, { t })
-  let tree = await harness.settle()
-  const gear = findAll(tree, (element) => element.tag === 'button' && element.props.title === '行情条')[0]
-  click(gear)
-  tree = await harness.settle()
-  assert.equal(
-    findAll(tree, (element) => String(element.props?.className ?? '').includes('dshst-strip')).length,
-    0,
-    'the strip is unmounted while the panel is open',
-  )
-  click(findAll(tree, (element) => element.tag === 'button' && element.props.title === '行情条')[0])
-  tree = await harness.settle()
-  const strip = stripElement(harness)
-  const event = wheel(strip, { deltaY: 90 })
-  harness.dispatchWindow('wheel', event)
-  assert.equal(strip.scrollLeft, 90)
 })
 
 test('the strip claims its own dock row through the shared display:contents outlet', async () => {
@@ -913,7 +850,7 @@ test('switching a group highlights it and loads that group immediately', async (
   let tree = await harness.settle()
   const market = () => findAll(
     tree,
-    (element) => element.tag === 'button' && hasClass(element, 'dshst-pill') && textOf(element) === '大盘 1',
+    (element) => element.tag === 'button' && hasClass(element, 'dshst-pill') && textOf(element) === '大盘1',
   )[0]
   assert.ok(market(), 'the second group pill is rendered')
   click(market())

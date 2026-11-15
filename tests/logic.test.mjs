@@ -10,7 +10,7 @@ import {
   normalizeAlert,
   rearmAlert,
 } from '../lib/alerts.js'
-import { normalizePrefs, normalizeSettings, publicSettings } from '../lib/config.js'
+import { normalizeMaPeriods, normalizePrefs, normalizeSettings, publicSettings } from '../lib/config.js'
 import { extendedWindow, freshnessByMarket, marketState, parseQuoteDate, sessionFor } from '../lib/session.js'
 import { isIndexSymbol, normalizeSymbol, parseSymbols } from '../lib/symbols.js'
 import { buildToolDefinition } from '../lib/tool.js'
@@ -156,4 +156,11 @@ test('index symbols are told apart from stocks and ETFs', () => {
   for (const symbol of ['sh600519', 'sz000001', 'sh510300', 'sz159915', 'hk00700', 'usAAPL', 'usIXIC']) {
     assert.equal(isIndexSymbol(symbol), false, symbol)
   }
+})
+
+test('custom MA periods are normalized and bounded', () => {
+  assert.deepEqual(normalizeMaPeriods('5, 10, 20, 60'), [5, 10, 20, 60])
+  assert.deepEqual(normalizeMaPeriods('20,20,0,999,abc,30'), [20, 30])
+  assert.deepEqual(normalizeMaPeriods([]), [5, 10, 20, 60])
+  assert.deepEqual(normalizePrefs({ maPeriods: [7, 21, 55] }).maPeriods, [7, 21, 55])
 })

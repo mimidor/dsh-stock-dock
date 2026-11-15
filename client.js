@@ -134,6 +134,10 @@ window.__ModuleLoader__.load({
       groupName: '分组名',
       deleteGroup: '删除分组',
       settingsTitle: '行情条',
+      settingsTabGeneral: '常规',
+      settingsTabCharts: '图表',
+      settingsTabAlerts: '提醒',
+      settingsTabGroups: '分组',
       chartCache: '图表缓存',
       clearCache: '清除缓存',
       refreshSeconds: '刷新间隔（秒）',
@@ -151,6 +155,16 @@ window.__ModuleLoader__.load({
       defaultPeriod: '默认周期',
       defaultTrendDays: '默认分时天数',
       showMA: '显示均线',
+      compare: '叠加对比',
+      loadMoreHistory: '加载更多历史',
+      historyCurrent: '当前 {n} 根',
+      loadAllHistory: '加载全部',
+      historyLoading: '正在加载历史',
+      historyLoaded: '已加载 {n} 根',
+      historyPartial: '已加载 {n} 根，剩余失败',
+      changePctLabel: '涨跌幅',
+      compareNone: '不叠加',
+      maPeriods: '均线周期',
       showVolume: '显示成交量',
       alertToast: '预警弹提示',
       volumeAlert: '放量提醒（5分钟）',
@@ -186,6 +200,7 @@ window.__ModuleLoader__.load({
       dataSource: '数据源',
       sourceAuto: '自动（腾讯 → 新浪 → 东财）',
       showMiniChart: '显示迷你图',
+      showLogos: '显示标的 logo',
       showOrderBook: '显示五档盘口',
       showStats: '显示指标行',
       showExtended: '显示美股盘前 / 盘后',
@@ -307,6 +322,10 @@ window.__ModuleLoader__.load({
       groupName: 'Group name',
       deleteGroup: 'Delete group',
       settingsTitle: 'Quote strip',
+      settingsTabGeneral: 'General',
+      settingsTabCharts: 'Charts',
+      settingsTabAlerts: 'Alerts',
+      settingsTabGroups: 'Groups',
       chartCache: 'Chart cache',
       clearCache: 'Clear cache',
       refreshSeconds: 'Refresh seconds',
@@ -324,6 +343,16 @@ window.__ModuleLoader__.load({
       defaultPeriod: 'Default period',
       defaultTrendDays: 'Default intraday days',
       showMA: 'Show moving averages',
+      compare: 'Compare',
+      loadMoreHistory: 'Load more',
+      historyCurrent: 'Current: {n} bars',
+      loadAllHistory: 'Load all',
+      historyLoading: 'Loading history',
+      historyLoaded: 'Loaded {n} bars',
+      historyPartial: 'Loaded {n} bars; the rest failed',
+      changePctLabel: 'Change',
+      compareNone: 'None',
+      maPeriods: 'MA periods',
       showVolume: 'Show volume',
       alertToast: 'Toast on alert',
       volumeAlert: 'Volume alert (5m)',
@@ -359,6 +388,7 @@ window.__ModuleLoader__.load({
       dataSource: 'Data source',
       sourceAuto: 'Auto (Tencent → Sina → Eastmoney)',
       showMiniChart: 'Show mini chart',
+      showLogos: 'Show symbol logos',
       showOrderBook: 'Show order book',
       showStats: 'Show metrics row',
       showExtended: 'Show US pre/post market',
@@ -546,6 +576,23 @@ window.__ModuleLoader__.load({
   background: color-mix(in srgb, var(--dsw-alias-brand-primary) 6%, var(--dsw-alias-bg-layer-1));
   box-shadow: inset 0 0 0 1px var(--dsw-alias-brand-primary), var(--dsw-elevation-soft, 0 2px 8px rgba(0, 0, 0, 0.06));
 }
+.dshst-logo,
+.dshst-logoFallback {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  border-radius: 5px;
+  object-fit: contain;
+  background: var(--dsw-alias-bg-layer-2);
+}
+.dshst-logoFallback {
+  display: inline-grid;
+  place-items: center;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 9px;
+  font-weight: 600;
+  border: 1px solid var(--dsw-alias-border-l1);
+}
 .dshst-cardMain {
   display: flex;
   flex-direction: column;
@@ -618,6 +665,49 @@ window.__ModuleLoader__.load({
 .dshst-chart { display: block; flex: 0 0 auto; animation: dshst-fade-in 220ms var(--dshst-ease); }
 .dshst-miniLine { display: block; flex: 0 0 auto; animation: dshst-fade-in 220ms var(--dshst-ease); }
 .dshst-chartWrap { position: relative; width: 100%; }
+.dshst-historyTools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+.dshst-historyButton {
+  padding: 1px 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 10px;
+  line-height: 16px;
+  cursor: pointer;
+}
+.dshst-historyButton:hover:not(:disabled) {
+  border-color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+.dshst-historyButton:disabled { opacity: 0.5; cursor: default; }
+.dshst-historyLoad {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.dshst-historyBar {
+  flex: 1 1 auto;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--dsw-alias-border-l1);
+}
+.dshst-historyBar i {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--dsw-alias-brand-primary);
+  transition: width 160ms var(--dshst-ease);
+}
 .dshst-chartNote {
   display: flex;
   align-items: center;
@@ -1073,6 +1163,9 @@ window.__ModuleLoader__.load({
   display: none;
 }
 .dshst-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 0 7px;
   border: 1px solid var(--dsw-alias-border-l1);
   border-radius: 999px;
@@ -1094,6 +1187,29 @@ window.__ModuleLoader__.load({
 .dshst-pill[data-drop="true"] {
   border-color: var(--dsw-alias-label-primary);
   box-shadow: inset 0 0 0 1px var(--dsw-alias-label-primary);
+}
+.dshst-pillName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dshst-pillCount {
+  display: inline-grid;
+  place-items: center;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 9px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.dshst-pillCount[data-empty="true"] {
+  background: transparent;
+  border: 1px solid var(--dsw-alias-border-l1);
+  color: var(--dsw-alias-label-tertiary);
+}
+.dshst-pill[data-active="true"] .dshst-pillCount {
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary) 14%, transparent);
+  color: var(--dsw-alias-label-primary);
 }
 .dshst-pill[data-active="true"] {
   border-color: var(--dsw-alias-brand-primary);
@@ -1142,6 +1258,32 @@ window.__ModuleLoader__.load({
 }
 .dshst-cacheRow { display: flex; align-items: center; gap: 8px; flex: 1 1 auto; min-width: 0; }
 .dshst-cacheRow .dshst-link { margin-left: auto; white-space: nowrap; flex: 0 0 auto; }
+.dshst-settingsTabs {
+  display: flex;
+  gap: 2px;
+  margin: 2px 0 6px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+  flex-wrap: wrap;
+}
+.dshst-settingsTab {
+  padding: 3px 10px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.dshst-settingsTab[data-active="true"] {
+  color: var(--dsw-alias-label-primary);
+  border-bottom-color: var(--dsw-alias-label-primary);
+  font-weight: 600;
+}
+.dshst-settings[data-tab="general"] [data-section]:not([data-section="general"]),
+.dshst-settings[data-tab="charts"] [data-section]:not([data-section="charts"]),
+.dshst-settings[data-tab="alerts"] [data-section]:not([data-section="alerts"]),
+.dshst-settings[data-tab="groups"] [data-section]:not([data-section="groups"]) { display: none; }
 .dshst-settingsRow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .dshst-settingsRow > label { min-width: 132px; color: var(--dsw-alias-label-secondary); }
 .dshst-settingsGroup { display: flex; flex-direction: column; gap: 4px; }
@@ -1156,7 +1298,8 @@ window.__ModuleLoader__.load({
   background: transparent;
   opacity: 0.8;
   transition: opacity 0.15s;
-  pointer-events: none;
+  pointer-events: auto;
+  cursor: pointer;
 }
 .dshst-scrollWrap:hover .dshst-scrollTrack {
   opacity: 1;
@@ -1170,7 +1313,10 @@ window.__ModuleLoader__.load({
   border-radius: 2px;
   background: var(--dsw-alias-label-secondary);
   transition: left 80ms linear;
+  cursor: grab;
 }
+.dshst-scrollThumb:active { cursor: grabbing; }
+.dshst-scrollThumb[data-dragging="true"] { transition: none; }
 .dshst-addCard {
   flex: 0 0 auto;
   align-self: stretch;
@@ -1320,6 +1466,9 @@ window.__ModuleLoader__.load({
           ? document.querySelector(`style[data-plugin-css="${STYLE_ID}"]`)
           : null
       if (existing) {
+        // HMR can replace the client factory while the old <style> remains;
+        // refresh its text instead of silently keeping stale rules.
+        existing.textContent = CSS
         styleInjected = true
         return
       }
@@ -1482,7 +1631,17 @@ window.__ModuleLoader__.load({
       'var(--dsw-alias-brand-primary)',
       'color-mix(in srgb, var(--dsw-alias-brand-primary) 55%, var(--dsw-alias-label-secondary))',
       'var(--dsw-alias-label-secondary)',
+      'var(--dsw-alias-state-error-primary)',
+      'var(--dsw-alias-state-success-primary)',
     ]
+    const maColorAt = (index) => MA_COLORS[index % MA_COLORS.length]
+    const maPeriodsOf = (value) => {
+      const list = (Array.isArray(value) ? value : String(value ?? '').split(/[,\s，]+/))
+        .map((entry) => Math.round(Number.parseFloat(entry)))
+        .filter((entry) => Number.isFinite(entry) && entry >= 1 && entry <= 250)
+      const unique = [...new Set(list)].slice(0, 6)
+      return unique.length > 0 ? unique : MA_WINDOWS
+    }
 
     /**
      * Volume intensity tiers: red for a heavy expansion, orange for a normal
@@ -1627,6 +1786,7 @@ window.__ModuleLoader__.load({
       const height = props.height
       const block = Boolean(props.block)
       const showMA = block && props.showMA !== false
+      const maPeriods = maPeriodsOf(props.maPeriods)
       const showVolume = block && props.showVolume !== false
       const t = props.t ?? ((key) => key)
       const minutePeriod = props.period === 'm5' || props.period === 'm15' || props.period === 'm30' || props.period === 'm60'
@@ -1919,6 +2079,40 @@ window.__ModuleLoader__.load({
         }
       }
 
+      if (minutePeriod) {
+        const seenDays = new Set()
+        rows.forEach((row, index) => {
+          const day = dayKeyOf(row.date)
+          if (!/^\d{8}$/.test(day) || seenDays.has(day)) return
+          seenDays.add(day)
+          if (index === 0) return
+          const x = step * index
+          children.push(
+            h('line', {
+              key: `day${day}`,
+              x1: x,
+              x2: x,
+              y1: inset,
+              y2: height,
+              style: { stroke: 'var(--dsw-alias-border-l2)', strokeDasharray: '2 3', strokeOpacity: 0.65 },
+              strokeWidth: 1,
+              vectorEffect: 'non-scaling-stroke',
+            }),
+            h(
+              'text',
+              {
+                key: `dayLabel${day}`,
+                x: x + 2,
+                y: inset + 8,
+                style: { fill: 'var(--dsw-alias-label-secondary)', fontSize: '8px' },
+                pointerEvents: 'none',
+              },
+              shortDate(day),
+            ),
+          )
+        })
+      }
+
       if (selectedRange) {
         children.push(
           ...rangeMarks({
@@ -1941,7 +2135,7 @@ window.__ModuleLoader__.load({
       }
 
       if (showMA) {
-        MA_WINDOWS.forEach((window, order) => {
+        maPeriods.forEach((window, order) => {
           if (rows.length < window) return
           const values = movingAverage(rows, window)
           const points = values
@@ -1956,7 +2150,7 @@ window.__ModuleLoader__.load({
               key: `ma${window}`,
               points,
               fill: 'none',
-              style: { stroke: MA_COLORS[order] },
+              style: { stroke: maColorAt(order) },
               strokeWidth: 1,
               vectorEffect: 'non-scaling-stroke',
               opacity: 0.9,
@@ -2210,6 +2404,43 @@ window.__ModuleLoader__.load({
       return { color: theme.border, opacity: 0.9 }
     }
 
+    function echartsDayLines(rows, theme, withLabels) {
+      const seen = new Set()
+      const lines = []
+      rows.forEach((row, index) => {
+        const day = String(row.date ?? '').slice(0, 8)
+        if (!/^\d{8}$/.test(day) || seen.has(day)) return
+        seen.add(day)
+        if (index === 0) return
+        lines.push({
+          xAxis: String(row.date),
+          lineStyle: { color: theme.muted, type: 'dashed', width: 1, opacity: 0.45 },
+          ...(withLabels
+            ? { label: { show: true, formatter: shortDate(day), color: theme.muted, fontSize: 9, position: 'insideEndTop' } }
+            : { label: { show: false } }),
+        })
+      })
+      return lines
+    }
+
+    function echartsDayOpenPoints(rows, theme) {
+      const seen = new Set()
+      const points = []
+      rows.forEach((row) => {
+        const day = String(row.date ?? '').slice(0, 8)
+        if (!/^\d{8}$/.test(day) || seen.has(day)) return
+        seen.add(day)
+        points.push({
+          coord: [shortDate(row.date), row.low],
+          symbol: 'circle',
+          symbolSize: 3,
+          itemStyle: { color: theme.brand },
+          label: { show: false },
+        })
+      })
+      return points
+    }
+
     function echartsRangeMarks(rows, range, theme, t, holdingCost, up, down) {
       const dates = rows.map((row) => shortDate(row.date))
       const marks = {
@@ -2229,6 +2460,7 @@ window.__ModuleLoader__.load({
           data: [],
         },
       }
+      marks.markPoint.data = echartsDayOpenPoints(rows, theme)
       if (range && range.end > range.start) {
         const start = Math.max(0, range.start)
         const end = Math.min(rows.length - 1, range.end)
@@ -2242,7 +2474,7 @@ window.__ModuleLoader__.load({
         ]
         const spread = high.high - low.low
         const spreadPct = low.low > 0 ? (spread / low.low) * 100 : null
-        marks.markPoint.data = [
+        marks.markPoint.data.push(
           {
             coord: [shortDate(high.date), high.high],
             value: `${t('high')} ${formatPrice(high.high)}`,
@@ -2265,7 +2497,7 @@ window.__ModuleLoader__.load({
             itemStyle: { color: 'transparent' },
             label: { show: true, position: 'left', color: theme.muted, fontSize: 9, distance: 4 },
           },
-        ]
+        )
       }
       if (typeof holdingCost === 'number' && holdingCost > 0) {
         marks.markLine.data.push({
@@ -2273,14 +2505,26 @@ window.__ModuleLoader__.load({
           lineStyle: { color: theme.warn, type: 'dashed', width: 1, opacity: 0.8 },
         })
       }
+      marks.markLine.data.push(...echartsDayLines(rows, theme, true))
       return marks
     }
 
-    function buildEChartOption({ rows, t, colorMode, showMA, showVolume, period, holdingCost, zoom, theme }) {
+    function buildEChartOption({ rows, t, colorMode, showMA, showVolume, period, holdingCost, zoom, theme, maPeriods, compareRows }) {
       const dates = rows.map((row) => shortDate(row.date))
       const up = colorMode === 'intl' ? theme.success : theme.error
       const down = colorMode === 'intl' ? theme.error : theme.success
       const minute = period === 'm5' || period === 'm15' || period === 'm30' || period === 'm60'
+      const dayStarts = new Set()
+      if (minute) {
+        let lastDay = ''
+        rows.forEach((row, index) => {
+          const day = String(row.date ?? '').slice(0, 8)
+          if (day !== lastDay) {
+            lastDay = day
+            dayStarts.add(index)
+          }
+        })
+      }
       const baseline = minute ? minuteVolumeBaseline(rows) : new Map()
       const hasVolume = showVolume !== false
       const axisIndexes = hasVolume ? [0, 1] : [0]
@@ -2293,8 +2537,23 @@ window.__ModuleLoader__.load({
           data: dates,
           boundaryGap: true,
           axisLine: { lineStyle: { color: theme.border } },
-          axisTick: { show: false },
-          axisLabel: { color: theme.muted, fontSize: 9, hideOverlap: true },
+          axisLabel: minute
+            ? {
+                color: theme.muted,
+                fontSize: 9,
+                hideOverlap: true,
+                interval: (index) => dayStarts.has(index),
+                formatter: (_value, index) => shortDate(String(rows[index]?.date ?? '').slice(0, 8)),
+              }
+            : { color: theme.muted, fontSize: 9, hideOverlap: true },
+          axisTick: minute
+            ? {
+                show: true,
+                interval: (index) => dayStarts.has(index),
+                length: 5,
+                lineStyle: { color: theme.muted, width: 1 },
+              }
+            : { show: false },
           splitLine: { show: false },
           axisPointer: { label: { backgroundColor: theme.muted } },
           gridIndex: 0,
@@ -2346,17 +2605,30 @@ window.__ModuleLoader__.load({
       })
       const ghostData = rows.map((row) => baseline.get(String(row.date)) ?? null)
       const baselineData = rows.map((row) => baseline.get(String(row.date)) ?? null)
-      const maSeries = showMA === false ? [] : MA_WINDOWS.map((window, order) => ({
+      const palette = [theme.warn, theme.brand, theme.gold, theme.muted, theme.error, theme.success]
+      const maSeries = showMA === false ? [] : (maPeriodsOf(maPeriods)).map((window, order) => ({
         type: 'line',
         name: `MA${window}`,
         data: movingAverage(rows, window),
         showSymbol: false,
         smooth: false,
         silent: true,
-        lineStyle: { width: 1, color: [theme.warn, theme.brand, theme.brand, theme.muted][order], opacity: 0.85 },
+        lineStyle: { width: 1, color: palette[order % palette.length], opacity: 0.85 },
         emphasis: { disabled: true },
         z: 3,
       }))
+      const dayLines = hasVolume ? echartsDayLines(rows, theme, false) : []
+      const compareData = (() => {
+        if (!Array.isArray(compareRows) || compareRows.length === 0) return null
+        const byDate = new Map(compareRows.map((row) => [String(row.date), row]))
+        const base = compareRows.find((row) => typeof row.close === 'number' && row.close > 0)?.close
+        const anchor = rows[0]?.close
+        if (!base || !anchor) return null
+        return dates.map((date) => {
+          const row = byDate.get(date)
+          return row && typeof row.close === 'number' ? anchor * (1 + (row.close / base - 1) * 1) : null
+        })
+      })()
       const series = [
         {
           id: 'kline',
@@ -2369,6 +2641,22 @@ window.__ModuleLoader__.load({
           z: 2,
         },
         ...maSeries,
+        ...(compareData
+          ? [
+              {
+                id: 'compare',
+                type: 'line',
+                name: 'compare',
+                data: compareData,
+                showSymbol: false,
+                smooth: false,
+                silent: true,
+                lineStyle: { width: 1, color: theme.brand, type: 'dashed', opacity: 0.85 },
+                emphasis: { disabled: true },
+                z: 4,
+              },
+            ]
+          : []),
       ]
       if (hasVolume) {
         series.push(
@@ -2393,6 +2681,12 @@ window.__ModuleLoader__.load({
             barWidth: '68%',
             barGap: '-100%',
             z: 2,
+            markLine: {
+              symbol: 'none',
+              silent: true,
+              label: { show: false },
+              data: dayLines,
+            },
           },
         )
         if (baseline.size > 0) {
@@ -2457,8 +2751,15 @@ window.__ModuleLoader__.load({
             if (!row) return ''
             const ref = baseline.get(String(row.date))
             const ratio = typeof ref === 'number' && ref > 0 && typeof row.volume === 'number' ? row.volume / ref : null
+            const previous = index > 0 ? rows[index - 1]?.close : row.open
+            const changePct =
+              typeof previous === 'number' && previous !== 0 && typeof row.close === 'number'
+                ? ((row.close - previous) / previous) * 100
+                : null
+            const changeColor = changePct === null ? theme.muted : changePct >= 0 ? up : down
             const parts = [
               `<b>${shortDate(row.date)}</b>`,
+              `<span style="color:${changeColor};font-weight:600">${t('changePctLabel')} ${formatPct(changePct)}</span>`,
               `${t('open')} ${formatPrice(row.open)}  ${t('high')} ${formatPrice(row.high)}`,
               `${t('low')} ${formatPrice(row.low)}  ${t('close')} ${formatPrice(row.close)}`,
               `${t('volume')} ${shortNumber(row.volume)}${ref ? `  ·  ${t('volumePrev')} ${shortNumber(ref)}${ratio === null ? '' : ` (${ratio.toFixed(2)}×)`}` : ''}`,
@@ -2592,12 +2893,14 @@ window.__ModuleLoader__.load({
             showVolume: props.showVolume,
             period: props.period,
             holdingCost: props.holdingCost,
+            maPeriods: props.maPeriods,
+            compareRows: props.compareRows,
             zoom,
             theme: chartTheme(hostRef.current),
           }),
           { notMerge: true },
         )
-      }, [lib, rows, props.colorMode, props.showMA, props.showVolume, props.period, props.holdingCost, t, themeTick])
+      }, [lib, rows, props.colorMode, props.showMA, props.showVolume, props.period, props.holdingCost, props.maPeriods, props.compareRows, t, themeTick])
 
       useEffect(() => {
         const chart = chartRef.current
@@ -2664,7 +2967,11 @@ window.__ModuleLoader__.load({
             : h('div', { className: 'dshst-echartCrosshair', style: { left: `${crosshairX}px` } }),
         ),
         minute && baseline.size > 0 ? h(VolumeLegend, { t }) : null,
-        h('div', { className: 'dshst-chartHint' }, `${t('echartsHint')} · ${rows.length}`),
+        h(
+          'div',
+          { className: 'dshst-chartHint' },
+          `${t('echartsHint')} · ${rows.length}${props.compareRows ? ` · ${t('compare')} ${props.compareLabel}` : ''}`,
+        ),
         selected && high && low
           ? h(RangeSummary, {
               t,
@@ -2753,6 +3060,29 @@ window.__ModuleLoader__.load({
           vectorEffect: 'non-scaling-stroke',
         }),
       )
+    }
+
+    function StockLogo(props) {
+      const { quote } = props
+      const [failed, setFailed] = useState(false)
+      const initial = String(quote.name ?? quote.code ?? quote.symbol ?? '?').trim().slice(0, 1).toUpperCase()
+      if (failed) {
+        return h(
+          'span',
+          { className: 'dshst-logoFallback', style: { width: '18px', height: '18px' }, title: quote.name ?? quote.symbol, 'aria-hidden': true },
+          initial,
+        )
+      }
+      return h('img', {
+        className: 'dshst-logo',
+        style: { width: '18px', height: '18px' },
+        src: `${ENDPOINT}/logo?symbol=${encodeURIComponent(quote.symbol)}`,
+        alt: '',
+        title: quote.name ?? quote.symbol,
+        loading: 'lazy',
+        decoding: 'async',
+        onError: () => setFailed(true),
+      })
     }
 
     function QuoteCard(props) {
@@ -2867,6 +3197,7 @@ window.__ModuleLoader__.load({
           'data-symbol': quote.symbol,
           ...dragProps,
         },
+        props.showLogos ? h(StockLogo, { quote, t }) : null,
         h(
           'span',
           { className: 'dshst-cardMain' },
@@ -3032,6 +3363,17 @@ window.__ModuleLoader__.load({
             if (pct > maxAbsPct) maxAbsPct = pct
           }
         }
+        // The comparison line is expressed against its own previous close. A
+        // symbol that moved further than the current one must still be visible,
+        // otherwise the axis clips the overlay entirely.
+        const comparison = props.compare
+        if (comparison && typeof comparison.prevClose === 'number' && comparison.prevClose > 0) {
+          for (const point of comparison.points ?? []) {
+            if (typeof point.price !== 'number') continue
+            const pct = Math.abs(((point.price - comparison.prevClose) / comparison.prevClose) * 100)
+            if (pct > maxAbsPct) maxAbsPct = pct
+          }
+        }
         // Keep 8% headroom and round up to a half-point so the labels read like
         // +3.00% / -3.00% rather than an arbitrary maximum.
         const boundPct = Math.ceil(Math.max(0.5, maxAbsPct * 1.08) / 0.5) * 0.5
@@ -3070,14 +3412,16 @@ window.__ModuleLoader__.load({
       const totalDays = Math.max(1, dayList.length)
       const dayIndex = new Map(dayList.map((day, index) => [day, index]))
       const timeAxis = dayList.length > 0
+      const xForPoint = (day, time) => {
+        const fraction = sessionFraction(time, props.market)
+        if (fraction === null) return null
+        const index = dayList.length > 1 ? dayIndex.get(day) ?? 0 : 0
+        return ((index + fraction) / totalDays) * width
+      }
       const scaleX = (index) => {
         if (!timeAxis) return (index / (points.length - 1)) * width
         const point = points[index]
-        if (!point) return 0
-        const fraction = sessionFraction(point.time, props.market)
-        if (fraction === null) return (index / (points.length - 1)) * width
-        const day = dayList.length > 1 ? dayIndex.get(point.day) ?? 0 : 0
-        return ((day + fraction) / totalDays) * width
+        return (point && xForPoint(point.day, point.time)) || 0
       }
       const priceLine = points.map((point, index) => `${scaleX(index).toFixed(1)},${scaleY(point.price).toFixed(1)}`).join(' ')
       const avgLine = points
@@ -3087,6 +3431,20 @@ window.__ModuleLoader__.load({
       const areaRight = scaleX(points.length - 1)
       const area = `M0,${priceHeight} L${priceLine.split(' ').join(' L')} L${areaRight},${priceHeight} Z`
       const up = props.up
+      const compareLine = (() => {
+        const info = props.compare
+        if (!info || !Array.isArray(info.points) || typeof info.prevClose !== 'number' || info.prevClose <= 0) return ''
+        return info.points
+          .map((point) => {
+            if (typeof point.price !== 'number') return null
+            const x = xForPoint(point.day, point.time)
+            if (x === null) return null
+            const y = scaleY(info.prevClose * (1 + ((point.price - info.prevClose) / info.prevClose) * 1))
+            return `${x.toFixed(1)},${y.toFixed(1)}`
+          })
+          .filter(Boolean)
+          .join(' ')
+      })()
 
       let selectedRange = null
       if (range) {
@@ -3197,6 +3555,16 @@ window.__ModuleLoader__.load({
               points: avgLine,
               fill: 'none',
               style: { stroke: 'var(--dsw-alias-label-secondary)', strokeDasharray: '3 3' },
+              strokeWidth: 1,
+              vectorEffect: 'non-scaling-stroke',
+            })
+          : null,
+        compareLine
+          ? h('polyline', {
+              key: 'compare',
+              points: compareLine,
+              fill: 'none',
+              style: { stroke: 'var(--dsw-alias-brand-primary)', strokeDasharray: '3 3', strokeOpacity: 0.85 },
               strokeWidth: 1,
               vectorEffect: 'non-scaling-stroke',
             })
@@ -3583,7 +3951,7 @@ window.__ModuleLoader__.load({
      * position editor and alerts for this symbol.
      */
     function Detail(props) {
-      const { quote, t, onClose, cycle, klineDays, prefs, onPrefs, onReload } = props
+      const { quote, t, onClose, cycle, klineDays, prefs, onPrefs, onReload, compareOptions = [] } = props
       const trend = trendClass(quote.changePct)
       const tabs = DETAIL_TABS.filter((tab) => {
         if (tab.id === 'trend') return quote.market !== 'us'
@@ -3594,6 +3962,10 @@ window.__ModuleLoader__.load({
       const [tab, setTab] = useState(initialTab)
       const [adjust, setAdjust] = useState(prefs.adjust)
       const [historyYears, setHistoryYears] = useState(0)
+      const [minuteLimit, setMinuteLimit] = useState(96)
+      const [historyLoad, setHistoryLoad] = useState(null)
+      const [compareSymbol, setCompareSymbol] = useState('')
+      const [compare, setCompare] = useState(null)
       const [trendDays, setTrendDays] = useState(prefs.defaultTrendDays)
       const [showMA, setShowMA] = useState(prefs.showMA)
       const [showVolume, setShowVolume] = useState(prefs.showVolume)
@@ -3616,11 +3988,13 @@ window.__ModuleLoader__.load({
       const seriesRef = useRef(series)
       seriesRef.current = series
       const isTrend = tab === 'trend'
+      const minuteTab = tab === 'm5' || tab === 'm15' || tab === 'm30' || tab === 'm60'
+      const maxMinute = quote.market === 'cn' ? (tab === 'm60' ? 4111 : 5001) : 640
       const historyBars = tab === 'day' ? 250 : tab === 'week' ? 52 : 12
       const klineLimit = isTrend
         ? 0
         : tab === 'm5' || tab === 'm15' || tab === 'm30' || tab === 'm60'
-          ? 96
+          ? minuteLimit
           : tab === 'day'
             ? historyYears
               ? historyYears * historyBars
@@ -3689,6 +4063,36 @@ window.__ModuleLoader__.load({
           cancelled = true
         }
       }, [quote.symbol, tab, adjust, historyYears, trendDays, cycle, retryToken, klineDays, isTrend])
+
+      const compareName =
+        compareOptions.find((option) => option.symbol === compareSymbol)?.name ?? compareSymbol
+      useEffect(() => {
+        if (compareSymbol === '') {
+          setCompare(null)
+          return undefined
+        }
+        let cancelled = false
+        const loadCompare = async () => {
+          try {
+            const payload = isTrend
+              ? await api(`/trend?symbol=${encodeURIComponent(compareSymbol)}&days=${trendDays}`)
+              : await api(
+                  `/kline?symbol=${encodeURIComponent(compareSymbol)}&period=${tab}&adjust=${adjust}&limit=${klineLimit}`,
+                )
+            if (!cancelled && payload.ok === true) {
+              setCompare({ kind: isTrend ? 'trend' : 'kline', payload })
+            }
+          } catch {
+            if (!cancelled) setCompare(null)
+          }
+        }
+        loadCompare()
+        const timer = window.setInterval(loadCompare, isTrend ? 15_000 : 60_000)
+        return () => {
+          cancelled = true
+          window.clearInterval(timer)
+        }
+      }, [compareSymbol, isTrend, tab, adjust, trendDays, klineLimit])
 
       useEffect(() => {
         if (!tradesOpen) return undefined
@@ -3771,6 +4175,38 @@ window.__ModuleLoader__.load({
         }
       }
 
+      const loadMinuteHistory = async (target) => {
+        if (historyLoad?.loading || !minuteTab) return
+        const desired = Math.min(maxMinute, Math.max(minuteLimit, Math.round(target)))
+        if (desired <= minuteLimit) return
+        const steps = []
+        for (let next = Math.max(1000, minuteLimit + 1000); next < desired; next += 1000) steps.push(next)
+        steps.push(desired)
+        let best = minuteLimit
+        setHistoryLoad({ loading: true, loaded: best, target: desired, error: '' })
+        try {
+          for (const step of steps) {
+            const payload = await api(
+              `/kline?symbol=${encodeURIComponent(quote.symbol)}&period=${tab}&adjust=${adjust}&limit=${step}`,
+            )
+            if (payload.ok !== true) throw new Error(payload.error || 'history-failed')
+            best = Math.max(best, Array.isArray(payload.rows) ? payload.rows.length : 0)
+            setHistoryLoad({ loading: true, loaded: best, target: desired, error: '' })
+            if (best >= desired) break
+          }
+          setMinuteLimit(best)
+          setHistoryLoad({ loading: false, loaded: best, target: desired, error: '' })
+        } catch (failure) {
+          setMinuteLimit(best)
+          setHistoryLoad({
+            loading: false,
+            loaded: best,
+            target: desired,
+            error: String(failure?.message ?? failure),
+          })
+        }
+      }
+
       const seriesKey = `${tab}:${adjust}:${isTrend ? trendDays : klineLimit}`
       const entry = series[seriesKey]
 
@@ -3792,6 +4228,14 @@ window.__ModuleLoader__.load({
             baselineDays: entry.payload.baselineDays,
             days: trendDays,
             market: quote.market,
+            compare:
+              isTrend && compare?.kind === 'trend'
+                ? {
+                    points: compare.payload.points,
+                    prevClose: compare.payload.prevClose,
+                    label: compareName,
+                  }
+                : null,
             up: quote.changePct >= 0 ? 'var(--dshst-up)' : 'var(--dshst-down)',
             holdingCost: holding?.cost,
             showVolume,
@@ -3816,8 +4260,11 @@ window.__ModuleLoader__.load({
           period: tab,
           showMA,
           showVolume,
+          maPeriods: prefs.maPeriods,
           colorMode: prefs.colorMode,
           holdingCost: holding?.cost,
+          compareRows: !isTrend && compare?.kind === 'kline' ? compare.payload.rows : null,
+          compareLabel: compareName,
           label: `${quote.name ?? quote.symbol} ${t(tab === 'trend' ? 'tabTrend' : `tab${tab.charAt(0).toUpperCase()}${tab.slice(1)}`)}`,
           emptyLabel: t('noKline'),
           t,
@@ -3960,6 +4407,8 @@ window.__ModuleLoader__.load({
                   'aria-selected': tab === item.id ? 'true' : 'false',
                   onClick: () => {
                     setTab(item.id)
+                    setMinuteLimit(96)
+                    setHistoryLoad(null)
                     setRetryToken(0)
                   },
                 },
@@ -4006,6 +4455,19 @@ window.__ModuleLoader__.load({
                 h('option', { value: 'none' }, t('adjustNone')),
               )
             : null,
+          h(
+            'select',
+            {
+              className: 'dshst-select',
+              value: compareSymbol,
+              'aria-label': t('compare'),
+              onChange: (event) => setCompareSymbol(event.target.value),
+            },
+            h('option', { value: '' }, t('compareNone')),
+            ...compareOptions
+              .filter((option) => option.symbol !== quote.symbol)
+              .map((option) => h('option', { key: option.symbol, value: option.symbol }, option.name)),
+          ),
           ADJUST_TABS.has(tab)
             ? h(
                 'span',
@@ -4076,6 +4538,37 @@ window.__ModuleLoader__.load({
             `${t('trades')}${tradeList?.count ? ` ${tradeList.count}` : ''}`,
           ),
         ),
+        minuteTab
+          ? h(
+              'div',
+              { className: 'dshst-historyTools' },
+              h('span', { className: 'dshst-hint' }, t('historyCurrent').replace('{n}', String(minuteLimit))),
+              minuteLimit < maxMinute && maxMinute > 1000
+                ? h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'dshst-historyButton',
+                      disabled: historyLoad?.loading,
+                      onClick: () => loadMinuteHistory(minuteLimit < 1000 ? 1000 : minuteLimit + 1000),
+                    },
+                    `${t('loadMoreHistory')} · ${Math.min(maxMinute, minuteLimit < 1000 ? 1000 : minuteLimit + 1000)}`,
+                  )
+                : null,
+              minuteLimit < maxMinute
+                ? h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'dshst-historyButton',
+                      disabled: historyLoad?.loading,
+                      onClick: () => loadMinuteHistory(maxMinute),
+                    },
+                    t('loadAllHistory'),
+                  )
+                : null,
+            )
+          : null,
         alertOpen
           ? h(
               'div',
@@ -4197,6 +4690,30 @@ window.__ModuleLoader__.load({
               ),
             )
           : null,
+        historyLoad
+          ? h(
+              'div',
+              { className: 'dshst-historyLoad' },
+              h(
+                'div',
+                { className: 'dshst-historyBar' },
+                h('i', {
+                  style: {
+                    width: `${historyLoad.target > 0 ? Math.min(100, (historyLoad.loaded / historyLoad.target) * 100) : 0}%`,
+                  },
+                }),
+              ),
+              h(
+                'span',
+                { className: 'dshst-hint' },
+                historyLoad.loading
+                  ? `${t('historyLoading')} ${historyLoad.loaded} / ${historyLoad.target}`
+                  : historyLoad.error
+                    ? t('historyPartial').replace('{n}', String(historyLoad.loaded))
+                    : t('historyLoaded').replace('{n}', String(historyLoad.loaded)),
+              ),
+            )
+          : null,
         chart,
         prefs.showStats === false ? null : h(StatChips, { quote, t }),
         prefs.showOrderBook === false ? null : h(OrderBook, { depth: quote.depth, prevClose: quote.prevClose, t }),
@@ -4239,7 +4756,7 @@ window.__ModuleLoader__.load({
     }
 
     function SymbolForm(props) {
-      const { t, symbols, onDone } = props
+      const { t, symbols, group, onDone } = props
       const [text, setText] = useState(symbols.length > 0 ? symbols.join('\n') : '')
       const [ready, setReady] = useState(symbols.length > 0)
       const [saving, setSaving] = useState(false)
@@ -4261,7 +4778,8 @@ window.__ModuleLoader__.load({
               cache: 'no-store',
               signal: AbortSignal.timeout(9000),
             }).then((response) => response.json())
-            const list = payload?.settings?.symbols
+            const groupList = payload?.groups?.find((entry) => entry.id === group)?.symbols
+            const list = Array.isArray(groupList) ? groupList : payload?.settings?.symbols
             if (!cancelled && Array.isArray(list) && list.length > 0) setText(list.join('\n'))
           } catch {
             /* keep the empty box; typing a fresh list still works */
@@ -4271,7 +4789,7 @@ window.__ModuleLoader__.load({
         return () => {
           cancelled = true
         }
-      }, [ready])
+      }, [ready, group])
 
       // Debounced search so typing a name does not fire a request per keystroke.
       useEffect(() => {
@@ -4325,7 +4843,7 @@ window.__ModuleLoader__.load({
           const response = await fetch(`${ENDPOINT}/config`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify({ symbols: items }),
+            body: JSON.stringify({ symbols: items, group: group ?? 'default' }),
             // A stalled write must not leave the button on "saving" forever.
             signal: AbortSignal.timeout(15000),
           })
@@ -4349,7 +4867,7 @@ window.__ModuleLoader__.load({
         } finally {
           setSaving(false)
         }
-      }, [text, t, onDone])
+      }, [text, group, t, onDone])
 
       return h(
         'div',
@@ -4633,7 +5151,6 @@ window.__ModuleLoader__.load({
       const [notice, setNotice] = useState('')
       const [failures, setFailures] = useState(0)
       const [toast, setToast] = useState([])
-      const [settingsOpen, setSettingsOpen] = useState(false)
       const prefsRef = useRef({})
       const active = props.active !== false
       const [sparks, setSparks] = useState({})
@@ -4654,6 +5171,43 @@ window.__ModuleLoader__.load({
         if (node) restoreStripRow.current = claimOwnRow(node)
       }, [])
       const [scrollRatio, setScrollRatio] = useState(0)
+      const [thumbDragging, setThumbDragging] = useState(false)
+      const scrollDrag = useRef(null)
+      const setStripScroll = (ratio) => {
+        const element = stripRef.current
+        if (!element) return
+        const max = Math.max(0, element.scrollWidth - element.clientWidth)
+        element.scrollLeft = Math.min(1, Math.max(0, ratio)) * max
+      }
+      const startThumbDrag = (event) => {
+        const element = stripRef.current
+        if (!element) return
+        event.preventDefault?.()
+        event.stopPropagation?.()
+        const track = event.currentTarget.parentElement
+        const trackWidth = track?.getBoundingClientRect?.().width ?? 0
+        const thumbWidth = event.currentTarget.getBoundingClientRect?.().width ?? 0
+        setThumbDragging(true)
+        scrollDrag.current = {
+          x: event.clientX,
+          startLeft: element.scrollLeft,
+          max: Math.max(0, element.scrollWidth - element.clientWidth),
+          travel: Math.max(1, trackWidth - thumbWidth),
+        }
+        event.currentTarget.setPointerCapture?.(event.pointerId)
+      }
+      const moveThumbDrag = (event) => {
+        const drag = scrollDrag.current
+        const element = stripRef.current
+        if (!drag || !element) return
+        const delta = event.clientX - drag.x
+        element.scrollLeft = Math.min(drag.max, Math.max(0, drag.startLeft + (delta / drag.travel) * drag.max))
+      }
+      const endThumbDrag = (event) => {
+        scrollDrag.current = null
+        setThumbDragging(false)
+        event?.currentTarget?.releasePointerCapture?.(event.pointerId)
+      }
       // A manual refresh should confirm itself even when the market is closed
       // and every displayed value is identical; auto polls stay value-driven.
       const [manualPulse, setManualPulse] = useState(0)
@@ -4910,7 +5464,7 @@ window.__ModuleLoader__.load({
 
       useEffect(() => {
         measureStrip()
-      }, [symbols.join(','), collapsed, settingsOpen, formOpen, measureStrip])
+      }, [symbols.join(','), collapsed, formOpen, measureStrip])
 
       // Wheel-to-horizontal: a strip of thirty cards is much wider than the
       // composer and the 6 px scrollbar is a poor target. The listener lives on
@@ -5107,19 +5661,10 @@ window.__ModuleLoader__.load({
       }
 
       const body = (() => {
-        if (settingsOpen) {
-          return h(SettingsCard, {
-            t,
-            onSaved: (patch) => {
-              setData((current) => (current ? { ...current, settings: { ...current.settings, ...patch } } : current))
-              prefsRef.current = { ...prefsRef.current, ...patch }
-              load()
-            },
-          })
-        }
         if (formOpen) {
           return h(SymbolForm, {
             t,
+            group: data?.activeGroup ?? 'default',
             symbols,
             onDone: (result) => {
               setFormOpen(false)
@@ -5255,6 +5800,7 @@ window.__ModuleLoader__.load({
                   chart: prefs.showMiniChart === false ? null : sparks[quote.symbol],
                   pulse: manualPulse,
                   showMiniChart: prefs.showMiniChart !== false,
+                  showLogos: prefs.showLogos !== false,
                   showExtended: prefs.showExtended === true,
                   volumeAlert: chartType === 'intraday' ? volumeAlerts[quote.symbol] ?? null : null,
                   onSelect: () => onCardSelect(quote.symbol),
@@ -5276,8 +5822,24 @@ window.__ModuleLoader__.load({
             overflowing
               ? h(
                   'div',
-                  { className: 'dshst-scrollTrack', 'aria-hidden': true },
-                  h('div', { className: 'dshst-scrollThumb', style: { left: `${scrollRatio * 84}%` } }),
+                  {
+                    className: 'dshst-scrollTrack',
+                    'aria-hidden': true,
+                    onPointerDown: (event) => {
+                      if (event.target !== event.currentTarget) return
+                      const rect = event.currentTarget.getBoundingClientRect()
+                      if (rect.width > 0) setStripScroll((event.clientX - rect.left) / rect.width)
+                    },
+                  },
+                  h('div', {
+                    className: 'dshst-scrollThumb',
+                    style: { left: `${scrollRatio * 84}%` },
+                    'data-dragging': thumbDragging ? 'true' : 'false',
+                    onPointerDown: startThumbDrag,
+                    onPointerMove: moveThumbDrag,
+                    onPointerUp: endThumbDrag,
+                    onPointerCancel: endThumbDrag,
+                  }),
                 )
               : null,
           ),
@@ -5291,6 +5853,9 @@ window.__ModuleLoader__.load({
                 cycle: data?.updatedAt,
                 klineDays: prefs.klineDays,
                 prefs,
+                compareOptions: quotes
+                  .filter((row) => !row.error)
+                  .map((row) => ({ symbol: row.symbol, name: row.name ?? row.symbol })),
                 onPrefs: savePrefs,
                 onReload: load,
                 onClose: () => setSelected(null),
@@ -5394,7 +5959,12 @@ window.__ModuleLoader__.load({
                     },
                     onDragEnd: endGroupDrag,
                   },
-                  `${group.name} ${group.count}`,
+                  h('span', { className: 'dshst-pillName' }, group.name),
+                  h(
+                    'span',
+                    { className: 'dshst-pillCount', 'data-empty': group.count === 0 ? 'true' : 'false' },
+                    String(group.count),
+                  ),
                 ),
               ),
             )
@@ -5426,44 +5996,6 @@ window.__ModuleLoader__.load({
                 ),
               ),
             ),
-        h(
-          'button',
-          {
-            type: 'button',
-            className: 'dshst-icon',
-            'data-toggle': 'true',
-            title: t('settingsTitle'),
-            'aria-label': t('settingsTitle'),
-            'aria-expanded': settingsOpen ? 'true' : 'false',
-            onClick: () => {
-              if (collapsed) {
-                writeCollapsed(false)
-                setCollapsed(false)
-              }
-              setSettingsOpen((current) => !current)
-            },
-          },
-          h(
-            'svg',
-            { width: 14, height: 14, viewBox: '0 0 24 24', 'aria-hidden': true },
-            h('circle', {
-              cx: 12,
-              cy: 12,
-              r: 3,
-              fill: 'none',
-              stroke: 'currentColor',
-              strokeWidth: 1.8,
-            }),
-            h('path', {
-              d: 'M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z',
-              fill: 'none',
-              stroke: 'currentColor',
-              strokeWidth: 1.8,
-              strokeLinecap: 'round',
-              strokeLinejoin: 'round',
-            }),
-          ),
-        ),
         h(
           'button',
           {
@@ -5580,6 +6112,7 @@ window.__ModuleLoader__.load({
       const [draft, setDraft] = useState({ refreshSeconds: 15, klineDays: 40, colorMode: 'cn' })
       const [cacheBytes, setCacheBytes] = useState(null)
       const [clearing, setClearing] = useState(false)
+      const [settingsTab, setSettingsTab] = useState('general')
 
       useEffect(() => {
         let cancelled = false
@@ -5701,8 +6234,8 @@ window.__ModuleLoader__.load({
           ...options.map(([value, label]) => h('option', { key: value, value }, label)),
         )
 
-      const row = (label, control) =>
-        h('div', { className: 'dshst-settingsRow', key: label }, h('label', null, label), control)
+      const row = (label, control, section = 'general') =>
+        h('div', { className: 'dshst-settingsRow', key: label, 'data-section': section }, h('label', null, label), control)
 
       const formatBytes = (value) => {
         if (typeof value !== 'number' || !Number.isFinite(value)) return t('loading')
@@ -5713,7 +6246,35 @@ window.__ModuleLoader__.load({
 
       return h(
         'div',
-        { className: 'dshst dshst-settings', 'data-scheme': prefs.colorMode === 'intl' ? 'intl' : 'cn' },
+        {
+          className: 'dshst dshst-settings',
+          'data-scheme': prefs.colorMode === 'intl' ? 'intl' : 'cn',
+          'data-tab': settingsTab,
+        },
+        h(
+          'div',
+          { className: 'dshst-settingsTabs', role: 'tablist' },
+          ...[
+            ['general', t('settingsTabGeneral')],
+            ['charts', t('settingsTabCharts')],
+            ['alerts', t('settingsTabAlerts')],
+            ['groups', t('settingsTabGroups')],
+          ].map(([id, label]) =>
+            h(
+              'button',
+              {
+                key: id,
+                type: 'button',
+                role: 'tab',
+                className: 'dshst-settingsTab',
+                'data-active': settingsTab === id ? 'true' : 'false',
+                'aria-selected': settingsTab === id ? 'true' : 'false',
+                onClick: () => setSettingsTab(id),
+              },
+              label,
+            ),
+          ),
+        ),
         row(
           t('refreshSeconds'),
           h('input', {
@@ -5800,14 +6361,28 @@ window.__ModuleLoader__.load({
             t('dataSource'),
           ),
         ),
-        row(t('showMA'), toggle('showMA', t('showMA'))),
-        row(t('showVolume'), toggle('showVolume', t('showVolume'))),
-        row(t('showMiniChart'), toggle('showMiniChart', t('showMiniChart'))),
-        row(t('showOrderBook'), toggle('showOrderBook', t('showOrderBook'))),
-        row(t('showStats'), toggle('showStats', t('showStats'))),
-        row(t('showExtended'), toggle('showExtended', t('showExtended'))),
-        row(t('alertToast'), toggle('alertToast', t('alertToast'))),
-        row(t('volumeAlert'), toggle('volumeAlert', t('volumeAlert'))),
+        row(t('showMA'), toggle('showMA', t('showMA')), 'charts'),
+        row(
+          t('maPeriods'),
+          h('input', {
+            className: 'dshst-input dshst-inputSmall',
+            defaultValue: (prefs.maPeriods ?? MA_WINDOWS).join(','),
+            title: '5,10,20,60',
+            onBlur: (event) => {
+              const next = maPeriodsOf(event.target.value)
+              save({ maPeriods: next })
+            },
+          }),
+          'charts',
+        ),
+        row(t('showVolume'), toggle('showVolume', t('showVolume')), 'charts'),
+        row(t('showMiniChart'), toggle('showMiniChart', t('showMiniChart')), 'charts'),
+        row(t('showLogos'), toggle('showLogos', t('showLogos')), 'charts'),
+        row(t('showOrderBook'), toggle('showOrderBook', t('showOrderBook')), 'charts'),
+        row(t('showStats'), toggle('showStats', t('showStats')), 'charts'),
+        row(t('showExtended'), toggle('showExtended', t('showExtended')), 'charts'),
+        row(t('alertToast'), toggle('alertToast', t('alertToast')), 'alerts'),
+        row(t('volumeAlert'), toggle('volumeAlert', t('volumeAlert')), 'alerts'),
         row(
           t('volumeAlertPct'),
           h('input', {
@@ -5818,8 +6393,9 @@ window.__ModuleLoader__.load({
             value: prefs.volumeAlertPct ?? 100,
             onChange: (event) => save({ volumeAlertPct: Number(event.target.value) }),
           }),
+          'alerts',
         ),
-        row(t('sourceDot'), toggle('sourceDot', t('sourceDot'))),
+        row(t('sourceDot'), toggle('sourceDot', t('sourceDot')), 'charts'),
         row(
           t('chartCache'),
           h(
@@ -5835,7 +6411,7 @@ window.__ModuleLoader__.load({
         ),
         h(
           'div',
-          { className: 'dshst-settingsGroup' },
+          { className: 'dshst-settingsGroup', 'data-section': 'groups' },
           h('strong', null, t('groups')),
           ...groups.map((group) =>
             h(

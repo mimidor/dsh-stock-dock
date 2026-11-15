@@ -62,6 +62,7 @@ export function apply(ctx, config) {
     klines: new Map(),
     trends: new Map(),
     extended: new Map(),
+    logos: new Map(),
     health: {},
   }
   cache.disk = createDiskCache({ maps: { klines: cache.klines, trends: cache.trends } })
