@@ -4150,8 +4150,10 @@ window.__ModuleLoader__.load({
             // A history page already on disk should be usable immediately, but
             // the visible window stays short. Upgrade the requested limit once;
             // the ECharts initial-start logic keeps the first paint at ~96 bars.
-            if (minuteTab && typeof payload.available === 'number' && payload.available > (payload.rows?.length ?? 0) && payload.available !== minuteLimit) {
-              setMinuteLimit(payload.available)
+            const available = typeof payload.available === 'number' ? payload.available : 0
+            if (available > (payload.rows?.length ?? 0)) {
+              if (minuteTab && available !== minuteLimit) setMinuteLimit(available)
+              else if (!minuteTab && historyYears === 0) setHistoryYears('all')
             }
           } catch (failure) {
             if (controller.signal.aborted) return
