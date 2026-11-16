@@ -2894,6 +2894,36 @@ window.__ModuleLoader__.load({
       }
     }
 
+    function withLiveDailyBar(rows, quote) {
+      const list = Array.isArray(rows) ? rows : []
+      if (list.length === 0 || !quote || quote.error || typeof quote.price !== 'number' || quote.price <= 0) return list
+      const compact = String(quote.time ?? '').replace(/\D/g, '').slice(0, 8)
+      if (!/^\d{8}$/.test(compact)) return list
+      const last = list[list.length - 1]
+      const lastCompact = String(last?.date ?? '').replace(/\D/g, '').slice(0, 8)
+      const today = compact
+      const live = {
+        close: quote.price,
+        high: Math.max(typeof quote.high === 'number' ? quote.high : quote.price, quote.price),
+        low: Math.min(typeof quote.low === 'number' ? quote.low : quote.price, quote.price),
+        volume: typeof quote.volume === 'number' ? quote.volume : last.volume,
+      }
+      if (lastCompact === today) {
+        return [...list.slice(0, -1), { ...last, ...live }]
+      }
+      if (!lastCompact || lastCompact > today) return list
+      const date = /^\d{8}$/.test(String(last.date)) ? today : `${today.slice(0, 4)}-${today.slice(4, 6)}-${today.slice(6, 8)}`
+      return [
+        ...list,
+        {
+          date,
+          open: typeof quote.open === 'number' && quote.open > 0 ? quote.open : quote.price,
+          ...live,
+          volume: typeof quote.volume === 'number' ? quote.volume : 0,
+        },
+      ]
+    }
+
     function EChartKline(props) {
       const rows = Array.isArray(props.rows) ? props.rows : []
       const rowsRef = useRef(rows)
@@ -4655,8 +4685,9 @@ window.__ModuleLoader__.load({
             h('button', { type: 'button', className: 'dshst-link', onClick: retry }, t('retry')),
           )
         }
+        const displayRows = tab === 'day' ? withLiveDailyBar(entry.payload.rows, quote) : entry.payload.rows
         return h(EChartKline, {
-          rows: entry.payload.rows,
+          rows: displayRows,
           width: 640,
           height: 164,
           block: true,

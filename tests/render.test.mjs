@@ -989,13 +989,13 @@ test('the K-line chart zooms with the wheel and resets on double click', async (
 
   const detail = findAll(tree, (element) => hasClass(element, 'dshst-detail'))[0]
   const chart = findAll(detail, (element) => element.tag === 'svg' && hasClass(element, 'dshst-chart'))[0]
-  assert.match(textOf(tree), /40\/40/)
+  assert.match(textOf(tree), /41\/41/)
   chart.props.onWheel({ deltaY: -100, clientX: 300, currentTarget: chart, preventDefault() {} })
   tree = await harness.settle()
-  assert.match(textOf(tree), /32\/40/, 'the wheel shows a narrower window')
+  assert.match(textOf(tree), /33\/41/, 'the wheel shows a narrower window')
   chart.props.onDoubleClick()
   tree = await harness.settle()
-  assert.match(textOf(tree), /40\/40/, 'double click restores the full window')
+  assert.match(textOf(tree), /41\/41/, 'double click restores the full window')
 })
 
 test('the K-line history buttons request 1/3/5 years', async () => {
