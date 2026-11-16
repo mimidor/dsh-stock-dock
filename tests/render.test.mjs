@@ -750,10 +750,11 @@ test('the one-day intraday chart overlays the previous session volume baseline',
   assert.ok(calls.some((call) => call.path.includes('days=1') && call.path.includes('baseline=1')), 'the chart asks for the comparison')
   const text = textOf(tree)
   assert.match(text, /同期量比/)
+  assert.match(text, /昨日量/)
   assert.match(text, /放量 ↑/, 'a ratio above one is labelled as expanding volume')
   const ghosts = findAll(tree, (element) =>
     element.tag === 'rect' && element.props.style?.fill === 'var(--dsw-alias-label-secondary)' && element.props.style?.fillOpacity === 0.12)
-  assert.equal(ghosts.length, 0, 'intraday has no volume band or ghost bars')
+  assert.ok(ghosts.length > 0, 'yesterday volume is drawn as a ghost bar')
 })
 
 test('the custom scroll track appears only while the strip overflows', async () => {
