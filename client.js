@@ -198,6 +198,9 @@ window.__ModuleLoader__.load({
       sidebarModeHint: '在左侧导航增加一个行情面板，只显示选定标的',
       sidebarSymbolsHint: '逗号分隔，最多 8 个；留空时使用当前分组前 3 个',
       sidebarEmpty: '还没有配置侧栏标的',
+      intradayAxis: '分时坐标',
+      axisNormal: '普通坐标（对称）',
+      axisFill: '满占坐标（高低点）',
       dismiss: '忽略',
       hostMissing: '行情服务未加载，刷新页面或重启 DSH 后再试',
       remove: '移除',
@@ -403,6 +406,9 @@ window.__ModuleLoader__.load({
       sidebarModeHint: 'Add a quote panel to the left navigation showing only the chosen symbols',
       sidebarSymbolsHint: 'Comma-separated, up to 8; empty uses the first 3 of the active group',
       sidebarEmpty: 'No sidebar symbols configured',
+      intradayAxis: 'Intraday axis',
+      axisNormal: 'Normal (symmetric)',
+      axisFill: 'Fill (session high/low)',
       dismiss: 'Dismiss',
       hostMissing: 'The quote service is not loaded; reload the page or restart DSH',
       remove: 'Remove',
@@ -3692,7 +3698,31 @@ window.__ModuleLoader__.load({
       let min
       let max
       let yTicks = []
-      if (prevClose !== null && prevClose > 0) {
+      if (prevClose !== null && prevClose > 0 && props.axisMode === 'normal') {
+        let maxAbsPct = 0
+        for (const point of points) {
+          for (const value of [point.price, point.avg]) {
+            if (typeof value !== 'number' || !Number.isFinite(value)) continue
+            const pct = Math.abs(((value - prevClose) / prevClose) * 100)
+            if (pct > maxAbsPct) maxAbsPct = pct
+          }
+        }
+        const comparison = props.compare
+        if (comparison && typeof comparison.prevClose === 'number' && comparison.prevClose > 0) {
+          for (const point of comparison.points ?? []) {
+            if (typeof point.price !== 'number') continue
+            const pct = Math.abs(((point.price - comparison.prevClose) / comparison.prevClose) * 100)
+            if (pct > maxAbsPct) maxAbsPct = pct
+          }
+        }
+        const boundPct = Math.ceil(Math.max(0.5, maxAbsPct * 1.08) / 0.5) * 0.5
+        min = prevClose * (1 - boundPct / 100)
+        max = prevClose * (1 + boundPct / 100)
+        yTicks = [1, 0.5, 0, -0.5, -1].map((fraction) => ({
+          value: prevClose * (1 + (boundPct * fraction) / 100),
+          pct: boundPct * fraction,
+        }))
+      } else if (prevClose !== null && prevClose > 0) {
         let lowPct = Number.POSITIVE_INFINITY
         let highPct = Number.NEGATIVE_INFINITY
         for (const point of points) {
@@ -4656,6 +4686,7 @@ window.__ModuleLoader__.load({
             market: quote.market,
             up: dayUp,
             showVolume,
+            axisMode: prefs.intradayAxis,
             label: `${quote.name ?? quote.symbol} ${t('dayIntraday')} ${shortDate(dayView.date)}`,
             t,
           })
@@ -4688,6 +4719,7 @@ window.__ModuleLoader__.load({
             up: quote.changePct >= 0 ? 'var(--dshst-up)' : 'var(--dshst-down)',
             holdingCost: holding?.cost,
             showVolume,
+            axisMode: prefs.intradayAxis,
             label: `${quote.name ?? quote.symbol} ${t('tabTrend')}`,
             t,
           })
@@ -7025,6 +7057,14 @@ window.__ModuleLoader__.load({
         row(t('showOrderBook'), toggle('showOrderBook', t('showOrderBook')), 'charts'),
         row(t('showStats'), toggle('showStats', t('showStats')), 'charts'),
         row(t('showExtended'), toggle('showExtended', t('showExtended')), 'charts'),
+        row(
+          t('intradayAxis'),
+          select('intradayAxis', [
+            ['fill', t('axisFill')],
+            ['normal', t('axisNormal')],
+          ]),
+          'charts',
+        ),
         row(t('alertToast'), toggle('alertToast', t('alertToast')), 'alerts'),
         row(t('volumeAlert'), toggle('volumeAlert', t('volumeAlert')), 'alerts'),
         row(
