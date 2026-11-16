@@ -4447,6 +4447,12 @@ window.__ModuleLoader__.load({
         return () => controller.abort()
       }, [quote.symbol, tab, adjust, trendDays, cycle, retryToken, klineLimit, isTrend])
 
+      useEffect(() => {
+        if (isTrend) return undefined
+        const timer = window.setInterval(() => setRetryToken((token) => token + 1), 15_000)
+        return () => window.clearInterval(timer)
+      }, [isTrend, tab])
+
       const compareName =
         compareOptions.find((option) => option.symbol === compareSymbol)?.name ?? compareSymbol
       const compareKey = compareSymbol === '' ? '' : `${quote.symbol}:${compareSymbol}:${tab}:${adjust}:${isTrend ? trendDays : klineLimit}`
