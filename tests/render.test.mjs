@@ -944,7 +944,7 @@ test('dragging a card over another previews the gap before drop', async () => {
   assert.equal(calls.filter((call) => call.method === 'POST' && call.path === '/config').length, 0, 'nothing is saved yet')
 })
 
-test('the intraday axis is symmetric around the previous close', async () => {
+test('the intraday axis follows the actual session high and low', async () => {
   const { harness, component, t } = boot()
   harness.mount(component, { t })
   let tree = await harness.settle()
@@ -953,9 +953,9 @@ test('the intraday axis is symmetric around the previous close', async () => {
   const axis = findAll(tree, (element) => hasClass(element, 'dshst-axisY'))[0]
   assert.ok(axis, 'the intraday y-axis is mounted')
   const text = textOf(axis)
-  assert.match(text, /\+1\.00%/)
+  assert.match(text, /\+\d+\.\d+%/)
   assert.match(text, /0\.00%/)
-  assert.match(text, /-1\.00%/)
+  assert.match(text, /-\d+\.\d+%/)
 })
 
 test('dragging on the intraday chart marks a range with summary stats', async () => {

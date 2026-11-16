@@ -3686,42 +3686,51 @@ window.__ModuleLoader__.load({
       if (points.length < 2) {
         return h('div', { className: 'dshst-chartEmpty', style: { width: '100%', height: `${height}px` }, title: props.emptyLabel ?? '' })
       }
-      // Domestic intraday charts centre the price axis on the previous close:
-      // the top and bottom are the same percentage away, so a line above the
-      // dashed zero line is immediately "up" and below is "down". A cost line
-      // must never stretch this axis; it would flatten the whole session.
+      // Intraday charts use the actual session high/low rather than a forced
+      // symmetric band. If the day only falls to -1%, the lower edge is about
+      // -1.2%, not -7% merely because the upper side moved 6%.
       let min
       let max
       let yTicks = []
       if (prevClose !== null && prevClose > 0) {
-        let maxAbsPct = 0
+        let lowPct = Number.POSITIVE_INFINITY
+        let highPct = Number.NEGATIVE_INFINITY
         for (const point of points) {
           for (const value of [point.price, point.avg]) {
             if (typeof value !== 'number' || !Number.isFinite(value)) continue
-            const pct = Math.abs(((value - prevClose) / prevClose) * 100)
-            if (pct > maxAbsPct) maxAbsPct = pct
+            const pct = ((value - prevClose) / prevClose) * 100
+            if (pct < lowPct) lowPct = pct
+            if (pct > highPct) highPct = pct
           }
         }
-        // The comparison line is expressed against its own previous close. A
-        // symbol that moved further than the current one must still be visible,
-        // otherwise the axis clips the overlay entirely.
         const comparison = props.compare
         if (comparison && typeof comparison.prevClose === 'number' && comparison.prevClose > 0) {
           for (const point of comparison.points ?? []) {
             if (typeof point.price !== 'number') continue
-            const pct = Math.abs(((point.price - comparison.prevClose) / comparison.prevClose) * 100)
-            if (pct > maxAbsPct) maxAbsPct = pct
+            const pct = ((point.price - comparison.prevClose) / comparison.prevClose) * 100
+            if (pct < lowPct) lowPct = pct
+            if (pct > highPct) highPct = pct
           }
         }
-        // Keep 8% headroom and round up to a half-point so the labels read like
-        // +3.00% / -3.00% rather than an arbitrary maximum.
-        const boundPct = Math.ceil(Math.max(0.5, maxAbsPct * 1.08) / 0.5) * 0.5
-        min = prevClose * (1 - boundPct / 100)
-        max = prevClose * (1 + boundPct / 100)
-        yTicks = [1, 0.5, 0, -0.5, -1].map((fraction) => ({
-          value: prevClose * (1 + (boundPct * fraction) / 100),
-          pct: boundPct * fraction,
-        }))
+        if (!Number.isFinite(lowPct) || !Number.isFinite(highPct)) {
+          lowPct = -0.5
+          highPct = 0.5
+        }
+        const span = Math.max(0.5, highPct - lowPct)
+        const pad = Math.max(0.1, span * 0.08)
+        lowPct -= pad
+        highPct += pad
+        // Keep the previous-close reference line in view; it is the zero axis
+        // users read against, and the padding above already leaves breathing room.
+        lowPct = Math.min(0, lowPct)
+        highPct = Math.max(0, highPct)
+        min = prevClose * (1 + lowPct / 100)
+        max = prevClose * (1 + highPct / 100)
+        const step = (highPct - lowPct) / 4
+        const pctTicks = Array.from({ length: 5 }, (_, index) => highPct - step * index)
+        if (lowPct <= 0 && highPct >= 0 && !pctTicks.some((pct) => Math.abs(pct) < 0.05)) pctTicks.push(0)
+        pctTicks.sort((left, right) => right - left)
+        yTicks = pctTicks.map((pct) => ({ value: prevClose * (1 + pct / 100), pct }))
       } else {
         let low = Number.POSITIVE_INFINITY
         let high = Number.NEGATIVE_INFINITY
