@@ -3657,7 +3657,7 @@ window.__ModuleLoader__.load({
       }
       const baselineDays = typeof props.baselineDays === 'number' ? props.baselineDays : 0
       const width = 640
-      const height = 132
+      const height = 190
       const t = props.t ?? ((key) => key)
       const showVolume = props.showVolume !== false
       const [hover, setHover] = useState(null)
@@ -3743,7 +3743,7 @@ window.__ModuleLoader__.load({
       if (!Number.isFinite(min) || !Number.isFinite(max)) {
         return h('div', { className: 'dshst-chartEmpty', style: { width: '100%', height: `${height}px` }, title: props.emptyLabel ?? '' })
       }
-      const volumeBand = showVolume ? 26 : 0
+      const volumeBand = showVolume ? 32 : 0
       const priceHeight = height - volumeBand
       const inset = 6
       const scaleY = (value) => priceHeight - inset - ((value - min) / (max - min)) * (priceHeight - inset * 2)
