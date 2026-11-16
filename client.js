@@ -3659,7 +3659,9 @@ window.__ModuleLoader__.load({
       const width = 640
       const height = 190
       const t = props.t ?? ((key) => key)
-      const showVolume = props.showVolume !== false
+      // The intraday chart is for price action; volume remains available on
+      // the K-line tabs and would otherwise squeeze the price band.
+      const showVolume = false
       const [hover, setHover] = useState(null)
       const [range, setRange] = useState(null)
       const drag = useRef(null)
@@ -4154,7 +4156,6 @@ window.__ModuleLoader__.load({
             h('span', null, `${t('volumeCompare')} `, h('b', null, ratio.toFixed(2))),
           )
         })(),
-        baselineDays > 0 && baselineAt.size > 0 ? h(VolumeLegend, { t }) : null,
         selectedRange
           ? h(RangeSummary, {
               t,
@@ -4948,19 +4949,21 @@ window.__ModuleLoader__.load({
                 t('ma'),
               )
             : null,
-          h(
-            'button',
-            {
-              type: 'button',
-              className: 'dshst-toggle',
-              'data-active': showVolume ? 'true' : 'false',
-              onClick: () => {
-                setShowVolume(!showVolume)
-                onPrefs?.({ showVolume: !showVolume })
-              },
-            },
-            t('volume'),
-          ),
+          !isTrend
+            ? h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'dshst-toggle',
+                  'data-active': showVolume ? 'true' : 'false',
+                  onClick: () => {
+                    setShowVolume(!showVolume)
+                    onPrefs?.({ showVolume: !showVolume })
+                  },
+                },
+                t('volume'),
+              )
+            : null,
           h(
             'button',
             {
