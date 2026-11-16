@@ -89,7 +89,7 @@ window.__ModuleLoader__.load({
       rangeAmplitude: '振幅',
       rangeClear: '清除',
       chartZoomHint: '滚轮缩放 · Shift+拖动平移 · 双击复位',
-      echartsHint: '滚轮左右滑动 · 拖动框选区间 · 双击复位',
+      echartsHint: '滚轮左右滑动 · 双指/Ctrl 缩放 · 拖动框选 · 双击复位',
       echartsFallback: 'ECharts 不可用，已回退 SVG',
       volumePrev: '昨',
       amplitude: '振幅',
@@ -294,7 +294,7 @@ window.__ModuleLoader__.load({
       rangeAmplitude: 'Amplitude',
       rangeClear: 'Clear',
       chartZoomHint: 'Wheel to zoom · Shift-drag to pan · double-click to reset',
-      echartsHint: 'Scroll to pan · drag to select a range · double-click to reset',
+      echartsHint: 'Scroll to pan · pinch/Ctrl to zoom · drag to select · double-click to reset',
       echartsFallback: 'ECharts unavailable; fell back to SVG',
       volumePrev: 'prev',
       amplitude: 'Range',
@@ -2844,7 +2844,7 @@ window.__ModuleLoader__.load({
             end: zoomEnd,
             zoomOnMouseWheel: false,
             moveOnMouseMove: false,
-            moveOnMouseWheel: true,
+            moveOnMouseWheel: false,
             preventDefaultMouseMove: true,
           },
           {
@@ -2950,6 +2950,59 @@ window.__ModuleLoader__.load({
           return undefined
         }
         chartRef.current = chart
+        const clampPct = (value) => Math.max(0, Math.min(100, value))
+        let wheelFrame = 0
+        const wheelDelta = { pan: 0, zoom: 0, center: 50 }
+        const flushWheel = () => {
+          wheelFrame = 0
+          const current = chart.getOption?.()?.dataZoom?.[0]
+          if (!current) return
+          let start = Number.isFinite(current.start) ? current.start : 0
+          let end = Number.isFinite(current.end) ? current.end : 100
+          let span = Math.max(1, end - start)
+          if (wheelDelta.zoom !== 0) {
+            const factor = Math.exp(wheelDelta.zoom * 0.01)
+            const nextSpan = Math.max(2, Math.min(100, span * factor))
+            const center = wheelDelta.center
+            start = center - (center - start) * (nextSpan / span)
+            span = nextSpan
+            end = start + span
+          }
+          if (wheelDelta.pan !== 0) {
+            start += wheelDelta.pan
+            end += wheelDelta.pan
+          }
+          if (start < 0) {
+            end -= start
+            start = 0
+          }
+          if (end > 100) {
+            start -= end - 100
+            end = 100
+          }
+          start = clampPct(start)
+          end = clampPct(end)
+          if (end - start < 1) end = Math.min(100, start + 1)
+          chart.dispatchAction?.({ type: 'dataZoom', start, end })
+          wheelDelta.pan = 0
+          wheelDelta.zoom = 0
+        }
+        const onWheel = (event) => {
+          if (!event || typeof event.preventDefault !== 'function') return
+          event.preventDefault()
+          const scale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 100 : 1
+          const dx = (event.deltaX || 0) * scale
+          const dy = (event.deltaY || 0) * scale
+          const box = host.getBoundingClientRect()
+          wheelDelta.center = clampPct(((event.clientX - box.left) / Math.max(1, box.width)) * 100)
+          if (event.ctrlKey || event.metaKey) {
+            wheelDelta.zoom += -dy
+          } else {
+            wheelDelta.pan += -(Math.abs(dx) > Math.abs(dy) ? dx : dy) * 0.12
+          }
+          if (wheelFrame === 0) wheelFrame = requestAnimationFrame(flushWheel)
+        }
+        host.addEventListener('wheel', onWheel, { passive: false })
         const pickDay = (params) => {
           if (props.period !== 'day' || typeof props.onPickDay !== 'function') return
           const row = rowsRef.current[params?.dataIndex]
@@ -3070,6 +3123,8 @@ window.__ModuleLoader__.load({
           window.removeEventListener('blur', cancelSelection)
           if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(resizeFrame)
           host.removeEventListener('mouseleave', leave)
+          host.removeEventListener('wheel', onWheel)
+          if (wheelFrame) cancelAnimationFrame(wheelFrame)
           extremeRefreshRef.current = null
           chart.dispose()
           chartRef.current = null
