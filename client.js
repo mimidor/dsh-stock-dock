@@ -4396,7 +4396,7 @@ window.__ModuleLoader__.load({
           // a bar at the session boundary while the panel stays open. Refresh
           // either after 30 s (trend) or 60 s (K-line) so the big chart never
           // shows a window that has become days old.
-          const staleAfter = isTrend ? 30_000 : 60_000
+          const staleAfter = isTrend ? 20_000 : minuteTab ? 15_000 : 60_000
           if (Date.now() - entry.at <= staleAfter) return undefined
         }
         const controller = new AbortController()
