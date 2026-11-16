@@ -12,7 +12,7 @@ import {
 } from '../lib/alerts.js'
 import { normalizeMaPeriods, normalizePrefs, normalizeSettings, publicSettings } from '../lib/config.js'
 import { extendedWindow, freshnessByMarket, marketState, parseQuoteDate, sessionFor } from '../lib/session.js'
-import { isIndexSymbol, normalizeSymbol, parseSymbols } from '../lib/symbols.js'
+import { isIndexSymbol, normalizeSymbol, parseSymbols, secidCandidates } from '../lib/symbols.js'
 import { buildToolDefinition } from '../lib/tool.js'
 import { buildTrendPoints } from '../lib/providers/tencent.js'
 
@@ -151,10 +151,10 @@ test('the tool definition is registry shaped', async () => {
 })
 
 test('index symbols are told apart from stocks and ETFs', () => {
-  for (const symbol of ['sh000001', 'sh000688', 'sz399001', 'sz399006', 'hkHSI', 'hkHSCEI', 'hkHSTECH']) {
+  for (const symbol of ['sh000001', 'sh000688', 'sz399001', 'sz399006', 'hkHSI', 'hkHSCEI', 'hkHSTECH', 'usIXIC']) {
     assert.equal(isIndexSymbol(symbol), true, symbol)
   }
-  for (const symbol of ['sh600519', 'sz000001', 'sh510300', 'sz159915', 'hk00700', 'usAAPL', 'usIXIC']) {
+  for (const symbol of ['sh600519', 'sz000001', 'sh510300', 'sz159915', 'hk00700', 'usAAPL']) {
     assert.equal(isIndexSymbol(symbol), false, symbol)
   }
 })
@@ -171,4 +171,12 @@ test('STAR Market turnover volume is shares, not lots', () => {
   const main = buildTrendPoints(['0930 1404.00 150 21060000'], 'cn', '20261113', false, 'sh600519')
   assert.ok(Math.abs(star[0].avg - 41.44) < 0.1)
   assert.ok(Math.abs(main[0].avg - 1404) < 1)
+})
+
+test('US indices use Eastmoney market 100 and are not treated as stocks', () => {
+  assert.equal(isIndexSymbol('usIXIC'), true)
+  assert.equal(isIndexSymbol('usAAPL'), false)
+  assert.deepEqual(secidCandidates('usIXIC'), ['100.IXIC'])
+  assert.deepEqual(secidCandidates('usDJI'), ['100.DJIA'])
+  assert.deepEqual(secidCandidates('usAAPL'), ['105.AAPL', '106.AAPL', '107.AAPL'])
 })
