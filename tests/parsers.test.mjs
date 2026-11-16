@@ -64,6 +64,21 @@ test('tencent quote fixture parses an A-share row', () => {
   assert.equal(typeof quote.depth.ratio, 'number')
 })
 
+test('tencent call-auction rows use bid/ask when the last price is zero', () => {
+  const fields = Array.from({ length: 52 }, () => '')
+  fields[1] = '测试股'
+  fields[2] = '600000'
+  fields[3] = '0'
+  fields[4] = '10'
+  fields[9] = '10.50'
+  fields[19] = '10.50'
+  fields[30] = '20261116092500'
+  const quote = tencent.parseQuote('sh600000', fields)
+  assert.equal(quote.price, 10.5)
+  assert.equal(quote.changePct, 5)
+  assert.equal(quote.preopen, true)
+})
+
 test('tencent quote fixture parses a Hong Kong row', () => {
   const rows = rowsOf(read('tencent-quotes.txt'))
   const quote = tencent.parseQuote('hk00700', rows.get('hk00700'))
