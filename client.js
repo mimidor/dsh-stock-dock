@@ -4345,8 +4345,9 @@ window.__ModuleLoader__.load({
     function Detail(props) {
       const { quote, t, onClose, cycle, klineDays, prefs, onPrefs, onReload, compareOptions = [] } = props
       const trend = trendClass(quote.changePct)
+      const usIndexTrend = quote.market === 'us' && /^us(?:IXIC|NDX)$/i.test(quote.symbol)
       const tabs = DETAIL_TABS.filter((tab) => {
-        if (tab.id === 'trend') return quote.market !== 'us'
+        if (tab.id === 'trend') return quote.market !== 'us' || usIndexTrend
         if (tab.kline && tab.id !== 'day' && tab.id !== 'week' && tab.id !== 'month') return quote.market === 'cn'
         return true
       })
