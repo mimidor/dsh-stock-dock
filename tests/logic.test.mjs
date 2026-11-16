@@ -176,7 +176,7 @@ test('STAR Market turnover volume is shares, not lots', () => {
 test('US indices use Eastmoney market 100 and are not treated as stocks', () => {
   assert.equal(isIndexSymbol('usIXIC'), true)
   assert.equal(isIndexSymbol('usAAPL'), false)
-  assert.deepEqual(secidCandidates('usIXIC'), ['100.IXIC'])
+  assert.deepEqual(secidCandidates('usIXIC'), ['100.NDX'])
   assert.deepEqual(secidCandidates('usDJI'), ['100.DJIA'])
   assert.deepEqual(secidCandidates('usAAPL'), ['105.AAPL', '106.AAPL', '107.AAPL'])
 })
