@@ -7090,8 +7090,8 @@ window.__ModuleLoader__.load({
         row(
           t('intradayAxis'),
           select('intradayAxis', [
-            ['fill', t('axisFill')],
             ['normal', t('axisNormal')],
+            ['fill', t('axisFill')],
           ]),
           'charts',
         ),

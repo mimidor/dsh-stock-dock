@@ -30,6 +30,11 @@ test('yearly bars roll monthly rows up under the bare year', () => {
   assert.ok(PERIODS.includes('year'), 'the route accepts the yearly period')
 })
 
+test('the intraday axis defaults to the symmetric mode', () => {
+  assert.equal(normalizePrefs({}).intradayAxis, 'normal')
+  assert.equal(normalizePrefs({ intradayAxis: 'fill' }).intradayAxis, 'fill')
+})
+
 test('an alert fires in the declared direction only', () => {
   const alerts = [
     { id: 'up', symbol: 'sh600519', op: 'above', price: 1500, firedAt: null },

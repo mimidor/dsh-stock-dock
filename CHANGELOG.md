@@ -764,4 +764,8 @@ Local commit only; not pushed.
   plot no longer runs under those labels, so during the session the unfilled
   part of the last day is actually visible instead of hiding behind the axis;
   the five-day view also labels its three ticks by date instead of clock times.
-  110 tests.
+- The intraday y-axis now defaults to the symmetric mode (`0` centred,
+  `±bound/2`, `±bound`) instead of the high/low-filling mode, whose six uneven
+  ticks read like `+3.74% / +2.40% / +1.06% / 0.00% / -0.28% / -1.63%`. The
+  high/low mode remains available in Settings → 行情条 → 图表 → 分时坐标.
+  111 tests.
