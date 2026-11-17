@@ -133,6 +133,7 @@ function quotesPayload(overrides = {}) {
       adjust: 'qfq',
       alertToast: true,
       sourceDot: true,
+      intradayAxis: 'normal',
       symbols: ['sh600519', 'hk00700'],
     },
     groups: [{ id: 'default', name: '自选', count: 2 }],
@@ -178,6 +179,7 @@ function settingsPayload() {
       adjust: 'qfq',
       alertToast: true,
       sourceDot: true,
+      intradayAxis: 'normal',
     },
     groups: [{ id: 'default', name: '自选', symbols: ['sh600519', 'hk00700'] }],
     activeGroup: 'default',
@@ -944,7 +946,7 @@ test('dragging a card over another previews the gap before drop', async () => {
   assert.equal(calls.filter((call) => call.method === 'POST' && call.path === '/config').length, 0, 'nothing is saved yet')
 })
 
-test('the intraday axis follows the actual session high and low', async () => {
+test('the intraday axis labels mirror around zero', async () => {
   const { harness, component, t } = boot()
   harness.mount(component, { t })
   let tree = await harness.settle()
@@ -952,10 +954,11 @@ test('the intraday axis follows the actual session high and low', async () => {
   tree = await harness.settle()
   const axis = findAll(tree, (element) => hasClass(element, 'dshst-axisY'))[0]
   assert.ok(axis, 'the intraday y-axis is mounted')
-  const text = textOf(axis)
-  assert.match(text, /\+\d+\.\d+%/)
-  assert.match(text, /0\.00%/)
-  assert.match(text, /-\d+\.\d+%/)
+  const labels = findAll(axis, (element) => element.tag === 'span').map((span) => Number.parseFloat(textOf(span)))
+  assert.equal(labels.length, 5, 'the symmetric axis has five ticks')
+  assert.equal(labels[2], 0, 'zero is centred')
+  assert.equal(labels[0], -labels[4], 'the top and bottom ticks mirror each other')
+  assert.equal(labels[1], -labels[3], 'the inner ticks mirror each other')
 })
 
 test('dragging on the intraday chart marks a range with summary stats', async () => {
