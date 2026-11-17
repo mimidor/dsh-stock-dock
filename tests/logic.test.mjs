@@ -10,11 +10,25 @@ import {
   normalizeAlert,
   rearmAlert,
 } from '../lib/alerts.js'
-import { normalizeMaPeriods, normalizePrefs, normalizeSettings, publicSettings } from '../lib/config.js'
+import { normalizeMaPeriods, normalizePrefs, normalizeSettings, PERIODS, publicSettings } from '../lib/config.js'
 import { extendedWindow, freshnessByMarket, marketState, parseQuoteDate, sessionFor } from '../lib/session.js'
 import { isIndexSymbol, normalizeSymbol, parseSymbols, secidCandidates } from '../lib/symbols.js'
 import { buildToolDefinition } from '../lib/tool.js'
 import { buildTrendPoints } from '../lib/providers/tencent.js'
+import { aggregateYearRows } from '../lib/providers/index.js'
+
+test('yearly bars roll monthly rows up under the bare year', () => {
+  const rows = aggregateYearRows([
+    { date: '2025-12-31', open: 10, close: 12, high: 13, low: 9, volume: 100 },
+    { date: '2025-01-31', open: 8, close: 10, high: 11, low: 7, volume: 50 },
+    { date: '2026-02-27', open: 12, close: 15, high: 16, low: 11, volume: 70 },
+  ])
+  assert.deepEqual(rows, [
+    { date: '2025', open: 8, close: 12, high: 13, low: 7, volume: 150 },
+    { date: '2026', open: 12, close: 15, high: 16, low: 11, volume: 70 },
+  ])
+  assert.ok(PERIODS.includes('year'), 'the route accepts the yearly period')
+})
 
 test('an alert fires in the declared direction only', () => {
   const alerts = [

@@ -7,7 +7,7 @@
 ![dsh](https://img.shields.io/badge/DSH-0.2.x-6f5bd6)
 ![data](https://img.shields.io/badge/data-Tencent%20%7C%20Sina%20%7C%20Eastmoney-orange)
 
-A quote strip pinned under the DeepSeek Harness composer for A-shares, Hong Kong and US securities. Add symbols by code, name or pinyin, keep several watchlist groups, and see name, code, price, change, limit marks, a per-card source dot and a mini daily K-line. The detail panel adds intraday (1/3/5 days with volume and a percentage axis), 5/15/30/60-minute, daily/weekly/monthly charts (three adjust modes), MA5/10/20/60, a five-level order book, A-share valuation fields, a position cost line, a trade ledger with realised P/L and price alerts. Two tools, `stock_quote` and `stock_events`, let the model read quotes, announcements and the daily billboard.
+A quote strip pinned under the DeepSeek Harness composer for A-shares, Hong Kong and US securities. Add symbols by code, name or pinyin, keep several watchlist groups, and see name, code, price, change, limit marks, a per-card source dot and a mini daily K-line. The detail panel adds intraday (1/3/5 days with volume and a percentage axis), 5/15/30/60-minute, daily/weekly/monthly/yearly charts (three adjust modes), MA5/10/20/60, a five-level order book, A-share valuation fields, a position cost line, a trade ledger with realised P/L and price alerts. Two tools, `stock_quote` and `stock_events`, let the model read quotes, announcements and the daily billboard.
 
 ![Quote strip](docs/screenshots/dock.png)
 
@@ -23,11 +23,11 @@ A quote strip pinned under the DeepSeek Harness composer for A-shares, Hong Kong
 
 - **Strip**: always under the composer; wheel or trackpad horizontal swipe, drag to scroll, hover progress bar; red-up/green-down (switchable), A-share limit marks, a source dot per card
 - **Settings panel**: a gear in the header opens it right inside the strip (no dependence on the DSH settings page); switch the data source (auto/Tencent/Sina/Eastmoney), default chart, adjust mode and cadence, and toggle each display element (mini chart, MAs, volume, order book, metrics row, source dot, alert toast, US pre/post market)
-- **Mini chart type**: the small chart on each card switches between `intraday line / daily / weekly / monthly` from the header or settings; the line follows the poll for A-shares and Hong Kong, and US cards fall back to daily candles because free intraday is unavailable
+- **Mini chart type**: the small chart on each card switches between `intraday line / daily / weekly / monthly / yearly` from the header or settings; the line follows the poll for A-shares and Hong Kong, and US cards fall back to daily candles because free intraday is unavailable
 - **Card management**: a hover `×` removes one symbol, cards and group pills reorder while dragging, the trailing `＋` opens search
 - **Search**: code, Chinese name or pinyin, merged from Eastmoney suggest and Tencent smartbox
 - **Watchlist groups**: several lists switched by the header pills; a "market" group is seeded on first install (SSE, SZSE, ChiNext, STAR 50, Hang Seng, Nasdaq)
-- **Charts**: `intraday / 5m / 15m / 30m / 60m / daily / weekly / monthly`; intraday overlays 1/3/5 days with day separators and volume; the one-day axis is symmetric around the previous close with five ticks (0, ±0.5, ±1% and up), and the one-day view adds the previous session's same-time volume plus the same-time ratio; drag horizontally on the intraday chart for range high/low/change/amplitude/volume, with red/orange bars for expansion, progressively paler greys for contraction, and hollow ghost bars plus a dashed line for the previous session's actual volume; 5/15/30/60-minute volume bars compare with the same slot on the previous session (red/orange expanding, paler greys shrinking; hollow ghost bars and a dashed line show the previous session's actual volume); the detail K-line is rendered by a lazily loaded ECharts chunk: wheel zoom, direct drag-to-select, a full-height crosshair, 1/3/5-year history for daily/weekly/monthly, volume tiers/ghost bars and both start-end and high-low spreads; intraday and mini charts remain SVG and leave the unplayed session blank; switch forward/backward/raw adjust, MA and volume toggles, hover crosshair with a readout; drag horizontally on the intraday or a K-line chart to select a range and see its high, low, change, amplitude and volume
+- **Charts**: `intraday / 5m / 15m / 30m / 60m / daily / weekly / monthly / yearly`; intraday overlays 1/3/5 days with day separators and volume; the one-day axis is symmetric around the previous close with five ticks (0, ±0.5, ±1% and up), and the one-day view adds the previous session's same-time volume plus the same-time ratio; drag horizontally on the intraday chart for range high/low/change/amplitude/volume, with red/orange bars for expansion, progressively paler greys for contraction, and hollow ghost bars plus a dashed line for the previous session's actual volume; 5/15/30/60-minute volume bars compare with the same slot on the previous session (red/orange expanding, paler greys shrinking; hollow ghost bars and a dashed line show the previous session's actual volume); the detail K-line is rendered by a lazily loaded ECharts chunk: wheel zoom, direct drag-to-select, a full-height crosshair, 1/3/5-year history for daily/weekly/monthly and 10/20/30-year (or all) for yearly (its forward-adjusted series is the backward-adjusted series normalised to the latest price, so a long history never goes negative), volume tiers/ghost bars and both start-end and high-low spreads; intraday and mini charts remain SVG and leave the unplayed session blank; switch forward/backward/raw adjust, MA and volume toggles, hover crosshair with a readout; drag horizontally on the intraday or a K-line chart to select a range and see its high, low, change, amplitude and volume
 - **Order book**: five bids and asks plus the bid/ask ratio
 - **A-share fields**: turnover, turnover rate, volume ratio, amplitude, P/E, P/B, float and total market cap
 - **US pre/post market**: opt-in; cards and the detail header show the extended-hours price, percent and timestamp (from Sina's `gb_` rows)
@@ -63,7 +63,7 @@ Requires DSH 0.2.x with the Web GUI. Reload the page afterwards; the Host half a
 | --- | --- |
 | See quotes | The strip appears under the composer |
 | Open a chart | Click a card; click again or press close |
-| Switch period | `intraday / 5m / 15m / 30m / 60m / daily / weekly / monthly` |
+| Switch period | `intraday / 5m / 15m / 30m / 60m / daily / weekly / monthly / yearly` |
 | Switch adjust | The select next to the K-line tabs |
 | Add/remove/reorder | Search in the form; hover `×` to remove; drag cards; the trailing `＋` opens search |
 | Switch group | The pills in the header (shown when more than one group exists) |
@@ -96,7 +96,7 @@ Runtime preferences written by the settings page live in the plugin's data file 
 | Quotes, order book, A-share fields (primary) | Tencent `qt.gtimg.cn/q=...` (GBK) | 3s |
 | Quote fallback 1 | Sina `hq.sinajs.cn/list=...` (GBK, needs Referer) | 3s |
 | Quote fallback 2 | Eastmoney `push2.eastmoney.com/api/qt/ulist.np/get` | 3s |
-| Daily/weekly/monthly K, three adjust modes | Tencent `proxy.finance.qq.com/.../newfqkline/get` | 5 min |
+| Daily/weekly/monthly/yearly K, three adjust modes | Tencent `proxy.finance.qq.com/.../newfqkline/get`; yearly prefers Eastmoney `klt=106` and rolls monthly bars up otherwise | 5 min |
 | 5/15/30/60-minute K | Tencent `.../kline/mkline` | 60s |
 | Intraday, 1 day / same-time ratio | Tencent `.../minute/query` normally; `day/query` for the previous-session baseline | 20s |
 | Intraday, 3/5 days (A-share, Hong Kong) | Tencent `web.ifzq.gtimg.cn/appstock/app/day/query` | 20s |

@@ -458,7 +458,7 @@ if (offline) {
 
 check('invalid symbol is rejected', (await request('/kline?symbol=@@@@')).status === 400)
 check('unknown route is rejected', (await request('/bogus')).status === 404)
-check('malformed period falls back to day', (await request('/kline?symbol=sh600519&period=year&limit=10')).json?.period === 'day')
+check('malformed period falls back to day', (await request('/kline?symbol=sh600519&period=quarter&limit=10')).json?.period === 'day')
 check('minute periods ignore the adjust parameter', (await request('/kline?symbol=sh600519&period=m30&adjust=hfq&limit=10')).json?.adjust === 'none')
 
 const sparklines = await request('/sparklines')

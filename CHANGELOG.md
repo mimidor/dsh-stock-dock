@@ -747,3 +747,17 @@ Local commit only; not pushed.
   MA5/10/20/60 colours; dynamic visible-range high/low price labels; compact
   group count badges and drag reordering.
 - 105 tests; README route and version updates.
+
+## 未发布 — 2026-11-17
+
+- **年 K**: the detail panel now has a `年K` tab for A-shares, Hong Kong, US
+  stocks and the Nasdaq indices, with 10/20/30-year and all-history choices.
+  Eastmoney `klt=106` is the primary source; when that host is refusing history
+  the monthly pages are rolled up into calendar-year bars instead. The category
+  axis and tooltips show the bare year (`2026`).
+- 前复权 annual bars are built from the 后复权 series normalised to the latest
+  price: the providers' additive 前复权 turns old bars negative once cumulative
+  dividends exceed the old price (茅台 before 2016), which made a 20-year chart
+  unusable. 后复权 and 不复权 keep their own series.
+- The mini-chart type selector and the default-period setting gained `年K` too.
+  109 tests.

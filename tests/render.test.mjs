@@ -1012,6 +1012,25 @@ test('the K-line history buttons request 1/3/5 years', async () => {
   assert.ok(findAll(tree, (element) => element.tag === 'button' && textOf(element) === '5年').length > 0)
 })
 
+test('the detail panel exposes a yearly K tab and asks for 20 bars', async () => {
+  const { harness, component, t, calls } = boot()
+  harness.mount(component, { t })
+  let tree = await harness.settle()
+  click(findAll(tree, (element) => hasClass(element, 'dshst-card') && textOf(element).includes('贵州茅台'))[0])
+  tree = await harness.settle()
+  click(findAll(tree, (element) => element.tag === 'button' && hasClass(element, 'dshst-tab') && textOf(element) === '年K')[0])
+  tree = await harness.settle()
+  assert.ok(calls.some((call) => call.path.includes('/kline') && call.path.includes('period=year')), 'the yearly period is requested')
+  assert.ok(calls.some((call) => call.path.includes('/kline') && call.path.includes('period=year') && call.path.includes('limit=20')))
+  assert.ok(findAll(tree, (element) => element.tag === 'button' && textOf(element) === '20年').length > 0, 'the yearly history choices are shown')
+  click(findAll(tree, (element) => element.tag === 'button' && hasClass(element, 'dshst-tab') && textOf(element) === '日K')[0])
+  tree = await harness.settle()
+  assert.ok(
+    !calls.some((call) => call.path.includes('period=day') && /limit=(?:1300|5000)/.test(call.path)),
+    'switching back to daily does not inherit the yearly bar count as years of history',
+  )
+})
+
 test('switching groups hides the previous list until the target list arrives', async () => {
   const payload = quotesPayload()
   payload.groups = [{ id: 'default', name: '自选', count: 2 }, { id: 'market', name: '大盘', count: 0 }]

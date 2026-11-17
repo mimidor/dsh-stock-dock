@@ -66,6 +66,7 @@ window.__ModuleLoader__.load({
       tabDay: '日K',
       tabWeek: '周K',
       tabMonth: '月K',
+      tabYear: '年K',
       orderBook: '盘口',
       orderRatio: '委比',
       amount: '成交额',
@@ -156,6 +157,7 @@ window.__ModuleLoader__.load({
       miniDay: '日K',
       miniWeek: '周K',
       miniMonth: '月K',
+      miniYear: '年K',
       colorMode: '配色',
       colorCn: '红涨绿跌',
       colorIntl: '绿涨红跌',
@@ -274,6 +276,7 @@ window.__ModuleLoader__.load({
       tabDay: 'Daily',
       tabWeek: 'Weekly',
       tabMonth: 'Monthly',
+      tabYear: 'Yearly',
       orderBook: 'Book',
       orderRatio: 'Ratio',
       amount: 'Turnover',
@@ -364,6 +367,7 @@ window.__ModuleLoader__.load({
       miniDay: 'Daily',
       miniWeek: 'Weekly',
       miniMonth: 'Monthly',
+      miniYear: 'Yearly',
       colorMode: 'Colours',
       colorCn: 'Red up / green down',
       colorIntl: 'Green up / red down',
@@ -1927,6 +1931,7 @@ window.__ModuleLoader__.load({
       if (!Array.isArray(compareRows) || compareRows.length === 0) return null
       const keyOf = (value) => {
         const date = String(value ?? '').replace(/\D/g, '')
+        if (period === 'year') return date.slice(0, 4)
         if (period === 'month') return date.slice(0, 6)
         if (period === 'week' && /^\d{8}$/.test(date)) {
           const day = new Date(Date.UTC(Number(date.slice(0, 4)), Number(date.slice(4, 6)) - 1, Number(date.slice(6, 8))))
@@ -4334,9 +4339,10 @@ window.__ModuleLoader__.load({
       { id: 'day', labelKey: 'tabDay', kline: true },
       { id: 'week', labelKey: 'tabWeek', kline: true },
       { id: 'month', labelKey: 'tabMonth', kline: true },
+      { id: 'year', labelKey: 'tabYear', kline: true },
     ]
 
-    const ADJUST_TABS = new Set(['day', 'week', 'month'])
+    const ADJUST_TABS = new Set(['day', 'week', 'month', 'year'])
 
     /**
      * Detail panel: chart tabs, adjust/MA/volume controls, intraday day count,
@@ -4348,7 +4354,7 @@ window.__ModuleLoader__.load({
       const usIndexTrend = quote.market === 'us' && /^us(?:IXIC|NDX)$/i.test(quote.symbol)
       const tabs = DETAIL_TABS.filter((tab) => {
         if (tab.id === 'trend') return quote.market !== 'us' || usIndexTrend
-        if (tab.kline && tab.id !== 'day' && tab.id !== 'week' && tab.id !== 'month') return quote.market === 'cn'
+        if (tab.kline && !ADJUST_TABS.has(tab.id)) return quote.market === 'cn'
         return true
       })
       const initialTab = tabs.some((tab) => tab.id === prefs.defaultPeriod) ? prefs.defaultPeriod : tabs[0]?.id ?? 'day'
@@ -4392,23 +4398,38 @@ window.__ModuleLoader__.load({
       const isTrend = tab === 'trend'
       const minuteTab = tab === 'm5' || tab === 'm15' || tab === 'm30' || tab === 'm60'
       const maxMinute = quote.market === 'cn' ? (tab === 'm60' ? 4111 : 5001) : 640
-      const historyBars = tab === 'day' ? 250 : tab === 'week' ? 52 : 12
-      const historyAll = historyYears === 'all'
+      const historyBars = tab === 'day' ? 250 : tab === 'week' ? 52 : tab === 'year' ? 1 : 12
+      const historyChoices = tab === 'year' ? [10, 20, 30, 'all'] : [1, 3, 5, 'all']
+      // A choice made on another period is not carried into this one: without
+      // this guard, switching from 年K's 20 back to 日K would briefly ask for
+      // 20 * 250 daily bars before the effect below resets the state.
+      const historyChoice = (tab === 'year' ? [0, 10, 20, 30, 'all'] : [0, 1, 3, 5, 'all']).includes(historyYears)
+        ? historyYears
+        : 0
+      const historyAll = historyChoice === 'all'
+      // A year bar is already one year, so its "more history" choices count
+      // bars directly (10/20/30) instead of multiplying by 12 months.
       const klineLimit = isTrend
         ? 0
-        : tab === 'm5' || tab === 'm15' || tab === 'm30' || tab === 'm60'
+        : minuteTab
           ? minuteLimit
-          : tab === 'day'
-            ? historyYears
+          : tab === 'year'
+            ? historyAll
+              ? 1300
+              : Math.max(10, Number(historyChoice) || 20)
+            : historyChoice
               ? historyAll
                 ? 1300
-                : historyYears * historyBars
-              : Math.max(10, Math.min(klineDays ?? 60, 120))
-            : historyYears
-              ? historyAll
-                ? 1300
-                : historyYears * historyBars
-              : 60
+                : historyChoice * historyBars
+              : tab === 'day'
+                ? Math.max(10, Math.min(klineDays ?? 60, 120))
+                : 60
+
+      useEffect(() => {
+        const choices = tab === 'year' ? [10, 20, 30, 'all'] : [0, 1, 3, 5, 'all']
+        if (!choices.includes(historyYears)) setHistoryYears(tab === 'year' ? 20 : 0)
+      }, [tab, historyYears])
+
       const retry = () => {
         setSeries((currentSeries) => {
           const next = { ...currentSeries }
@@ -4469,7 +4490,7 @@ window.__ModuleLoader__.load({
                 return
               }
               if (!minuteTab && historyYears === 0) {
-                setHistoryYears('all')
+                setHistoryYears(tab === 'year' ? 30 : 'all')
                 return
               }
             }
@@ -4960,7 +4981,7 @@ window.__ModuleLoader__.load({
             ? h(
                 'span',
                 { className: 'dshst-seg', title: t('historyYears') },
-                ...[1, 3, 5, 'all'].map((years) =>
+                ...historyChoices.map((years) =>
                   h(
                     'button',
                     {
@@ -6522,6 +6543,7 @@ window.__ModuleLoader__.load({
                 ['day', t('miniDay')],
                 ['week', t('miniWeek')],
                 ['month', t('miniMonth')],
+                ['year', t('miniYear')],
               ].map(([value, label]) =>
                 h(
                   'button',
@@ -6985,6 +7007,7 @@ window.__ModuleLoader__.load({
               ['day', t('miniDay')],
               ['week', t('miniWeek')],
               ['month', t('miniMonth')],
+              ['year', t('miniYear')],
             ],
             t('miniChartType'),
           ),
@@ -7007,6 +7030,7 @@ window.__ModuleLoader__.load({
             ['day', t('tabDay')],
             ['week', t('tabWeek')],
             ['month', t('tabMonth')],
+            ['year', t('tabYear')],
           ]),
         ),
         row(
@@ -7319,11 +7343,12 @@ window.__ModuleLoader__.load({
           const onPrefs = () => {
             void sync()
           }
-          window.addEventListener('dsh-stock-ticker:prefs', onPrefs)
+          const listens = typeof window.addEventListener === 'function'
+          if (listens) window.addEventListener('dsh-stock-ticker:prefs', onPrefs)
           void sync()
           return () => {
             alive = false
-            window.removeEventListener('dsh-stock-ticker:prefs', onPrefs)
+            if (listens) window.removeEventListener('dsh-stock-ticker:prefs', onPrefs)
             disposeSidebarPanel()
           }
         }, 'stock-ticker: left sidebar panel')

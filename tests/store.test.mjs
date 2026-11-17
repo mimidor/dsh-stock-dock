@@ -81,7 +81,7 @@ test('normalization repairs groups, holdings and alerts', () => {
       hk00700: { shares: 100, cost: 300 },
     },
     alerts: [{ symbol: 'sh600519', op: 'above', price: 1500 }, { symbol: '', op: 'above', price: 1 }],
-    prefs: { defaultPeriod: 'year', showMA: 'nope' },
+    prefs: { defaultPeriod: 'quarter', showMA: 'nope' },
   })
   assert.deepEqual(state.groups[0].symbols, ['sh600519'])
   assert.equal(state.groups.length, 3, 'default, the custom group and the seeded market group')
