@@ -760,4 +760,8 @@ Local commit only; not pushed.
   dividends exceed the old price (茅台 before 2016), which made a 20-year chart
   unusable. 后复权 and 不复权 keep their own series.
 - The mini-chart type selector and the default-period setting gained `年K` too.
-  109 tests.
+- Intraday charts now reserve a 48px gutter for the right-hand price labels. The
+  plot no longer runs under those labels, so during the session the unfilled
+  part of the last day is actually visible instead of hiding behind the axis;
+  the five-day view also labels its three ticks by date instead of clock times.
+  110 tests.

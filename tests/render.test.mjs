@@ -978,6 +978,20 @@ test('dragging on the intraday chart marks a range with summary stats', async ()
   assert.match(text, /清除/)
 })
 
+test('the intraday chart reserves its axis gutter and labels a five-day view by date', async () => {
+  const { harness, component, t } = boot()
+  harness.mount(component, { t })
+  let tree = await harness.settle()
+  const find = (predicate) => findAll(tree, predicate)[0]
+  click(find((node) => hasClass(node, 'dshst-card')))
+  tree = await harness.settle()
+  assert.ok(find((node) => hasClass(node, 'dshst-chartWrapAxis')), 'the y-axis gutter does not sit on the plot')
+  click(find((node) => hasClass(node, 'dshst-toggle') && textOf(node) === '5日'))
+  tree = await harness.settle()
+  const labels = findAll(tree, (node) => hasClass(node, 'dshst-axisX'))[0].children.map(textOf)
+  assert.deepEqual(labels, ['11-10', '11-12', '11-14'], 'a multi-day chart labels days, not clock times')
+})
+
 test('the K-line chart zooms with the wheel and resets on double click', async () => {
   const { harness, component, t } = boot()
   harness.mount(component, { t })

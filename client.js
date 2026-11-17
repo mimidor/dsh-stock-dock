@@ -710,6 +710,9 @@ window.__ModuleLoader__.load({
 .dshst-chart { display: block; flex: 0 0 auto; animation: dshst-fade-in 220ms var(--dshst-ease); }
 .dshst-miniLine { display: block; flex: 0 0 auto; animation: dshst-fade-in 220ms var(--dshst-ease); }
 .dshst-chartWrap { position: relative; width: 100%; }
+/* The intraday y labels are an overlay; reserve their gutter so the plot stops
+   before the labels and the unfilled part of the session stays visible. */
+.dshst-chartWrap.dshst-chartWrapAxis { padding-right: 48px; box-sizing: border-box; }
 .dshst-dayPick {
   display: flex;
   align-items: center;
@@ -4105,7 +4108,9 @@ window.__ModuleLoader__.load({
           ? props.market === 'hk'
             ? ['09:30', '12:00/13:00', '16:00']
             : ['09:30', '11:30/13:00', '15:00']
-          : [points[0]?.time, points[Math.floor(points.length / 2)]?.time, points[points.length - 1]?.time]
+          : timeAxis
+            ? [points[0]?.day, points[Math.floor(points.length / 2)]?.day, points[points.length - 1]?.day].map(shortDate)
+            : [points[0]?.time, points[Math.floor(points.length / 2)]?.time, points[points.length - 1]?.time]
 
       const active = hover !== null ? points[hover] : null
       const activeReference = active ? baselineAt.get(active.time) : undefined
@@ -4119,7 +4124,7 @@ window.__ModuleLoader__.load({
         activeSignal === 'up' ? t('volumeExpand') : activeSignal === 'down' ? t('volumeShrink') : t('volumeFlat')
       return h(
         'div',
-        { className: 'dshst-chartWrap', style: { maxWidth: '1040px', margin: '0 auto' } },
+        { className: 'dshst-chartWrap dshst-chartWrapAxis', style: { maxWidth: '1040px', margin: '0 auto' } },
         h(
           'svg',
           {
