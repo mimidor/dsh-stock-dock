@@ -121,6 +121,7 @@ window.__ModuleLoader__.load({
       alertAck: '知道了',
       alertEmpty: '还没有设置预警',
       alertRemove: '删除',
+      alertRearm: '重新武装',
       alertHit: '{name} 触发预警：{op} {price}',
       alertNeedPrice: '请填写有效的预警价',
       holding: '持仓',
@@ -331,6 +332,7 @@ window.__ModuleLoader__.load({
       alertAck: 'Got it',
       alertEmpty: 'No alerts yet',
       alertRemove: 'Delete',
+      alertRearm: 'Re-arm',
       alertHit: '{name} alert: {op} {price}',
       alertNeedPrice: 'Enter a valid alert price',
       holding: 'Position',
@@ -1633,6 +1635,7 @@ window.__ModuleLoader__.load({
     const SESSION_RANGES = {
       cn: [[570, 690], [780, 900]],
       hk: [[570, 720], [780, 960]],
+      us: [[570, 960]],
     }
 
     /** Position in the full trading day, 0 at the open and 1 at the close. */
@@ -2469,7 +2472,7 @@ window.__ModuleLoader__.load({
         : ''
       return h(
         'div',
-        { className: 'dshst-chartWrap', style: { maxWidth: '1040px', margin: '0 auto' } },
+        { className: 'dshst-chartWrap dshst-chartWrapAxis', style: { maxWidth: '1040px', margin: '0 auto' } },
         svg,
         active
           ? h(
@@ -2496,8 +2499,8 @@ window.__ModuleLoader__.load({
         h(
           'div',
           { className: 'dshst-axisX' },
-          h('span', null, rows[0]?.date ?? ''),
-          h('span', null, rows[rows.length - 1]?.date ?? ''),
+          h('span', null, shortDate(rows[0]?.date)),
+          h('span', null, shortDate(rows[rows.length - 1]?.date)),
         ),
         block
           ? h('div', { className: 'dshst-chartHint' }, `${t('chartZoomHint')} · ${rows.length}/${total}`)
@@ -2544,7 +2547,14 @@ window.__ModuleLoader__.load({
     let echartsChunkPromise = null
     function loadEchartsChunk() {
       if (typeof require.async !== 'function') return Promise.reject(new Error('echarts chunk loader unavailable'))
-      if (!echartsChunkPromise) echartsChunkPromise = require.async('./client.echarts.js').then((module) => module?.default ?? module)
+      if (!echartsChunkPromise) {
+        echartsChunkPromise = require.async('./client.echarts.js')
+          .then((module) => module?.default ?? module)
+          .catch((error) => {
+            echartsChunkPromise = null
+            throw error
+          })
+      }
       return echartsChunkPromise
     }
 
@@ -3218,7 +3228,7 @@ window.__ModuleLoader__.load({
           series: [{ id: 'kline', ...echartsRangeMarks(rows, range, theme, t, props.holdingCost, up, down, props.period) }],
         })
         extremeRefreshRef.current?.()
-      }, [range, rows, t, props.holdingCost, props.period])
+      }, [range, rows, t, props.holdingCost, props.period, themeTick, props.colorMode, props.showMA, props.showVolume, props.maPeriods, props.compareRows])
 
       if (!lib || failed) {
         // While the lazy ECharts chunk is loading, never paint the whole cached
@@ -3680,7 +3690,7 @@ window.__ModuleLoader__.load({
       useEffect(() => {
         setRange(null)
         drag.current = null
-      }, [points.length])
+      }, [props.symbol, points[0]?.day])
       const indexAt = (event) => {
         const rect = event.currentTarget.getBoundingClientRect()
         if (!rect || rect.width <= 0) return null
@@ -4019,7 +4029,7 @@ window.__ModuleLoader__.load({
           if (volume > maxVolume) maxVolume = volume
         }
         if (maxVolume > 0) {
-          const sessionSlots = (props.market === 'hk' ? 330 : 240)
+          const sessionSlots = props.market === 'us' ? 390 : props.market === 'hk' ? 330 : 240
           const barWidth = Math.max(1, width / (totalDays * sessionSlots) - 0.4)
           points.forEach((point, index) => {
             if (typeof point.volume !== 'number') return
@@ -4105,9 +4115,11 @@ window.__ModuleLoader__.load({
       }))
       const xLabels =
         timeAxis && totalDays === 1
-          ? props.market === 'hk'
-            ? ['09:30', '12:00/13:00', '16:00']
-            : ['09:30', '11:30/13:00', '15:00']
+          ? props.market === 'us'
+            ? ['09:30', '12:45', '16:00']
+            : props.market === 'hk'
+              ? ['09:30', '12:00/13:00', '16:00']
+              : ['09:30', '11:30/13:00', '15:00']
           : timeAxis
             ? [points[0]?.day, points[Math.floor(points.length / 2)]?.day, points[points.length - 1]?.day].map(shortDate)
             : [points[0]?.time, points[Math.floor(points.length / 2)]?.time, points[points.length - 1]?.time]
@@ -4494,8 +4506,8 @@ window.__ModuleLoader__.load({
                 setMinuteLimit(available)
                 return
               }
-              if (!minuteTab && historyYears === 0) {
-                setHistoryYears(tab === 'year' ? 30 : 'all')
+              if (!minuteTab && historyYears === 0 && tab !== 'year') {
+                setHistoryYears('all')
                 return
               }
             }
@@ -4775,7 +4787,9 @@ window.__ModuleLoader__.load({
           compareRows: currentCompare?.rows ?? null,
           compareLabel: compareName,
           onPickDay: tab === 'day' ? (date) => setPickedDay(date) : undefined,
-          label: `${quote.name ?? quote.symbol} ${t(tab === 'trend' ? 'tabTrend' : `tab${tab.charAt(0).toUpperCase()}${tab.slice(1)}`)}`,
+          label: `${quote.name ?? quote.symbol} ${t(
+            tab === 'trend' ? 'tabTrend' : tab === 'm5' ? 'tabMinute' : `tab${tab.charAt(0).toUpperCase()}${tab.slice(1)}`,
+          )}`,
           emptyLabel: t('noKline'),
           t,
         })
@@ -4834,6 +4848,11 @@ window.__ModuleLoader__.load({
 
       const removeAlert = async (id) => {
         await api('/alerts', { method: 'POST', body: { action: 'remove', id } }).catch(() => undefined)
+        onReload?.()
+      }
+
+      const rearmAlert = async (id) => {
+        await api('/alerts', { method: 'POST', body: { action: 'ack', id } }).catch(() => undefined)
         onReload?.()
       }
 
@@ -5127,6 +5146,13 @@ window.__ModuleLoader__.load({
                       { className: 'dshst-alertRow', key: alert.id },
                       h('b', { className: alert.firedAt ? 'dshst-up' : '' }, `${alert.op === 'above' ? t('alertAbove') : t('alertBelow')} ${formatPrice(alert.price)}`),
                       h('span', { className: alert.firedAt ? 'dshst-error' : 'dshst-flat' }, alert.firedAt ? t('alertFired') : t('alertArmed')),
+                      alert.firedAt
+                        ? h(
+                            'button',
+                            { type: 'button', className: 'dshst-link', onClick: () => rearmAlert(alert.id) },
+                            t('alertRearm'),
+                          )
+                        : null,
                       h(
                         'button',
                         { type: 'button', className: 'dshst-link', onClick: () => removeAlert(alert.id) },

@@ -32,3 +32,77 @@ test('volume alerts use current-session five-minute bars for each open market', 
     globalThis.fetch = original
   }
 })
+
+function requestWithBody(router, body, { origin = 'http://127.0.0.1:54157', method = 'POST' } = {}) {
+  const req = {
+    method,
+    url: '/dsh-stock-ticker/trades',
+    headers: { host: '127.0.0.1:54157', origin },
+    socket: { remoteAddress: '127.0.0.1' },
+    async *[Symbol.asyncIterator]() {
+      yield Buffer.from(JSON.stringify(body))
+    },
+  }
+  const res = {
+    statusCode: 200,
+    setHeader() {},
+    end(payload) {
+      this.payload = payload ? JSON.parse(payload) : undefined
+    },
+  }
+  return router(req, res).then(() => res)
+}
+
+test('applying one symbol keeps manual holdings for the other symbols', async () => {
+  let state = {
+    groups: [{ id: 'default', name: '自选', symbols: ['sh600519', 'hk00700'] }],
+    activeGroup: 'default',
+    alerts: [],
+    holdings: { hk00700: { shares: 100, cost: 12.5 } },
+    trades: [{ id: 't1', symbol: 'sh600519', side: 'buy', price: 10, shares: 100, fee: 0, date: '2026-11-01', createdAt: 1 }],
+    prefs: {},
+  }
+  const store = {
+    snapshot: async () => state,
+    update: async (mutator) => {
+      const next = mutator(state)
+      if (next) state = next
+      return state
+    },
+  }
+  const router = createRouter({
+    ctx: { webServer: { getOrigin: () => 'http://127.0.0.1:54157' } },
+    settings: normalizeSettings({}),
+    cache: { klines: new Map() },
+    store,
+  })
+  const res = await requestWithBody(router, { action: 'apply', symbol: 'sh600519' })
+  assert.equal(res.statusCode, 200)
+  assert.equal(res.payload.ok, true)
+  assert.deepEqual(res.payload.holdings.hk00700, { shares: 100, cost: 12.5 })
+  assert.deepEqual(res.payload.holdings.sh600519, { shares: 100, cost: 10 })
+})
+
+test('cache clear rejects a foreign origin like the other write routes', async () => {
+  const router = createRouter({
+    ctx: { webServer: { getOrigin: () => 'http://127.0.0.1:54157' } },
+    settings: normalizeSettings({}),
+    cache: { klines: new Map() },
+    store: { snapshot: async () => ({ groups: [], activeGroup: 'default' }) },
+  })
+  const req = {
+    method: 'POST',
+    url: '/dsh-stock-ticker/cache/clear',
+    headers: { host: '127.0.0.1:54157', origin: 'http://evil.example' },
+    socket: { remoteAddress: '127.0.0.1' },
+    async *[Symbol.asyncIterator]() {},
+  }
+  const res = {
+    statusCode: 200,
+    setHeader() {},
+    end(payload) { this.payload = JSON.parse(payload) },
+  }
+  await router(req, res)
+  assert.equal(res.statusCode, 403)
+  assert.equal(res.payload.error, 'forbidden')
+})

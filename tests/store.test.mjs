@@ -44,6 +44,20 @@ test('a corrupt store file is kept aside instead of being silently replaced', as
   assert.equal(JSON.parse(readFileSync(file, 'utf8')).prefs.colorMode, 'intl')
 })
 
+test('a failed disk write is reported instead of pretending to save', async () => {
+  const store = createStore({
+    seedSymbols: ['sh600519'],
+    filePath: '/dev/null/dsh-stock-ticker/store.json',
+    logger: silent,
+  })
+  await assert.rejects(
+    store.update((current) => {
+      current.prefs.showLogos = false
+      return current
+    }),
+  )
+})
+
 test('concurrent updates serialize into one valid file', async () => {
   const file = tempPath()
   const store = createStore({ seedSymbols: ['sh600519'], filePath: file, logger: silent })

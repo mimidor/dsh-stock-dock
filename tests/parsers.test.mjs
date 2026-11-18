@@ -99,6 +99,18 @@ test('tencent quote fixture parses a US row and keeps its venue suffix', () => {
   assert.equal(quote.extras, undefined, 'US rows must not borrow the A-share field positions')
 })
 
+test('sina keeps index volume in lots instead of dividing it by 100', () => {
+  const fields = Array(32).fill('')
+  fields[0] = '上证指数'
+  fields[2] = '3577.05'
+  fields[3] = '3577.05'
+  fields[8] = '187000000'
+  fields[30] = '2026-11-18'
+  fields[31] = '10:00:00'
+  const quote = sina.parseQuote('sh000001', fields)
+  assert.equal(quote.volume, 187000000)
+})
+
 test('sina fixture exposes the US pre-market snapshot', () => {
   const rows = sinaRowsOf(read('sina-quotes.txt'))
   const extended = sina.parseExtended(rows.get('gb_aapl'))
@@ -174,7 +186,7 @@ test('eastmoney batch fixture maps the three markets', () => {
   const us = eastmoney.parseRow('usAAPL', rows.find((row) => row.f13 === 105))
   assert.equal(cn.price, 1410.27)
   assert.equal(cn.source, 'eastmoney')
-  assert.ok(cn.extras.totalCap > 1e9)
+  assert.equal(cn.extras.totalCap, 17629.53) // 亿, the unit the client expects
   assert.equal(hk.price, 398.8)
   assert.equal(us.price, 355.63)
 })

@@ -981,6 +981,35 @@ test('dragging on the intraday chart marks a range with summary stats', async ()
   assert.match(text, /清除/)
 })
 
+test('a US index intraday chart uses the New York session labels', async () => {
+  const payload = quotesPayload()
+  payload.symbols = ['usIXIC']
+  payload.groups = [{ id: 'default', name: '自选', count: 1 }]
+  payload.quotes = [
+    quote({
+      symbol: 'usIXIC',
+      market: 'us',
+      name: '纳斯达克',
+      code: 'IXIC',
+      price: 24000,
+      prevClose: 24509.76,
+      change: -509.76,
+      changePct: -2.08,
+      extras: undefined,
+      depth: undefined,
+      alerts: [],
+      holding: null,
+    }),
+  ]
+  const { harness, component, t } = boot({ quotes: payload })
+  harness.mount(component, { t })
+  let tree = await harness.settle()
+  click(findAll(tree, (element) => hasClass(element, 'dshst-card'))[0])
+  tree = await harness.settle()
+  const labels = findAll(tree, (element) => hasClass(element, 'dshst-axisX'))[0].children.map(textOf)
+  assert.deepEqual(labels, ['09:30', '12:45', '16:00'])
+})
+
 test('the intraday chart reserves its axis gutter and labels a five-day view by date', async () => {
   const { harness, component, t } = boot()
   harness.mount(component, { t })

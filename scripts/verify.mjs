@@ -20,6 +20,7 @@ const offline = process.argv.includes('--offline')
 // The store would otherwise write into the real DSH home during a check run.
 const storeDir = mkdtempSync(join(tmpdir(), 'dsh-stock-ticker-verify-'))
 process.env.DSH_STOCK_DOCK_STORE = join(storeDir, 'store.json')
+process.env.DSH_STOCK_DOCK_CACHE = join(storeDir, 'cache.json')
 
 const { apply, __test } = await import('../index.js')
 
@@ -264,7 +265,7 @@ const emQuote = __test.parseEastmoneyRow('sh600519', {
   f20: 1762952579442,
   f21: 1762952579442,
 })
-check('eastmoney parser maps the batch row', emQuote.price === 1410.27 && emQuote.extras.totalCap > 1e9, emQuote)
+check('eastmoney parser maps the batch row', emQuote.price === 1410.27 && emQuote.extras.totalCap === 17629.53, emQuote)
 check('eastmoney parser names the source', emQuote.source === 'eastmoney', emQuote.source)
 
 /* ------------------------------------------------------------------ alerts */

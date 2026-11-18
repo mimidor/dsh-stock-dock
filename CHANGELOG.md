@@ -769,3 +769,37 @@ Local commit only; not pushed.
   ticks read like `+3.74% / +2.40% / +1.06% / 0.00% / -0.28% / -1.63%`. The
   high/low mode remains available in Settings → 行情条 → 图表 → 分时坐标.
   111 tests.
+
+## 未发布 — 2026-11-18
+
+- Fixed the ledger "apply" action: applying one symbol no longer replaces the
+  whole holdings map, so hand-entered positions for other symbols survive.
+- US intraday now uses the New York session in the client (`09:30–16:00`,
+  390 volume slots, `12:45` mid tick). Eastmoney's US trend stamps are converted
+  from Beijing time to one New York trading day instead of splitting a session
+  at Beijing midnight; the Nasdaq provider's first `avg` no longer becomes
+  `Infinity`.
+- Normalised market data units: Eastmoney market cap is converted from yuan to
+  the 亿 unit the client expects; Sina A-share index volume is no longer divided
+  by 100; Hong Kong/US index rows no longer show Tencent's unrelated
+  amount/volume columns; `stock_quote` returns market cap in currency units.
+- Alerts gain a `重新武装` action for a fired alert, so a disabled toast or a
+  lost response no longer leaves it permanently disarmed. Fired state is written
+  against the current store object, and a failed alert-state write no longer
+  breaks the quote poll.
+- Warmup claims its running flag before the first await (no duplicate task
+  lists), store write failures now reject the route instead of answering
+  `ok:true`, and the disk cache trims with per-entry sizes instead of
+  re-serialising the whole file once per eviction.
+- `/cache/clear` now uses the same loopback/origin check as every other write;
+  `/config` rejects a null body; the 13th group and 61st holding return an error
+  instead of silently disappearing.
+- Client fixes: the SVG K-line fallback uses the 48px axis gutter and formatted
+  dates; ECharts range marks survive theme/MA/volume/colour changes; a transient
+  ECharts chunk failure is retried; the 5-minute chart aria-label uses
+  `tabMinute`; the year tab keeps its 20-bar default; a live intraday refresh no
+  longer drops a selected range.
+- Tencent K-line pages now honour the requested `limit` exactly; `trendForDate`
+  does not persist today's partial intraday page; stale-while-revalidate
+  refreshes are de-duplicated per cache key.
+- 116 tests; the offline verify also uses an isolated disk-cache path.
