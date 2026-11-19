@@ -56,6 +56,8 @@ test('a failed disk write is reported instead of pretending to save', async () =
       return current
     }),
   )
+  const after = await store.snapshot()
+  assert.equal(after.prefs.showLogos, true, 'the failed write leaves the in-memory state untouched')
 })
 
 test('concurrent updates serialize into one valid file', async () => {

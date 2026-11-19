@@ -2624,8 +2624,9 @@ window.__ModuleLoader__.load({
       }
       if (minute) marks.markPoint.data = echartsDayOpenPoints(rows, theme)
       if (range && range.end > range.start) {
-        const start = Math.max(0, range.start)
-        const end = Math.min(rows.length - 1, range.end)
+        const start = Math.min(rows.length - 1, Math.max(0, range.start))
+        const end = Math.min(rows.length - 1, Math.max(0, range.end))
+        if (end <= start) return marks
         const list = rows.slice(start, end + 1)
         const high = list.reduce((best, row) => (row.high > best.high ? row : best), list[0])
         const low = list.reduce((best, row) => (row.low < best.low ? row : best), list[0])
@@ -2952,6 +2953,8 @@ window.__ModuleLoader__.load({
       const rows = Array.isArray(props.rows) ? props.rows : []
       const rowsRef = useRef(rows)
       rowsRef.current = rows
+      const propsRef = useRef(props)
+      propsRef.current = props
       const hasRows = rows.length >= 2
       const t = props.t ?? ((key) => key)
       const [lib, setLib] = useState(null)
@@ -3058,11 +3061,12 @@ window.__ModuleLoader__.load({
         }
         host.addEventListener('wheel', onWheel, { passive: false })
         const pickDay = (params) => {
-          if (props.period !== 'day' || typeof props.onPickDay !== 'function') return
+          const live = propsRef.current
+          if (live.period !== 'day' || typeof live.onPickDay !== 'function') return
           const row = rowsRef.current[params?.dataIndex]
           if (!row) return
           const date = String(row.date ?? '').replace(/\D/g, '').slice(0, 8)
-          if (/^\d{8}$/.test(date)) props.onPickDay(date)
+          if (/^\d{8}$/.test(date)) live.onPickDay(date)
         }
         if (typeof chart.on === 'function') chart.on('click', pickDay)
         const updateExtremes = () => {
@@ -3153,10 +3157,11 @@ window.__ModuleLoader__.load({
           if (index === null) return
           if (index === start) {
             setRange(null)
-            if (props.period === 'day' && typeof props.onPickDay === 'function') {
+            const live = propsRef.current
+            if (live.period === 'day' && typeof live.onPickDay === 'function') {
               const row = rowsRef.current[index]
               const date = String(row?.date ?? '').replace(/\D/g, '').slice(0, 8)
-              if (/^\d{8}$/.test(date)) props.onPickDay(date)
+              if (/^\d{8}$/.test(date)) live.onPickDay(date)
             }
           } else {
             setRange({ start: Math.min(start, index), end: Math.max(start, index) })
@@ -4410,6 +4415,7 @@ window.__ModuleLoader__.load({
       const [tradeError, setTradeError] = useState('')
       const [tradeForm, setTradeForm] = useState({ side: 'buy', price: '', shares: '', fee: '', date: '' })
       const forceNext = useRef(false)
+      const chartRequest = useRef(null)
       const seriesRef = useRef(series)
       seriesRef.current = series
       const isTrend = tab === 'trend'
@@ -4463,11 +4469,15 @@ window.__ModuleLoader__.load({
       // a frozen 分时 line beside a live price is worse than a reload.
       useEffect(() => {
         const key = `${tab}:${adjust}:${isTrend ? trendDays : klineLimit}`
-        const entry = seriesRef.current[key]
+        const requestKey = `${quote.symbol}:${key}`
         // Consumed once: a retry must refresh one fetch, not turn every later
         // poll into a cache-bypassing request.
         const force = forceNext.current
         forceNext.current = false
+        const pending = chartRequest.current
+        if (pending && pending.key === requestKey && !force) return undefined
+        if (pending) pending.controller.abort()
+        const entry = seriesRef.current[key]
         if (entry && !force) {
           if (!entry.ok) return undefined
           // The intraday line moves continuously; a K-line page can still gain
@@ -4478,6 +4488,8 @@ window.__ModuleLoader__.load({
           if (Date.now() - entry.at <= staleAfter) return undefined
         }
         const controller = new AbortController()
+        const request = { key: requestKey, controller }
+        chartRequest.current = request
         // Five sessions of minute data already ship with the intraday endpoint,
         // so the same-time volume baseline needs no archive; the five-day view
         // keeps its sequential payload and omits the comparison.
@@ -4521,9 +4533,16 @@ window.__ModuleLoader__.load({
                 : { ok: false, at: Date.now(), error: String(failure?.message ?? failure) },
             }))
           }
-        })()
-        return () => controller.abort()
+        })().finally(() => {
+          if (chartRequest.current === request) chartRequest.current = null
+        })
+        return undefined
       }, [quote.symbol, tab, adjust, trendDays, cycle, retryToken, klineLimit, isTrend])
+
+      useEffect(() => () => {
+        chartRequest.current?.controller.abort()
+        chartRequest.current = null
+      }, [])
 
       useEffect(() => {
         if (isTrend) return undefined

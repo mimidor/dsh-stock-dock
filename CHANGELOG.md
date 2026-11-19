@@ -803,3 +803,17 @@ Local commit only; not pushed.
   does not persist today's partial intraday page; stale-while-revalidate
   refreshes are de-duplicated per cache key.
 - 116 tests; the offline verify also uses an isolated disk-cache path.
+
+## 未发布 — 2026-11-19
+
+- Store updates now build a draft, persist it, and only then publish the new
+  in-memory state. A failed write no longer leaves a live but unsaved change
+  that a later successful write could silently persist.
+- The detail chart keeps one in-flight request per period key. Quote polls and
+  the 15s refresh tick no longer abort and restart an identical slow request, so
+  a cold year/1300-bar page can finish instead of sitting on 加载中.
+- `EChartKline` reads `period`/`onPickDay` from a ref, so 日K’s “click a bar →
+  that day’s intraday” still works after switching from 周K/月K/年K.
+- `echartsRangeMarks` clamps both selection ends to the current row count and
+  bails out on an empty range, preventing a TypeError when a shorter page
+  arrives while a tail selection is still active.
