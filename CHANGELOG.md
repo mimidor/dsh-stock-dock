@@ -817,3 +817,20 @@ Local commit only; not pushed.
 - `echartsRangeMarks` clamps both selection ends to the current row count and
   bails out on an empty range, preventing a TypeError when a shorter page
   arrives while a tail selection is still active.
+- Alert evaluation now works on a copy. The toast queue is filled only after
+  the disarmed state is durable, and the re-arm `muteUntilFlip` transition is
+  persisted too; a failed store write leaves the alert visibly armed for retry.
+- `MAX_GROUPS`/`MAX_HOLDINGS` are enforced in every write path (ledger apply,
+  market group, `/config` new group) and `normalizeState` keeps the caps even
+  when seeding the default and market groups; pinned cache entries are also
+  eviction candidates so `setBounded` can always honour its cap.
+- `trendForDate` caches a closed market day immediately, and the Eastmoney
+  history cooldown now requires two transport failures instead of one refused
+  secid; HTTP/no-data answers fall through to the next secid without arming the
+  global cooldown.
+- ECharts chunk failure now has an in-place retry, warmup shows 准备中 instead of
+  0/0, every write route rejects array bodies, `shortNumber` follows the English
+  compact-unit locale, entering/leaving 年K resets its history choice, sidebar
+  prefs events coalesce, and the disk-cache per-entry estimate matches the
+  serialized key/value shape.
+- 117 tests.

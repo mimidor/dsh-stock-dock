@@ -144,6 +144,7 @@ window.__ModuleLoader__.load({
       warmupTitle: '全量加载',
       warmupHint: '一次性加载所有分组标的的 K 线、分时和 logo，耗时较长',
       warmupStart: '开始全量加载',
+      warmupPreparing: '准备中…',
       warmupRunning: '正在加载 {done}/{total}',
       warmupDone: '全量加载完成，失败 {errors} 项',
       chartCache: '图表缓存',
@@ -355,6 +356,7 @@ window.__ModuleLoader__.load({
       warmupTitle: 'Load everything',
       warmupHint: 'Load all K-lines, intraday pages and logos for every group; this can take a while',
       warmupStart: 'Load everything',
+      warmupPreparing: 'Preparing…',
       warmupRunning: 'Loading {done}/{total}',
       warmupDone: 'Finished, {errors} failed',
       chartCache: 'Chart cache',
@@ -1893,7 +1895,7 @@ window.__ModuleLoader__.load({
           ? null
           : h('span', null, `${t('rangeSpread')} ${signed(spread)} (${formatPct(spreadPct)})`),
         amplitude === null ? null : h('span', null, `${t('rangeAmplitude')} ${formatPct(amplitude)}`),
-        h('span', null, `${t('volume')} ${shortNumber(volume)}`),
+        h('span', null, `${t('volume')} ${shortNumber(volume, t)}`),
         h('button', { type: 'button', className: 'dshst-link', onClick: onClear }, t('rangeClear')),
       )
     }
@@ -2468,7 +2470,7 @@ window.__ModuleLoader__.load({
       const readoutBase = active
         ? `${active.date} ${t('open')} ${formatPrice(active.open)} ${t('high')} ${formatPrice(active.high)} ${t('low')} ${formatPrice(
             active.low,
-          )} ${t('close')} ${formatPrice(active.close)}${typeof active.volume === 'number' ? ` ${t('volume')} ${shortNumber(active.volume)}` : ''}`
+          )} ${t('close')} ${formatPrice(active.close)}${typeof active.volume === 'number' ? ` ${t('volume')} ${shortNumber(active.volume, t)}` : ''}`
         : ''
       return h(
         'div',
@@ -2486,7 +2488,7 @@ window.__ModuleLoader__.load({
                     { className: 'dshst-volumeSignal', 'data-trend': activeSignal, 'data-strength': activeStrength },
                     ` · ${activeLabel} ${activeRatio.toFixed(2)}×`,
                   ),
-              activeSignal === null ? null : ` · ${t('volumePrev')} ${shortNumber(activeBaseline)}`,
+              activeSignal === null ? null : ` · ${t('volumePrev')} ${shortNumber(activeBaseline, t)}`,
             )
           : null,
         h(
@@ -2535,10 +2537,11 @@ window.__ModuleLoader__.load({
       return text
     }
 
-    function shortNumber(value) {
+    function shortNumber(value, t = (key) => key) {
       if (typeof value !== 'number' || !Number.isFinite(value)) return '--'
-      if (Math.abs(value) >= 1e8) return `${(value / 1e8).toFixed(2)}亿`
-      if (Math.abs(value) >= 1e4) return `${(value / 1e4).toFixed(2)}万`
+      if (!usesChineseUnits(t)) return COMPACT_NUMBER ? COMPACT_NUMBER.format(value) : value.toFixed(0)
+      if (Math.abs(value) >= 1e8) return `${(value / 1e8).toFixed(2)}${t('unitYi')}`
+      if (Math.abs(value) >= 1e4) return `${(value / 1e4).toFixed(2)}${t('unitWan')}`
       return value.toFixed(0)
     }
 
@@ -2910,7 +2913,7 @@ window.__ModuleLoader__.load({
               `<span style="color:${changeColor};font-weight:600">${t('changePctLabel')} ${formatPct(changePct)}</span>`,
               `${t('open')} ${formatPrice(row.open)}  ${t('high')} ${formatPrice(row.high)}`,
               `${t('low')} ${formatPrice(row.low)}  ${t('close')} ${formatPrice(row.close)}`,
-              `${t('volume')} ${shortNumber(row.volume)}${ref ? `  ·  ${t('volumePrev')} ${shortNumber(ref)}${ratio === null ? '' : ` (${ratio.toFixed(2)}×)`}` : ''}`,
+              `${t('volume')} ${shortNumber(row.volume, t)}${ref ? `  ·  ${t('volumePrev')} ${shortNumber(ref, t)}${ratio === null ? '' : ` (${ratio.toFixed(2)}×)`}` : ''}`,
             ]
             return parts.join('<br/>')
           },
@@ -2959,6 +2962,7 @@ window.__ModuleLoader__.load({
       const t = props.t ?? ((key) => key)
       const [lib, setLib] = useState(null)
       const [failed, setFailed] = useState(false)
+      const [chunkAttempt, setChunkAttempt] = useState(0)
       const [range, setRange] = useState(null)
       const [themeTick, setThemeTick] = useState(0)
       const [crosshairX, setCrosshairX] = useState(null)
@@ -2993,7 +2997,7 @@ window.__ModuleLoader__.load({
         return () => {
           alive = false
         }
-      }, [])
+      }, [chunkAttempt])
 
       useEffect(() => {
         if (!lib || !hostRef.current || !hasRows) return undefined
@@ -3243,7 +3247,23 @@ window.__ModuleLoader__.load({
           'div',
           { className: 'dshst-echartWrap' },
           failed && typeof require.async === 'function'
-            ? h('div', { className: 'dshst-chartHint' }, t('echartsFallback'))
+            ? h(
+                'div',
+                { className: 'dshst-chartHint' },
+                `${t('echartsFallback')} `,
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'dshst-link',
+                    onClick: () => {
+                      setFailed(false)
+                      setChunkAttempt((value) => value + 1)
+                    },
+                  },
+                  t('retry'),
+                ),
+              )
             : null,
           h(Candles, { ...props, rows: fallbackRows }),
         )
@@ -4244,7 +4264,7 @@ window.__ModuleLoader__.load({
               { className: 'dshst-readout' },
               `${active.day ? `${active.day} ` : ''}${active.time} ${formatPrice(active.price)}${
                 typeof active.avg === 'number' ? ` ${t('ma')} ${formatPrice(active.avg)}` : ''
-              }${typeof active.volume === 'number' ? ` ${t('volume')} ${shortNumber(active.volume)}` : ''}`,
+              }${typeof active.volume === 'number' ? ` ${t('volume')} ${shortNumber(active.volume, t)}` : ''}`,
               activeSignal === null
                 ? null
                 : h(
@@ -4252,7 +4272,7 @@ window.__ModuleLoader__.load({
                     { className: 'dshst-volumeSignal', 'data-trend': activeSignal, 'data-strength': activeStrength },
                     ` · ${activeLabel} ${activeRatio.toFixed(2)}×`,
                   ),
-              activeSignal === null ? null : ` · ${t('volumePrev')} ${shortNumber(activeReference)}`,
+              activeSignal === null ? null : ` · ${t('volumePrev')} ${shortNumber(activeReference, t)}`,
             )
           : null,
       )
@@ -4416,6 +4436,7 @@ window.__ModuleLoader__.load({
       const [tradeForm, setTradeForm] = useState({ side: 'buy', price: '', shares: '', fee: '', date: '' })
       const forceNext = useRef(false)
       const chartRequest = useRef(null)
+      const lastTab = useRef(tab)
       const seriesRef = useRef(series)
       seriesRef.current = series
       const isTrend = tab === 'trend'
@@ -4449,6 +4470,13 @@ window.__ModuleLoader__.load({
                 : 60
 
       useEffect(() => {
+        // A year choice is not a count of months: entering 年K starts at 20,
+        // and leaving it must not carry 20 back to 日K as 20 years.
+        if (lastTab.current !== tab) {
+          if (tab === 'year') setHistoryYears(20)
+          else if (lastTab.current === 'year') setHistoryYears(0)
+          lastTab.current = tab
+        }
         const choices = tab === 'year' ? [10, 20, 30, 'all'] : [0, 1, 3, 5, 'all']
         if (!choices.includes(historyYears)) setHistoryYears(tab === 'year' ? 20 : 0)
       }, [tab, historyYears])
@@ -4738,6 +4766,7 @@ window.__ModuleLoader__.load({
           const points = dayView.payload.points
           const dayUp = points[points.length - 1].price >= points[0].price ? 'var(--dshst-up)' : 'var(--dshst-down)'
           return h(TrendChart, {
+            symbol: quote.symbol,
             points,
             prevClose: dayView.payload.prevClose,
             days: 1,
@@ -4760,6 +4789,7 @@ window.__ModuleLoader__.load({
         }
         if (isTrend) {
           return h(TrendChart, {
+            symbol: quote.symbol,
             points: entry.payload.points,
             prevClose: entry.payload.prevClose,
             baseline: entry.payload.baseline,
@@ -7201,9 +7231,11 @@ window.__ModuleLoader__.load({
               onClick: startWarmup,
             },
             warmup?.running
-              ? t('warmupRunning')
-                  .replace('{done}', String(warmup.done ?? 0))
-                  .replace('{total}', String(warmup.total ?? 0))
+              ? warmup.total > 0
+                ? t('warmupRunning')
+                    .replace('{done}', String(warmup.done ?? 0))
+                    .replace('{total}', String(warmup.total ?? 0))
+                : t('warmupPreparing')
               : t('warmupStart'),
           ),
           warmup
@@ -7223,9 +7255,11 @@ window.__ModuleLoader__.load({
                   'span',
                   { className: 'dshst-hint' },
                   warmup.running
-                    ? t('warmupRunning')
-                        .replace('{done}', String(warmup.done ?? 0))
-                        .replace('{total}', String(warmup.total ?? 0))
+                    ? warmup.total > 0
+                      ? t('warmupRunning')
+                          .replace('{done}', String(warmup.done ?? 0))
+                          .replace('{total}', String(warmup.total ?? 0))
+                      : t('warmupPreparing')
                     : t('warmupDone').replace('{errors}', String(warmup.errors ?? 0)),
                 ),
                 warmup.current ? h('span', { className: 'dshst-hint' }, warmup.current) : null,
@@ -7376,8 +7410,12 @@ window.__ModuleLoader__.load({
         ctx.effect(() => {
           let alive = true
           let syncing = false
+          let pendingSync = false
           const sync = async () => {
-            if (syncing) return
+            if (syncing) {
+              pendingSync = true
+              return
+            }
             syncing = true
             try {
               const payload = await api('/settings')
@@ -7388,6 +7426,10 @@ window.__ModuleLoader__.load({
               /* the panel is optional */
             } finally {
               syncing = false
+              if (pendingSync) {
+                pendingSync = false
+                void sync()
+              }
             }
           }
           const onPrefs = () => {

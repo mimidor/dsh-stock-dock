@@ -29,6 +29,14 @@ test('a fresh store seeds the default group from the configured symbols', async 
   assert.deepEqual(onDisk.groups[0].symbols, ['sh600519'])
 })
 
+test('normalization never exceeds the group cap after seeding the market group', () => {
+  const groups = Array.from({ length: 12 }, (_, index) => ({ id: `g${index}`, name: `G${index}`, symbols: [] }))
+  const state = normalizeState({ groups, presetSeeded: false })
+  assert.equal(state.groups.length, 12)
+  assert.equal(state.groups[0].id, 'default')
+  assert.ok(!state.groups.some((group) => group.id === 'g11'), 'the oldest tail group is dropped, the cap holds')
+})
+
 test('a corrupt store file is kept aside instead of being silently replaced', async () => {
   const file = tempPath()
   writeFileSync(file, '{ this is not json', 'utf8')
